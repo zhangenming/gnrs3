@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.3.1
-// @description  发现塔后固定标记该位置，丢失视野后仍保留标记。
+// @version      0.4.0
+// @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
 // @match        http://generals.io/*
@@ -24,6 +24,9 @@
     高度: 0,
     塔列表: null,
     已知塔集合: new Set(),
+    已知敌方基地集合: new Map(),
+    我方索引: null,
+    队伍: null,
     已请求渲染: false,
     socket已挂钩: false,
     页面观察器: null,
@@ -138,7 +141,28 @@
     return null;
   }
 
+  function 读取玩家信息(数据包) {
+    if (!数据包) return;
+    if (Number.isInteger(数据包.playerIndex)) {
+      状态.我方索引 = 数据包.playerIndex;
+    }
+    if (Array.isArray(数据包.teams)) {
+      状态.队伍 = 数据包.teams.slice();
+    }
+  }
+
+  function 是我方或队友(玩家索引) {
+    if (!Number.isInteger(玩家索引) || 玩家索引 < 0) return false;
+    if (!Number.isInteger(状态.我方索引)) return false;
+    if (玩家索引 === 状态.我方索引) return true;
+    if (!Array.isArray(状态.队伍)) return false;
+    var 我方队伍 = 状态.队伍[状态.我方索引];
+    var 对方队伍 = 状态.队伍[玩家索引];
+    return 我方队伍 !== undefined && 我方队伍 !== null && 对方队伍 === 我方队伍;
+  }
+
   function 处理塔位置(数据包, 来源事件) {
+    读取玩家信息(数据包);
     尝试从地图读取尺寸(数据包);
 
     var 塔信息 = 取得本次塔列表(数据包);
@@ -186,18 +210,87 @@
     请求渲染();
   }
 
+  function 处理基地位置(数据包, 来源事件) {
+    读取玩家信息(数据包);
+    尝试从地图读取尺寸(数据包);
+
+    var 基地列表 = Array.isArray(数据包 && 数据包.generals) ? 数据包.generals : null;
+    记日志("处理基地位置", {
+      来源事件: 来源事件,
+      回合: 数据包 && 数据包.turn,
+      我方索引: 状态.我方索引,
+      队伍: 状态.队伍,
+      基地列表长度: 基地列表 ? 基地列表.length : null,
+      已知敌方基地数量: 状态.已知敌方基地集合.size,
+      地图尺寸: 状态.宽度 && 状态.高度 ? 状态.宽度 + "x" + 状态.高度 : null
+    });
+
+    if (!基地列表) {
+      请求渲染();
+      return;
+    }
+
+    if (!Number.isInteger(状态.我方索引)) {
+      记日志("缺少我方索引，暂不标记基地", {
+        来源事件: 来源事件,
+        基地列表: 基地列表
+      });
+      请求渲染();
+      return;
+    }
+
+    var 新敌方基地 = [];
+    for (var 玩家索引 = 0; 玩家索引 < 基地列表.length; 玩家索引 += 1) {
+      var 基地索引 = 基地列表[玩家索引];
+      if (!Number.isInteger(基地索引) || 基地索引 < 0) continue;
+      if (是我方或队友(玩家索引)) continue;
+      if (!状态.已知敌方基地集合.has(基地索引)) {
+        状态.已知敌方基地集合.set(基地索引, {
+          索引: 基地索引,
+          玩家索引: 玩家索引,
+          首次回合: 数据包 && 数据包.turn == null ? null : 数据包.turn
+        });
+        新敌方基地.push({ 索引: 基地索引, 玩家索引: 玩家索引 });
+      }
+    }
+
+    if (新敌方基地.length > 0) {
+      记日志("发现敌方基地并固定标记", {
+        回合: 数据包 && 数据包.turn,
+        新敌方基地数量: 新敌方基地.length,
+        新敌方基地: 新敌方基地.map(function (基地) {
+          return {
+            索引: 基地.索引,
+            玩家索引: 基地.玩家索引,
+            行: 状态.宽度 ? Math.floor(基地.索引 / 状态.宽度) : null,
+            列: 状态.宽度 ? 基地.索引 % 状态.宽度 : null
+          };
+        }),
+        已知敌方基地总数: 状态.已知敌方基地集合.size
+      });
+    }
+
+    请求渲染();
+  }
+
   function 重置本局(数据包) {
     状态.宽度 = 0;
     状态.高度 = 0;
     状态.塔列表 = null;
     状态.已知塔集合.clear();
+    状态.已知敌方基地集合.clear();
+    状态.我方索引 = Number.isInteger(数据包 && 数据包.playerIndex) ? 数据包.playerIndex : null;
+    状态.队伍 = Array.isArray(数据包 && 数据包.teams) ? 数据包.teams.slice() : null;
     清空覆盖层();
     记日志("新局重置", {
       数据键: 数据包 ? Object.keys(数据包) : [],
       有map: Array.isArray(数据包 && 数据包.map),
       有map_diff: Array.isArray(数据包 && 数据包.map_diff),
       有cities: Array.isArray(数据包 && 数据包.cities),
-      有cities_diff: Array.isArray(数据包 && 数据包.cities_diff)
+      有cities_diff: Array.isArray(数据包 && 数据包.cities_diff),
+      有generals: Array.isArray(数据包 && 数据包.generals),
+      我方索引: 状态.我方索引,
+      队伍: 状态.队伍
     });
   }
 
@@ -219,11 +312,15 @@
         有map: Array.isArray(数据包 && 数据包.map),
         有map_diff: Array.isArray(数据包 && 数据包.map_diff),
         有cities: Array.isArray(数据包 && 数据包.cities),
-        有cities_diff: Array.isArray(数据包 && 数据包.cities_diff)
+        有cities_diff: Array.isArray(数据包 && 数据包.cities_diff),
+        generals长度: Array.isArray(数据包 && 数据包.generals) ? 数据包.generals.length : null,
+        playerIndex: 数据包 && 数据包.playerIndex,
+        teams: 数据包 && 数据包.teams
       });
       延后执行("game_start", function () {
         重置本局(数据包 || {});
         处理塔位置(数据包 || {}, "game_start");
+        处理基地位置(数据包 || {}, "game_start");
       });
     });
 
@@ -234,10 +331,13 @@
         cities_diff长度: Array.isArray(数据包 && 数据包.cities_diff) ? 数据包.cities_diff.length : null,
         cities_diff前20项: Array.isArray(数据包 && 数据包.cities_diff) ? 数据包.cities_diff.slice(0, 20) : null,
         有map: Array.isArray(数据包 && 数据包.map),
-        map_diff长度: Array.isArray(数据包 && 数据包.map_diff) ? 数据包.map_diff.length : null
+        map_diff长度: Array.isArray(数据包 && 数据包.map_diff) ? 数据包.map_diff.length : null,
+        generals长度: Array.isArray(数据包 && 数据包.generals) ? 数据包.generals.length : null,
+        generals: Array.isArray(数据包 && 数据包.generals) ? 数据包.generals : null
       });
       延后执行("game_update", function () {
         处理塔位置(数据包 || {}, "game_update");
+        处理基地位置(数据包 || {}, "game_update");
       });
     });
   }
@@ -400,10 +500,63 @@
     ctx.restore();
   }
 
+  function 画敌方基地标记(ctx, x, y, 大小) {
+    var 外线宽 = Math.max(3, 大小 * 0.13);
+    var 内线宽 = Math.max(2, 大小 * 0.06);
+    var 外偏移 = 外线宽 / 2 + 1;
+    var 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2;
+    var 角长 = Math.max(6, 大小 * 0.34);
+    var 角偏移 = Math.max(2, 大小 * 0.08);
+
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+
+    ctx.lineWidth = 外线宽;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
+    ctx.strokeRect(
+      x + 外偏移,
+      y + 外偏移,
+      Math.max(1, 大小 - 外偏移 * 2),
+      Math.max(1, 大小 - 外偏移 * 2)
+    );
+
+    ctx.lineWidth = 内线宽;
+    ctx.strokeStyle = "#ff3030";
+    ctx.strokeRect(
+      x + 内偏移,
+      y + 内偏移,
+      Math.max(1, 大小 - 内偏移 * 2),
+      Math.max(1, 大小 - 内偏移 * 2)
+    );
+
+    ctx.lineWidth = Math.max(2, 大小 * 0.075);
+    ctx.strokeStyle = "#fff2f2";
+    ctx.beginPath();
+    ctx.moveTo(x + 角偏移, y + 角偏移 + 角长);
+    ctx.lineTo(x + 角偏移, y + 角偏移);
+    ctx.lineTo(x + 角偏移 + 角长, y + 角偏移);
+
+    ctx.moveTo(x + 大小 - 角偏移 - 角长, y + 角偏移);
+    ctx.lineTo(x + 大小 - 角偏移, y + 角偏移);
+    ctx.lineTo(x + 大小 - 角偏移, y + 角偏移 + 角长);
+
+    ctx.moveTo(x + 大小 - 角偏移, y + 大小 - 角偏移 - 角长);
+    ctx.lineTo(x + 大小 - 角偏移, y + 大小 - 角偏移);
+    ctx.lineTo(x + 大小 - 角偏移 - 角长, y + 大小 - 角偏移);
+
+    ctx.moveTo(x + 角偏移 + 角长, y + 大小 - 角偏移);
+    ctx.lineTo(x + 角偏移, y + 大小 - 角偏移);
+    ctx.lineTo(x + 角偏移, y + 大小 - 角偏移 - 角长);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
   function 渲染() {
     状态.已请求渲染 = false;
 
-    if (!状态.已知塔集合.size) {
+    if (!状态.已知塔集合.size && !状态.已知敌方基地集合.size) {
       清空覆盖层();
       return;
     }
@@ -412,9 +565,11 @@
       var 现在 = Date.now();
       if (现在 - 状态.上次无尺寸日志 > 2000) {
         状态.上次无尺寸日志 = 现在;
-        记日志("已有塔位置但缺少地图宽高，无法换算坐标", {
+        记日志("已有标记位置但缺少地图宽高，无法换算坐标", {
           已知塔数量: 状态.已知塔集合.size,
-          已知塔: Array.from(状态.已知塔集合).slice(0, 20)
+          已知敌方基地数量: 状态.已知敌方基地集合.size,
+          已知塔: Array.from(状态.已知塔集合).slice(0, 20),
+          已知敌方基地: Array.from(状态.已知敌方基地集合.values()).slice(0, 20)
         });
       }
       return;
@@ -440,8 +595,15 @@
       画塔标记(ctx, 列 * 格宽, 行 * 格高, 大小);
     });
 
-    记日志("固定塔标记已渲染", {
+    状态.已知敌方基地集合.forEach(function (基地, 索引) {
+      var 行 = Math.floor(索引 / 状态.宽度);
+      var 列 = 索引 % 状态.宽度;
+      画敌方基地标记(ctx, 列 * 格宽, 行 * 格高, 大小);
+    });
+
+    记日志("固定标记已渲染", {
       已知塔数量: 状态.已知塔集合.size,
+      已知敌方基地数量: 状态.已知敌方基地集合.size,
       地图尺寸: 状态.宽度 + "x" + 状态.高度,
       覆盖层尺寸: Math.round(尺寸.css宽) + "x" + Math.round(尺寸.css高)
     });
@@ -479,7 +641,7 @@
 
   function 暴露调试接口() {
     window.gio塔标记 = {
-      版本: "0.3.1",
+      版本: "0.4.0",
       日志: function () {
         return 状态.最近日志.slice();
       },
@@ -489,6 +651,9 @@
           高度: 状态.高度,
           塔列表长度: 状态.塔列表 ? 状态.塔列表.length : null,
           已知塔数量: 状态.已知塔集合.size,
+          已知敌方基地数量: 状态.已知敌方基地集合.size,
+          我方索引: 状态.我方索引,
+          队伍: 状态.队伍,
           socket已挂钩: 状态.socket已挂钩
         };
       },
@@ -501,10 +666,29 @@
           };
         });
       },
+      已知敌方基地: function () {
+        return Array.from(状态.已知敌方基地集合.values()).map(function (基地) {
+          return Object.assign({}, 基地, {
+            行: 状态.宽度 ? Math.floor(基地.索引 / 状态.宽度) : null,
+            列: 状态.宽度 ? 基地.索引 % 状态.宽度 : null
+          });
+        });
+      },
       手动加塔: function (索引) {
         if (Number.isInteger(索引) && 索引 >= 0) {
           状态.已知塔集合.add(索引);
           记日志("手动加塔", { 索引: 索引 });
+          请求渲染();
+        }
+      },
+      手动加敌方基地: function (索引, 玩家索引) {
+        if (Number.isInteger(索引) && 索引 >= 0) {
+          状态.已知敌方基地集合.set(索引, {
+            索引: 索引,
+            玩家索引: Number.isInteger(玩家索引) ? 玩家索引 : null,
+            首次回合: null
+          });
+          记日志("手动加敌方基地", { 索引: 索引, 玩家索引: 玩家索引 });
           请求渲染();
         }
       },
@@ -516,6 +700,7 @@
       },
       清空: function () {
         状态.已知塔集合.clear();
+        状态.已知敌方基地集合.clear();
         状态.塔列表 = null;
         清空覆盖层();
         记日志("手动清空");
@@ -530,7 +715,7 @@
   }
 
   function 启动() {
-    记日志("脚本启动", { 版本: "0.3.1", 页面: location.href });
+    记日志("脚本启动", { 版本: "0.4.0", 页面: location.href });
     暴露调试接口();
     安装socket访问器();
     轮询socket();
