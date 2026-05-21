@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.2.0
-// @description  记住已发现的塔，并在丢失视野后继续显示标记。
+// @version      0.3.0
+// @description  发现塔后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
 // @match        http://generals.io/*
@@ -14,75 +14,54 @@
 (function () {
   "use strict";
 
-  var 空地 = -1;
-  var 山 = -2;
-  var 迷雾 = -3;
-  var 障碍迷雾 = -4;
-
   var 覆盖层类名 = "gio-tower-memory-overlay";
-  var 样式元素编号 = "gio-tower-memory-style";
+  var 样式编号 = "gio-tower-memory-style";
   var 日志前缀 = "[塔记忆]";
   var 详细日志 = true;
 
   var 状态 = {
     宽度: 0,
     高度: 0,
-    上次地图: null,
-    上次塔列表: null,
-    已知塔: new Map(),
-    我方索引: null,
-    队伍: null,
-    当前局编号: "",
-    socket已挂钩: false,
+    塔列表: null,
+    已知塔集合: new Set(),
     已请求渲染: false,
+    socket已挂钩: false,
     页面观察器: null,
     最近日志: [],
-    上次缺少画布日志时间: 0,
-    上次缺少尺寸日志时间: 0
+    上次无尺寸日志: 0,
+    上次无画布日志: 0
   };
 
-  function 记录日志(阶段, 数据) {
-    var 条目 = {
-      时间: new Date().toISOString(),
-      阶段: 阶段,
-      数据: 数据 || null
-    };
+  function 记日志(事件, 数据) {
+    var 条目 = { 时间: new Date().toISOString(), 事件: 事件, 数据: 数据 || null };
     状态.最近日志.push(条目);
     if (状态.最近日志.length > 300) 状态.最近日志.shift();
     if (详细日志) {
-      if (数据 === undefined) console.log(日志前缀, 阶段);
-      else console.log(日志前缀, 阶段, 数据);
+      if (数据 === undefined) console.log(日志前缀, 事件);
+      else console.log(日志前缀, 事件, 数据);
     }
   }
 
-  function 记录错误(阶段, 错误) {
+  function 记错误(事件, 错误) {
     var 文本 = 错误 && 错误.stack ? 错误.stack : String(错误);
-    状态.最近日志.push({
-      时间: new Date().toISOString(),
-      阶段: 阶段 + "失败",
-      数据: 文本
-    });
+    状态.最近日志.push({ 时间: new Date().toISOString(), 事件: 事件 + "失败", 数据: 文本 });
     if (状态.最近日志.length > 300) 状态.最近日志.shift();
-    console.error(日志前缀, 阶段 + "失败", 错误);
+    console.error(日志前缀, 事件 + "失败", 错误);
   }
 
-  function 安全执行(阶段, 函数体) {
+  function 安全执行(事件, 函数体) {
     try {
       return 函数体();
     } catch (错误) {
-      记录错误(阶段, 错误);
+      记错误(事件, 错误);
       return null;
     }
   }
 
-  function 延后处理(阶段, 函数体) {
+  function 延后执行(事件, 函数体) {
     setTimeout(function () {
-      安全执行(阶段, 函数体);
+      安全执行(事件, 函数体);
     }, 0);
-  }
-
-  function 复制数组(值) {
-    return Array.isArray(值) ? 值.slice() : null;
   }
 
   function 应用增量(旧数组, 增量) {
@@ -107,163 +86,69 @@
 
       i += 1;
     }
-
     return 新数组;
   }
 
-  function 读取完整地图(数据包) {
-    if (!数据包) return null;
+  function 尝试从地图读取尺寸(数据包) {
+    if (状态.宽度 > 0 && 状态.高度 > 0) return;
 
-    var 来源 = "无";
-    var 序列化地图 = null;
-
-    if (Array.isArray(数据包.map)) {
+    var 地图数组 = null;
+    var 来源 = null;
+    if (Array.isArray(数据包 && 数据包.map)) {
+      地图数组 = 数据包.map;
       来源 = "map";
-      序列化地图 = 复制数组(数据包.map);
-    } else if (Array.isArray(数据包.map_diff)) {
-      来源 = "map_diff";
-      if (!Array.isArray(状态.上次地图)) {
-        记录日志("收到map_diff但缺少上次地图", {
-          回合: 数据包.turn,
-          增量长度: 数据包.map_diff.length
-        });
-        return null;
-      }
-      序列化地图 = 应用增量(状态.上次地图, 数据包.map_diff);
+    } else if (Array.isArray(数据包 && 数据包.map_diff) && 数据包.map_diff[0] === 0 && 数据包.map_diff.length > 4) {
+      地图数组 = 应用增量([], 数据包.map_diff);
+      来源 = "首个map_diff";
     }
 
-    if (!序列化地图 || 序列化地图.length < 2) return null;
-
-    var 宽度 = 序列化地图[0];
-    var 高度 = 序列化地图[1];
+    if (!Array.isArray(地图数组) || 地图数组.length < 2) return;
+    var 宽度 = 地图数组[0];
+    var 高度 = 地图数组[1];
     var 格子数 = 宽度 * 高度;
-    if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) {
-      记录日志("地图尺寸无效", { 宽度: 宽度, 高度: 高度, 来源: 来源 });
-      return null;
-    }
-    if (序列化地图.length < 2 + 格子数 * 2) {
-      记录日志("地图数组长度不足", {
-        来源: 来源,
-        长度: 序列化地图.length,
-        预期最小长度: 2 + 格子数 * 2
-      });
-      return null;
-    }
+    if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) return;
+    if (地图数组.length < 2 + 格子数 * 2) return;
 
-    return {
-      来源: 来源,
-      序列化地图: 序列化地图,
-      宽度: 宽度,
-      高度: 高度,
-      格子数: 格子数,
-      兵力偏移: 2,
-      地块偏移: 2 + 格子数
-    };
+    状态.宽度 = 宽度;
+    状态.高度 = 高度;
+    记日志("已读取地图尺寸", { 来源: 来源, 宽度: 宽度, 高度: 高度 });
   }
 
-  function 读取完整塔列表(数据包) {
-    if (!数据包) return null;
-
-    if (Array.isArray(数据包.cities)) {
-      return {
-        来源: "cities",
-        塔列表: 复制数组(数据包.cities)
-      };
+  function 取得本次塔列表(数据包) {
+    if (Array.isArray(数据包 && 数据包.cities)) {
+      return { 来源: "cities", 塔列表: 数据包.cities.slice() };
     }
 
-    if (Array.isArray(数据包.cities_diff)) {
-      if (!Array.isArray(状态.上次塔列表)) {
-        记录日志("收到cities_diff但缺少上次塔列表", {
-          回合: 数据包.turn,
-          增量长度: 数据包.cities_diff.length
-        });
-        return null;
+    if (Array.isArray(数据包 && 数据包.cities_diff)) {
+      if (Array.isArray(状态.塔列表)) {
+        return { 来源: "cities_diff", 塔列表: 应用增量(状态.塔列表, 数据包.cities_diff) };
       }
-      return {
-        来源: "cities_diff",
-        塔列表: 应用增量(状态.上次塔列表, 数据包.cities_diff)
-      };
+
+      if (数据包.cities_diff[0] === 0 && 数据包.cities_diff.length > 1) {
+        return { 来源: "首个cities_diff", 塔列表: 应用增量([], 数据包.cities_diff) };
+      }
+
+      记日志("收到塔增量但还没有塔基准，等待首包", {
+        回合: 数据包 && 数据包.turn,
+        cities_diff: 数据包.cities_diff.slice(0, 20),
+        增量长度: 数据包.cities_diff.length
+      });
     }
 
     return null;
   }
 
-  function 生成局编号(数据包) {
-    return [
-      数据包 && 数据包.replay_id || "",
-      数据包 && 数据包.chat_room || "",
-      数据包 && 数据包.team_chat_room || "",
-      Date.now()
-    ].join("|");
-  }
+  function 处理塔位置(数据包, 来源事件) {
+    尝试从地图读取尺寸(数据包);
 
-  function 重置本局(数据包) {
-    状态.宽度 = 0;
-    状态.高度 = 0;
-    状态.上次地图 = null;
-    状态.上次塔列表 = null;
-    状态.已知塔.clear();
-    状态.我方索引 = 数据包 && Number.isInteger(数据包.playerIndex) ? 数据包.playerIndex : null;
-    状态.队伍 = 数据包 && Array.isArray(数据包.teams) ? 数据包.teams.slice() : null;
-    状态.当前局编号 = 生成局编号(数据包 || {});
-
-    清空覆盖层();
-    请求渲染();
-
-    记录日志("新局开始", {
-      局编号: 状态.当前局编号,
-      我方索引: 状态.我方索引,
-      用户名数量: 数据包 && Array.isArray(数据包.usernames) ? 数据包.usernames.length : null,
-      数据键: 数据包 ? Object.keys(数据包) : []
-    });
-  }
-
-  function 是否我方玩家(玩家索引) {
-    if (!Number.isInteger(玩家索引) || 玩家索引 < 0) return false;
-    if (状态.我方索引 === null) return false;
-    if (玩家索引 === 状态.我方索引) return true;
-    if (!Array.isArray(状态.队伍)) return false;
-    return 状态.队伍[玩家索引] !== undefined && 状态.队伍[玩家索引] === 状态.队伍[状态.我方索引];
-  }
-
-  function 判断塔类型(地图信息, 塔索引) {
-    if (!地图信息 || !Number.isInteger(塔索引)) return "塔";
-    var 地块值 = 地图信息.序列化地图[地图信息.地块偏移 + 塔索引];
-    if (Number.isInteger(地块值) && 地块值 >= 0) {
-      return 是否我方玩家(地块值) ? "我方塔" : "敌方塔";
-    }
-    if (地块值 === 迷雾 || 地块值 === 障碍迷雾) return "塔";
-    return "无人塔";
-  }
-
-  function 记住塔(数据包, 来源标签) {
-    var 地图信息 = 读取完整地图(数据包);
-    var 塔信息 = 读取完整塔列表(数据包);
-
-    if (地图信息) {
-      状态.宽度 = 地图信息.宽度;
-      状态.高度 = 地图信息.高度;
-      状态.上次地图 = 地图信息.序列化地图.slice();
-      if (Array.isArray(数据包.teams)) 状态.队伍 = 数据包.teams.slice();
-      if (Number.isInteger(数据包.playerIndex)) 状态.我方索引 = 数据包.playerIndex;
-    }
-
-    if (塔信息 && Array.isArray(塔信息.塔列表)) {
-      状态.上次塔列表 = 塔信息.塔列表.slice();
-    }
-
-    记录日志("处理地图更新", {
-      来源标签: 来源标签,
+    var 塔信息 = 取得本次塔列表(数据包);
+    记日志("处理塔位置", {
+      来源事件: 来源事件,
       回合: 数据包 && 数据包.turn,
-      地图来源: 地图信息 && 地图信息.来源,
       塔来源: 塔信息 && 塔信息.来源,
-      地图尺寸: 地图信息 ? 地图信息.宽度 + "x" + 地图信息.高度 : null,
-      本次塔数量: 塔信息 && 塔信息.塔列表 ? 塔信息.塔列表.length : null,
-      已知塔数量: 状态.已知塔.size,
-      有map: Array.isArray(数据包 && 数据包.map),
-      有map_diff: Array.isArray(数据包 && 数据包.map_diff),
-      有cities: Array.isArray(数据包 && 数据包.cities),
-      有cities_diff: Array.isArray(数据包 && 数据包.cities_diff)
+      当前塔列表长度: 塔信息 && 塔信息.塔列表 ? 塔信息.塔列表.length : null,
+      已知塔数量: 状态.已知塔集合.size,
+      地图尺寸: 状态.宽度 && 状态.高度 ? 状态.宽度 + "x" + 状态.高度 : null
     });
 
     if (!塔信息 || !Array.isArray(塔信息.塔列表)) {
@@ -271,128 +156,97 @@
       return;
     }
 
-    var 新发现 = [];
-    for (var i = 0; i < 塔信息.塔列表.length; i += 1) {
-      var 塔索引 = 塔信息.塔列表[i];
-      if (!Number.isInteger(塔索引) || 塔索引 < 0) continue;
+    状态.塔列表 = 塔信息.塔列表.slice();
 
-      var 塔类型 = 判断塔类型(地图信息, 塔索引);
-      var 已有 = 状态.已知塔.get(塔索引);
-      if (!已有) {
-        已有 = {
-          索引: 塔索引,
-          类型: 塔类型,
-          首次回合: 数据包 && 数据包.turn == null ? null : 数据包.turn,
-          最近回合: 数据包 && 数据包.turn == null ? null : 数据包.turn
-        };
-        状态.已知塔.set(塔索引, 已有);
-        新发现.push(已有);
-      } else {
-        已有.类型 = 塔类型;
-        已有.最近回合 = 数据包 && 数据包.turn == null ? 已有.最近回合 : 数据包.turn;
+    var 新塔 = [];
+    for (var i = 0; i < 状态.塔列表.length; i += 1) {
+      var 塔索引 = 状态.塔列表[i];
+      if (!Number.isInteger(塔索引) || 塔索引 < 0) continue;
+      if (!状态.已知塔集合.has(塔索引)) {
+        状态.已知塔集合.add(塔索引);
+        新塔.push(塔索引);
       }
     }
 
-    if (新发现.length > 0) {
-      记录日志("发现新塔", {
-        数量: 新发现.length,
-        新塔: 新发现.map(function (塔) {
+    if (新塔.length > 0) {
+      记日志("发现塔并固定标记", {
+        回合: 数据包 && 数据包.turn,
+        新塔数量: 新塔.length,
+        新塔: 新塔.map(function (索引) {
           return {
-            索引: 塔.索引,
-            类型: 塔.类型,
-            行: 状态.宽度 ? Math.floor(塔.索引 / 状态.宽度) : null,
-            列: 状态.宽度 ? 塔.索引 % 状态.宽度 : null,
-            首次回合: 塔.首次回合
+            索引: 索引,
+            行: 状态.宽度 ? Math.floor(索引 / 状态.宽度) : null,
+            列: 状态.宽度 ? 索引 % 状态.宽度 : null
           };
         }),
-        已知塔总数: 状态.已知塔.size
+        已知塔总数: 状态.已知塔集合.size
       });
     }
 
     请求渲染();
   }
 
+  function 重置本局(数据包) {
+    状态.宽度 = 0;
+    状态.高度 = 0;
+    状态.塔列表 = null;
+    状态.已知塔集合.clear();
+    清空覆盖层();
+    记日志("新局重置", {
+      数据键: 数据包 ? Object.keys(数据包) : [],
+      有map: Array.isArray(数据包 && 数据包.map),
+      有map_diff: Array.isArray(数据包 && 数据包.map_diff),
+      有cities: Array.isArray(数据包 && 数据包.cities),
+      有cities_diff: Array.isArray(数据包 && 数据包.cities_diff)
+    });
+  }
+
   function 挂钩socket(socket) {
-    if (!socket) {
-      记录日志("挂钩socket跳过: socket为空");
-      return;
-    }
-    if (socket.__塔记忆已挂钩) return;
-
-    try {
-      socket.__塔记忆已挂钩 = true;
-    } catch (错误) {
-      记录错误("标记socket", 错误);
-    }
-
+    if (!socket || socket.__塔记忆已挂钩) return;
+    socket.__塔记忆已挂钩 = true;
     状态.socket已挂钩 = true;
-    记录日志("socket已挂钩", {
+
+    记日志("socket已挂钩", {
       connected: socket.connected,
       id: socket.id,
-      hasOn: typeof socket.on,
-      hasEmit: typeof socket.emit
-    });
-
-    socket.on("connect", function () {
-      记录日志("socket connect", { id: socket.id });
-    });
-
-    socket.on("disconnect", function (原因) {
-      记录日志("socket disconnect", { 原因: 原因 });
+      on: typeof socket.on,
+      emit: typeof socket.emit
     });
 
     socket.on("game_start", function (数据包) {
-      记录日志("收到game_start", {
+      记日志("收到game_start", {
         数据键: 数据包 ? Object.keys(数据包) : [],
         有map: Array.isArray(数据包 && 数据包.map),
+        有map_diff: Array.isArray(数据包 && 数据包.map_diff),
         有cities: Array.isArray(数据包 && 数据包.cities),
-        playerIndex: 数据包 && 数据包.playerIndex
+        有cities_diff: Array.isArray(数据包 && 数据包.cities_diff)
       });
-      延后处理("game_start", function () {
+      延后执行("game_start", function () {
         重置本局(数据包 || {});
-        记住塔(数据包 || {}, "game_start");
+        处理塔位置(数据包 || {}, "game_start");
       });
     });
 
     socket.on("game_update", function (数据包) {
-      记录日志("收到game_update", {
+      记日志("收到game_update", {
         回合: 数据包 && 数据包.turn,
-        数据键: 数据包 ? Object.keys(数据包) : [],
-        map长度: Array.isArray(数据包 && 数据包.map) ? 数据包.map.length : null,
-        map_diff长度: Array.isArray(数据包 && 数据包.map_diff) ? 数据包.map_diff.length : null,
         cities长度: Array.isArray(数据包 && 数据包.cities) ? 数据包.cities.length : null,
-        cities_diff长度: Array.isArray(数据包 && 数据包.cities_diff) ? 数据包.cities_diff.length : null
+        cities_diff长度: Array.isArray(数据包 && 数据包.cities_diff) ? 数据包.cities_diff.length : null,
+        cities_diff前20项: Array.isArray(数据包 && 数据包.cities_diff) ? 数据包.cities_diff.slice(0, 20) : null,
+        有map: Array.isArray(数据包 && 数据包.map),
+        map_diff长度: Array.isArray(数据包 && 数据包.map_diff) ? 数据包.map_diff.length : null
       });
-      延后处理("game_update", function () {
-        记住塔(数据包 || {}, "game_update");
+      延后执行("game_update", function () {
+        处理塔位置(数据包 || {}, "game_update");
       });
-    });
-
-    socket.on("game_over", function () {
-      记录日志("收到game_over");
-      请求渲染();
-    });
-    socket.on("game_lost", function () {
-      记录日志("收到game_lost");
-      请求渲染();
-    });
-    socket.on("game_won", function () {
-      记录日志("收到game_won");
-      请求渲染();
     });
   }
 
   function 安装socket访问器() {
     var 当前socket = window.socket;
-    var 描述符 = null;
     try {
-      描述符 = Object.getOwnPropertyDescriptor(window, "socket");
-    } catch (错误) {
-      记录错误("读取socket描述符", 错误);
-    }
-
-    if (!描述符 || 描述符.configurable) {
-      try {
+      var 描述符 = Object.getOwnPropertyDescriptor(window, "socket");
+      if (!描述符 || 描述符.configurable) {
         Object.defineProperty(window, "socket", {
           configurable: true,
           enumerable: true,
@@ -401,22 +255,20 @@
           },
           set: function (新socket) {
             当前socket = 新socket;
-            记录日志("window.socket被赋值", {
-              是否存在: Boolean(新socket),
+            记日志("window.socket被赋值", {
+              存在: Boolean(新socket),
               connected: 新socket && 新socket.connected,
               id: 新socket && 新socket.id
             });
-            延后处理("挂钩新socket", function () {
+            延后执行("挂钩socket", function () {
               挂钩socket(新socket);
             });
           }
         });
-        记录日志("socket访问器已安装");
-      } catch (错误) {
-        记录错误("安装socket访问器", 错误);
+        记日志("socket访问器已安装");
       }
-    } else {
-      记录日志("socket描述符不可配置，改用轮询");
+    } catch (错误) {
+      记错误("安装socket访问器", 错误);
     }
 
     if (当前socket) 挂钩socket(当前socket);
@@ -428,9 +280,9 @@
   }
 
   function 安装样式() {
-    if (!document.documentElement || document.getElementById(样式元素编号)) return;
+    if (!document.documentElement || document.getElementById(样式编号)) return;
     var 样式 = document.createElement("style");
-    样式.id = 样式元素编号;
+    样式.id = 样式编号;
     样式.textContent = [
       "." + 覆盖层类名 + " {",
       "  position: absolute;",
@@ -444,34 +296,30 @@
       "}"
     ].join("\n");
     document.documentElement.appendChild(样式);
-    记录日志("样式已安装");
   }
 
-  function 取得游戏画布() {
+  function 取画布() {
     return document.querySelector(".game-map-canvas");
   }
 
-  function 取得覆盖层宿主(画布) {
+  function 取宿主(画布) {
     if (!画布) return null;
-    return 画布.parentElement ||画布.closest(".relative") ||画布.closest(".game-page");
+    return 画布.parentElement || 画布.closest(".relative") || 画布.closest(".game-page");
   }
 
   function 确保覆盖层() {
     安装样式();
-    var 游戏画布 = 取得游戏画布();
-    if (!游戏画布) {
+    var 画布 = 取画布();
+    if (!画布) {
       var 现在 = Date.now();
-      if (现在 - 状态.上次缺少画布日志时间 > 1500) {
-        状态.上次缺少画布日志时间 = 现在;
-        记录日志("未找到.game-map-canvas，暂不渲染", {
-          页面: location.pathname,
-          已知塔数量: 状态.已知塔.size
-        });
+      if (现在 - 状态.上次无画布日志 > 2000) {
+        状态.上次无画布日志 = 现在;
+        记日志("未找到棋盘画布", { 已知塔数量: 状态.已知塔集合.size, 页面: location.pathname });
       }
       return null;
     }
 
-    var 宿主 = 取得覆盖层宿主(游戏画布);
+    var 宿主 = 取宿主(画布);
     if (!宿主) return null;
     宿主.classList.add("gio-tower-memory-host");
 
@@ -480,17 +328,10 @@
       覆盖层 = document.createElement("canvas");
       覆盖层.className = 覆盖层类名;
       宿主.appendChild(覆盖层);
-      记录日志("覆盖层已创建", {
-        宿主类名: 宿主.className,
-        画布尺寸: 游戏画布.getBoundingClientRect()
-      });
+      记日志("覆盖层已创建", { 宿主类名: 宿主.className });
     }
 
-    return {
-      游戏画布: 游戏画布,
-      宿主: 宿主,
-      覆盖层: 覆盖层
-    };
+    return { 画布: 画布, 宿主: 宿主, 覆盖层: 覆盖层 };
   }
 
   function 清空覆盖层() {
@@ -500,11 +341,10 @@
     if (ctx) ctx.clearRect(0, 0, 覆盖层.width, 覆盖层.height);
   }
 
-  function 调整覆盖层尺寸(部件) {
-    var 画布矩形 = 部件.游戏画布.getBoundingClientRect();
+  function 调整覆盖层(部件) {
+    var 画布矩形 = 部件.画布.getBoundingClientRect();
     var 宿主矩形 = 部件.宿主.getBoundingClientRect();
     var dpr = window.devicePixelRatio || 1;
-
     var css宽 = Math.max(1, 画布矩形.width);
     var css高 = Math.max(1, 画布矩形.height);
     var 像素宽 = Math.round(css宽 * dpr);
@@ -512,46 +352,30 @@
 
     if (部件.覆盖层.width !== 像素宽) 部件.覆盖层.width = 像素宽;
     if (部件.覆盖层.height !== 像素高) 部件.覆盖层.height = 像素高;
-
     部件.覆盖层.style.width = css宽 + "px";
     部件.覆盖层.style.height = css高 + "px";
     部件.覆盖层.style.left = 画布矩形.left - 宿主矩形.left + "px";
     部件.覆盖层.style.top = 画布矩形.top - 宿主矩形.top + "px";
 
-    return {
-      dpr: dpr,
-      css宽: css宽,
-      css高: css高,
-      像素宽: 像素宽,
-      像素高: 像素高
-    };
+    return { dpr: dpr, css宽: css宽, css高: css高 };
   }
 
-  function 塔颜色(塔) {
-    if (!塔 || 塔.类型 === "塔") return "#ffffff";
-    if (塔.类型 === "我方塔") return "#5dff92";
-    if (塔.类型 === "敌方塔") return "#ff6961";
-    return "#ffd84d";
-  }
-
-  function 绘制塔标记(ctx, x, y, 大小, 塔) {
-    var 边距 = Math.max(2, 大小 * 0.16);
+  function 画塔标记(ctx, x, y, 大小) {
     var 中心x = x + 大小 / 2;
     var 中心y = y + 大小 / 2;
     var 半径 = Math.max(4, 大小 * 0.34);
-    var 颜色 = 塔颜色(塔);
+    var 边距 = Math.max(2, 大小 * 0.16);
 
     ctx.save();
     ctx.lineWidth = Math.max(2, 大小 * 0.08);
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.78)";
-    ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+    ctx.strokeStyle = "rgba(0,0,0,0.82)";
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.beginPath();
-    ctx.arc(中心x, 中心y, 半径 + 边距 * 0.4, 0, Math.PI * 2);
+    ctx.arc(中心x, 中心y, 半径 + 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    ctx.lineWidth = Math.max(2, 大小 * 0.065);
-    ctx.strokeStyle = 颜色;
+    ctx.strokeStyle = "#ffd84d";
     ctx.beginPath();
     ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2);
     ctx.stroke();
@@ -564,53 +388,55 @@
     ctx.closePath();
     ctx.stroke();
 
-    ctx.fillStyle = 颜色;
-    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = "#ffd84d";
     ctx.beginPath();
-    ctx.arc(中心x, 中心y, Math.max(2, 大小 * 0.095), 0, Math.PI * 2);
+    ctx.arc(中心x, 中心y, Math.max(2, 大小 * 0.1), 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
-  function 渲染覆盖层() {
+  function 渲染() {
     状态.已请求渲染 = false;
 
-    if (!状态.宽度 || !状态.高度 || 状态.已知塔.size === 0) {
+    if (!状态.已知塔集合.size) {
       清空覆盖层();
+      return;
+    }
+
+    if (!状态.宽度 || !状态.高度) {
+      var 现在 = Date.now();
+      if (现在 - 状态.上次无尺寸日志 > 2000) {
+        状态.上次无尺寸日志 = 现在;
+        记日志("已有塔位置但缺少地图宽高，无法换算坐标", {
+          已知塔数量: 状态.已知塔集合.size,
+          已知塔: Array.from(状态.已知塔集合).slice(0, 20)
+        });
+      }
       return;
     }
 
     var 部件 = 确保覆盖层();
     if (!部件) return;
 
-    var 尺寸 = 调整覆盖层尺寸(部件);
+    var 尺寸 = 调整覆盖层(部件);
     var ctx = 部件.覆盖层.getContext("2d");
     if (!ctx) return;
-
-    if (!尺寸.css宽 || !尺寸.css高) {
-      var 现在 = Date.now();
-      if (现在 - 状态.上次缺少尺寸日志时间 > 1500) {
-        状态.上次缺少尺寸日志时间 = 现在;
-        记录日志("覆盖层尺寸无效", 尺寸);
-      }
-      return;
-    }
 
     ctx.setTransform(尺寸.dpr, 0, 0, 尺寸.dpr, 0, 0);
     ctx.clearRect(0, 0, 尺寸.css宽, 尺寸.css高);
 
     var 格宽 = 尺寸.css宽 / 状态.宽度;
     var 格高 = 尺寸.css高 / 状态.高度;
-    var 格大小 = Math.min(格宽, 格高);
+    var 大小 = Math.min(格宽, 格高);
 
-    状态.已知塔.forEach(function (塔, 索引) {
+    状态.已知塔集合.forEach(function (索引) {
       var 行 = Math.floor(索引 / 状态.宽度);
       var 列 = 索引 % 状态.宽度;
-      绘制塔标记(ctx, 列 * 格宽, 行 * 格高, 格大小, 塔);
+      画塔标记(ctx, 列 * 格宽, 行 * 格高, 大小);
     });
 
-    记录日志("覆盖层已渲染", {
-      已知塔数量: 状态.已知塔.size,
+    记日志("固定塔标记已渲染", {
+      已知塔数量: 状态.已知塔集合.size,
       地图尺寸: 状态.宽度 + "x" + 状态.高度,
       覆盖层尺寸: Math.round(尺寸.css宽) + "x" + Math.round(尺寸.css高)
     });
@@ -620,7 +446,7 @@
     if (状态.已请求渲染) return;
     状态.已请求渲染 = true;
     requestAnimationFrame(function () {
-      安全执行("渲染覆盖层", 渲染覆盖层);
+      安全执行("渲染", 渲染);
     });
   }
 
@@ -630,7 +456,6 @@
       setTimeout(安装页面观察器, 100);
       return;
     }
-
     状态.页面观察器 = new MutationObserver(function () {
       请求渲染();
     });
@@ -639,71 +464,72 @@
       subtree: true,
       zem: true
     });
+
     window.addEventListener("resize", 请求渲染, { passive: true });
-    window.addEventListener("scroll", 请求渲染, { passive: true });
     window.addEventListener("wheel", 请求渲染, { passive: true, capture: true });
     window.addEventListener("mousemove", 请求渲染, { passive: true, capture: true });
-    window.addEventListener("touchmove", 请求渲染, { passive: true, capture: true });
     window.addEventListener("keydown", 请求渲染, { passive: true, capture: true });
-
-    记录日志("页面观察器已安装", {
-      zem: true
-    });
+    记日志("页面观察器已安装", { zem: true });
   }
 
   function 暴露调试接口() {
     window.gio塔标记 = {
-      版本: "0.2.0",
+      版本: "0.3.0",
       日志: function () {
         return 状态.最近日志.slice();
-      },
-      已知塔: function () {
-        return Array.from(状态.已知塔.values()).map(function (塔) {
-          return Object.assign({}, 塔, {
-            行: 状态.宽度 ? Math.floor(塔.索引 / 状态.宽度) : null,
-            列: 状态.宽度 ? 塔.索引 % 状态.宽度 : null
-          });
-        });
       },
       状态: function () {
         return {
           宽度: 状态.宽度,
           高度: 状态.高度,
-          已知塔数量: 状态.已知塔.size,
-          socket已挂钩: 状态.socket已挂钩,
-          我方索引: 状态.我方索引,
-          当前局编号: 状态.当前局编号
+          塔列表长度: 状态.塔列表 ? 状态.塔列表.length : null,
+          已知塔数量: 状态.已知塔集合.size,
+          socket已挂钩: 状态.socket已挂钩
         };
       },
+      已知塔: function () {
+        return Array.from(状态.已知塔集合).map(function (索引) {
+          return {
+            索引: 索引,
+            行: 状态.宽度 ? Math.floor(索引 / 状态.宽度) : null,
+            列: 状态.宽度 ? 索引 % 状态.宽度 : null
+          };
+        });
+      },
+      手动加塔: function (索引) {
+        if (Number.isInteger(索引) && 索引 >= 0) {
+          状态.已知塔集合.add(索引);
+          记日志("手动加塔", { 索引: 索引 });
+          请求渲染();
+        }
+      },
+      手动尺寸: function (宽度, 高度) {
+        状态.宽度 = 宽度;
+        状态.高度 = 高度;
+        记日志("手动设置地图尺寸", { 宽度: 宽度, 高度: 高度 });
+        请求渲染();
+      },
       清空: function () {
-        状态.已知塔.clear();
+        状态.已知塔集合.clear();
+        状态.塔列表 = null;
         清空覆盖层();
-        记录日志("手动清空已知塔");
+        记日志("手动清空");
       },
       重绘: 请求渲染,
       开关日志: function (值) {
         详细日志 = Boolean(值);
-        记录日志("日志开关已设置", { 详细日志: 详细日志 });
+        记日志("日志开关", { 详细日志: 详细日志 });
       }
     };
     window.gioTowerMarker = window.gio塔标记;
-    记录日志("调试接口已暴露", {
-      中文接口: "window.gio塔标记",
-      兼容接口: "window.gioTowerMarker"
-    });
   }
 
   function 启动() {
-    记录日志("脚本启动", {
-      版本: "0.2.0",
-      runAt: "document-start",
-      页面: location.href
-    });
+    记日志("脚本启动", { 版本: "0.3.0", 页面: location.href });
     暴露调试接口();
     安装socket访问器();
     轮询socket();
     安装页面观察器();
-    请求渲染();
   }
 
   安全执行("启动", 启动);
