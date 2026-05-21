@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.5.0
+// @version      0.6.0
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -26,6 +26,7 @@
     高度: 0,
     塔列表: null,
     已知塔集合: new Set(),
+    已知塔类型: new Map(),
     已知敌方基地集合: new Map(),
     我方索引: null,
     队伍: null,
@@ -95,29 +96,36 @@
     return 新数组;
   }
 
-  function 尝试从地图读取尺寸(数据包) {
-    if (状态.宽度 > 0 && 状态.高度 > 0) return;
-
+  function 取得完整地图数组(数据包) {
     var 地图数组 = null;
-    var 来源 = null;
     if (Array.isArray(数据包 && 数据包.map)) {
       地图数组 = 数据包.map;
-      来源 = "map";
     } else if (Array.isArray(数据包 && 数据包.map_diff) && 数据包.map_diff[0] === 0 && 数据包.map_diff.length > 4) {
       地图数组 = 应用增量([], 数据包.map_diff);
-      来源 = "首个map_diff";
     }
 
-    if (!Array.isArray(地图数组) || 地图数组.length < 2) return;
+    if (!Array.isArray(地图数组) || 地图数组.length < 2) return null;
     var 宽度 = 地图数组[0];
     var 高度 = 地图数组[1];
     var 格子数 = 宽度 * 高度;
-    if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) return;
-    if (地图数组.length < 2 + 格子数 * 2) return;
+    if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) return null;
+    if (地图数组.length < 2 + 格子数 * 2) return null;
+    return 地图数组;
+  }
 
-    状态.宽度 = 宽度;
-    状态.高度 = 高度;
-    记日志("已读取地图尺寸", { 来源: 来源, 宽度: 宽度, 高度: 高度 });
+  function 尝试从地图读取尺寸(数据包) {
+    if (状态.宽度 > 0 && 状态.高度 > 0) return;
+
+    var 地图数组 = 取得完整地图数组(数据包);
+    if (!地图数组) return;
+
+    状态.宽度 = 地图数组[0];
+    状态.高度 = 地图数组[1];
+    记日志("已读取地图尺寸", {
+      来源: Array.isArray(数据包 && 数据包.map) ? "map" : "首个map_diff",
+      宽度: 状态.宽度,
+      高度: 状态.高度
+    });
   }
 
   function 取得本次塔列表(数据包) {
@@ -162,6 +170,67 @@
     var 我方队伍 = 状态.队伍[状态.我方索引];
     var 对方队伍 = 状态.队伍[玩家索引];
     return 我方队伍 !== undefined && 我方队伍 !== null && 对方队伍 === 我方队伍;
+  }
+
+  function 读取可见地块归属(数据包, 索引) {
+    var 地图数组 = 取得完整地图数组(数据包);
+    if (地图数组 && Number.isInteger(索引)) {
+      var 宽度 = 地图数组[0];
+      var 高度 = 地图数组[1];
+      var 格子数 = 宽度 * 高度;
+      if (索引 >= 0 && 索引 < 格子数) {
+        var 地块值 = 地图数组[2 + 格子数 + 索引];
+        return Number.isInteger(地块值) ? 地块值 : null;
+      }
+    }
+
+    if (!Array.isArray(数据包 && 数据包.map_diff)) return null;
+    if (!状态.宽度 || !状态.高度 || !Number.isInteger(索引)) return null;
+
+    var 目标位置 = 2 + 状态.宽度 * 状态.高度 + 索引;
+    var 输出位置 = 0;
+    for (var i = 0; i < 数据包.map_diff.length;) {
+      var 保留数量 = 数据包.map_diff[i] || 0;
+      if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 保留数量) return null;
+      输出位置 += 保留数量;
+
+      i += 1;
+      if (i < 数据包.map_diff.length) {
+        var 插入数量 = 数据包.map_diff[i] || 0;
+        if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 插入数量) {
+          var 地块增量值 = 数据包.map_diff[i + 1 + (目标位置 - 输出位置)];
+          return Number.isInteger(地块增量值) ? 地块增量值 : null;
+        }
+        输出位置 += 插入数量;
+        i += 插入数量;
+      }
+
+      i += 1;
+    }
+
+    return null;
+  }
+
+  function 更新塔类型(数据包, 塔索引) {
+    if (!Number.isInteger(塔索引) || 塔索引 < 0) return;
+    if (!状态.已知塔类型.has(塔索引)) {
+      状态.已知塔类型.set(塔索引, "塔");
+    }
+
+    var 地块归属 = 读取可见地块归属(数据包, 塔索引);
+    if (!Number.isInteger(地块归属) || 地块归属 < 0) return;
+
+    var 新类型 = 是我方或队友(地块归属) ? "我方塔" : "敌方塔";
+    var 旧类型 = 状态.已知塔类型.get(塔索引);
+    if (旧类型 !== 新类型) {
+      状态.已知塔类型.set(塔索引, 新类型);
+      记日志("塔类型更新", {
+        索引: 塔索引,
+        旧类型: 旧类型,
+        新类型: 新类型,
+        地块归属: 地块归属
+      });
+    }
   }
 
   function 重构玩家颜色(数据包, 来源事件) {
@@ -243,8 +312,10 @@
       if (!Number.isInteger(塔索引) || 塔索引 < 0) continue;
       if (!状态.已知塔集合.has(塔索引)) {
         状态.已知塔集合.add(塔索引);
+        状态.已知塔类型.set(塔索引, "塔");
         新塔.push(塔索引);
       }
+      更新塔类型(数据包, 塔索引);
     }
 
     if (新塔.length > 0) {
@@ -333,6 +404,7 @@
     状态.高度 = 0;
     状态.塔列表 = null;
     状态.已知塔集合.clear();
+    状态.已知塔类型.clear();
     状态.已知敌方基地集合.clear();
     状态.我方索引 = Number.isInteger(数据包 && 数据包.playerIndex) ? 数据包.playerIndex : null;
     状态.队伍 = Array.isArray(数据包 && 数据包.teams) ? 数据包.teams.slice() : null;
@@ -546,11 +618,14 @@
     return { dpr: dpr, css宽: css宽, css高: css高 };
   }
 
-  function 画塔标记(ctx, x, y, 大小) {
+  function 画塔标记(ctx, x, y, 大小, 类型) {
+    var 是敌方塔 = 类型 === "敌方塔";
     var 外线宽 = Math.max(2, 大小 * 0.09);
-    var 内线宽 = Math.max(1.5, 大小 * 0.045);
+    var 内线宽 = Math.max(1.5, 大小 * (是敌方塔 ? 0.065 : 0.045));
     var 外偏移 = 外线宽 / 2 + 1;
     var 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2;
+    var 主色 = 是敌方塔 ? "#ff5aa5" : "#ffd84d";
+    var 高光色 = 是敌方塔 ? "#ffd1e6" : "#fff4a8";
 
     ctx.save();
     ctx.lineJoin = "round";
@@ -566,7 +641,7 @@
     );
 
     ctx.lineWidth = 内线宽;
-    ctx.strokeStyle = "#ffd84d";
+    ctx.strokeStyle = 主色;
     ctx.strokeRect(
       x + 内偏移,
       y + 内偏移,
@@ -576,13 +651,36 @@
 
     ctx.globalAlpha = 0.55;
     ctx.lineWidth = Math.max(1, 内线宽 * 0.75);
-    ctx.strokeStyle = "#fff4a8";
+    ctx.strokeStyle = 高光色;
     ctx.strokeRect(
       x + 内偏移 + 内线宽 * 1.5,
       y + 内偏移 + 内线宽 * 1.5,
       Math.max(1, 大小 - (内偏移 + 内线宽 * 1.5) * 2),
       Math.max(1, 大小 - (内偏移 + 内线宽 * 1.5) * 2)
     );
+
+    if (是敌方塔) {
+      var 角长 = Math.max(5, 大小 * 0.24);
+      var 角偏移 = Math.max(3, 大小 * 0.12);
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = Math.max(2, 大小 * 0.055);
+      ctx.strokeStyle = "#ffb000";
+      ctx.beginPath();
+      ctx.moveTo(x + 角偏移, y + 角偏移 + 角长);
+      ctx.lineTo(x + 角偏移, y + 角偏移);
+      ctx.lineTo(x + 角偏移 + 角长, y + 角偏移);
+      ctx.moveTo(x + 大小 - 角偏移 - 角长, y + 角偏移);
+      ctx.lineTo(x + 大小 - 角偏移, y + 角偏移);
+      ctx.lineTo(x + 大小 - 角偏移, y + 角偏移 + 角长);
+      ctx.moveTo(x + 大小 - 角偏移, y + 大小 - 角偏移 - 角长);
+      ctx.lineTo(x + 大小 - 角偏移, y + 大小 - 角偏移);
+      ctx.lineTo(x + 大小 - 角偏移 - 角长, y + 大小 - 角偏移);
+      ctx.moveTo(x + 角偏移 + 角长, y + 大小 - 角偏移);
+      ctx.lineTo(x + 角偏移, y + 大小 - 角偏移);
+      ctx.lineTo(x + 角偏移, y + 大小 - 角偏移 - 角长);
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 
@@ -678,7 +776,7 @@
     状态.已知塔集合.forEach(function (索引) {
       var 行 = Math.floor(索引 / 状态.宽度);
       var 列 = 索引 % 状态.宽度;
-      画塔标记(ctx, 列 * 格宽, 行 * 格高, 大小);
+      画塔标记(ctx, 列 * 格宽, 行 * 格高, 大小, 状态.已知塔类型.get(索引));
     });
 
     状态.已知敌方基地集合.forEach(function (基地, 索引) {
@@ -689,6 +787,7 @@
 
     记日志("固定标记已渲染", {
       已知塔数量: 状态.已知塔集合.size,
+      敌方塔数量: Array.from(状态.已知塔类型.values()).filter(function (类型) { return 类型 === "敌方塔"; }).length,
       已知敌方基地数量: 状态.已知敌方基地集合.size,
       地图尺寸: 状态.宽度 + "x" + 状态.高度,
       覆盖层尺寸: Math.round(尺寸.css宽) + "x" + Math.round(尺寸.css高)
@@ -727,7 +826,7 @@
 
   function 暴露调试接口() {
     window.gio塔标记 = {
-      版本: "0.5.0",
+      版本: "0.6.0",
       日志: function () {
         return 状态.最近日志.slice();
       },
@@ -737,6 +836,7 @@
           高度: 状态.高度,
           塔列表长度: 状态.塔列表 ? 状态.塔列表.length : null,
           已知塔数量: 状态.已知塔集合.size,
+          敌方塔数量: Array.from(状态.已知塔类型.values()).filter(function (类型) { return 类型 === "敌方塔"; }).length,
           已知敌方基地数量: 状态.已知敌方基地集合.size,
           我方索引: 状态.我方索引,
           队伍: 状态.队伍,
@@ -751,6 +851,7 @@
         return Array.from(状态.已知塔集合).map(function (索引) {
           return {
             索引: 索引,
+            类型: 状态.已知塔类型.get(索引) || "塔",
             行: 状态.宽度 ? Math.floor(索引 / 状态.宽度) : null,
             列: 状态.宽度 ? 索引 % 状态.宽度 : null
           };
@@ -767,7 +868,16 @@
       手动加塔: function (索引) {
         if (Number.isInteger(索引) && 索引 >= 0) {
           状态.已知塔集合.add(索引);
+          if (!状态.已知塔类型.has(索引)) 状态.已知塔类型.set(索引, "塔");
           记日志("手动加塔", { 索引: 索引 });
+          请求渲染();
+        }
+      },
+      手动设敌方塔: function (索引) {
+        if (Number.isInteger(索引) && 索引 >= 0) {
+          状态.已知塔集合.add(索引);
+          状态.已知塔类型.set(索引, "敌方塔");
+          记日志("手动设敌方塔", { 索引: 索引 });
           请求渲染();
         }
       },
@@ -790,6 +900,7 @@
       },
       清空: function () {
         状态.已知塔集合.clear();
+        状态.已知塔类型.clear();
         状态.已知敌方基地集合.clear();
         状态.塔列表 = null;
         清空覆盖层();
@@ -805,7 +916,7 @@
   }
 
   function 启动() {
-    记日志("脚本启动", { 版本: "0.5.0", 页面: location.href });
+    记日志("脚本启动", { 版本: "0.6.0", 页面: location.href });
     暴露调试接口();
     安装socket访问器();
     轮询socket();
