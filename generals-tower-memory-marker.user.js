@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.3.0
+// @version      0.3.1
 // @description  发现塔后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -361,37 +361,42 @@
   }
 
   function 画塔标记(ctx, x, y, 大小) {
-    var 中心x = x + 大小 / 2;
-    var 中心y = y + 大小 / 2;
-    var 半径 = Math.max(4, 大小 * 0.34);
-    var 边距 = Math.max(2, 大小 * 0.16);
+    var 外线宽 = Math.max(2, 大小 * 0.09);
+    var 内线宽 = Math.max(1.5, 大小 * 0.045);
+    var 外偏移 = 外线宽 / 2 + 1;
+    var 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2;
 
     ctx.save();
-    ctx.lineWidth = Math.max(2, 大小 * 0.08);
-    ctx.strokeStyle = "rgba(0,0,0,0.82)";
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.beginPath();
-    ctx.arc(中心x, 中心y, 半径 + 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
 
+    ctx.lineWidth = 外线宽;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.88)";
+    ctx.strokeRect(
+      x + 外偏移,
+      y + 外偏移,
+      Math.max(1, 大小 - 外偏移 * 2),
+      Math.max(1, 大小 - 外偏移 * 2)
+    );
+
+    ctx.lineWidth = 内线宽;
     ctx.strokeStyle = "#ffd84d";
-    ctx.beginPath();
-    ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.strokeRect(
+      x + 内偏移,
+      y + 内偏移,
+      Math.max(1, 大小 - 内偏移 * 2),
+      Math.max(1, 大小 - 内偏移 * 2)
+    );
 
-    ctx.beginPath();
-    ctx.moveTo(中心x, y + 边距);
-    ctx.lineTo(x + 大小 - 边距, 中心y);
-    ctx.lineTo(中心x, y + 大小 - 边距);
-    ctx.lineTo(x + 边距, 中心y);
-    ctx.closePath();
-    ctx.stroke();
-
-    ctx.fillStyle = "#ffd84d";
-    ctx.beginPath();
-    ctx.arc(中心x, 中心y, Math.max(2, 大小 * 0.1), 0, Math.PI * 2);
-    ctx.fill();
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = Math.max(1, 内线宽 * 0.75);
+    ctx.strokeStyle = "#fff4a8";
+    ctx.strokeRect(
+      x + 内偏移 + 内线宽 * 1.5,
+      y + 内偏移 + 内线宽 * 1.5,
+      Math.max(1, 大小 - (内偏移 + 内线宽 * 1.5) * 2),
+      Math.max(1, 大小 - (内偏移 + 内线宽 * 1.5) * 2)
+    );
     ctx.restore();
   }
 
@@ -474,7 +479,7 @@
 
   function 暴露调试接口() {
     window.gio塔标记 = {
-      版本: "0.3.0",
+      版本: "0.3.1",
       日志: function () {
         return 状态.最近日志.slice();
       },
@@ -525,7 +530,7 @@
   }
 
   function 启动() {
-    记日志("脚本启动", { 版本: "0.3.0", 页面: location.href });
+    记日志("脚本启动", { 版本: "0.3.1", 页面: location.href });
     暴露调试接口();
     安装socket访问器();
     轮询socket();
