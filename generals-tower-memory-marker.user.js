@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.4.0
+// @version      0.5.0
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -18,6 +18,8 @@
   var 样式编号 = "gio-tower-memory-style";
   var 日志前缀 = "[塔记忆]";
   var 详细日志 = true;
+  var 我方蓝色索引 = 10;
+  var 敌方红色索引 = 0;
 
   var 状态 = {
     宽度: 0,
@@ -31,6 +33,7 @@
     socket已挂钩: false,
     页面观察器: null,
     最近日志: [],
+    已处理颜色数据包: typeof WeakSet === "function" ? new WeakSet() : null,
     上次无尺寸日志: 0,
     上次无画布日志: 0
   };
@@ -159,6 +162,58 @@
     var 我方队伍 = 状态.队伍[状态.我方索引];
     var 对方队伍 = 状态.队伍[玩家索引];
     return 我方队伍 !== undefined && 我方队伍 !== null && 对方队伍 === 我方队伍;
+  }
+
+  function 重构玩家颜色(数据包, 来源事件) {
+    if (!数据包) return;
+    if (typeof 数据包 === "object" && 状态.已处理颜色数据包) {
+      if (状态.已处理颜色数据包.has(数据包)) return;
+      状态.已处理颜色数据包.add(数据包);
+    }
+
+    读取玩家信息(数据包);
+
+    if (!Array.isArray(数据包.playerColors)) {
+      记日志("颜色重构跳过: 缺少playerColors", {
+        来源事件: 来源事件,
+        回合: 数据包.turn,
+        数据键: Object.keys(数据包)
+      });
+      return;
+    }
+
+    if (!Number.isInteger(状态.我方索引)) {
+      记日志("颜色重构跳过: 缺少我方索引", {
+        来源事件: 来源事件,
+        回合: 数据包.turn,
+        playerColors: 数据包.playerColors.slice()
+      });
+      return;
+    }
+
+    var 原颜色 = 数据包.playerColors.slice();
+    for (var 玩家索引 = 0; 玩家索引 < 数据包.playerColors.length; 玩家索引 += 1) {
+      if (是我方或队友(玩家索引)) {
+        数据包.playerColors[玩家索引] = 我方蓝色索引;
+      } else {
+        数据包.playerColors[玩家索引] = 敌方红色索引;
+      }
+    }
+
+    记日志("已重构玩家颜色", {
+      来源事件: 来源事件,
+      回合: 数据包.turn,
+      我方索引: 状态.我方索引,
+      队伍: 状态.队伍,
+      原颜色: 原颜色,
+      新颜色: 数据包.playerColors.slice(),
+      规则: "我方/队友=blue(10), 敌方=red(0)"
+    });
+  }
+
+  function 预处理入站事件(事件名, 数据包) {
+    if (事件名 !== "game_start" && 事件名 !== "game_update") return;
+    重构玩家颜色(数据包 || {}, 事件名 + ":预处理");
   }
 
   function 处理塔位置(数据包, 来源事件) {
@@ -306,7 +361,35 @@
       emit: typeof socket.emit
     });
 
+    if (typeof socket.onevent === "function" && !socket.__塔记忆onevent已挂钩) {
+      var 原onevent = socket.onevent;
+      socket.__塔记忆onevent已挂钩 = true;
+      socket.onevent = function (包) {
+        安全执行("onevent入站预处理", function () {
+          var 数据 = 包 && Array.isArray(包.data) ? 包.data : null;
+          if (数据) 预处理入站事件(数据[0], 数据[1]);
+        });
+        return 原onevent.apply(this, arguments);
+      };
+      记日志("socket.onevent预处理已安装");
+    }
+
+    if (typeof socket.emitEvent === "function" && !socket.__塔记忆emitEvent已挂钩) {
+      var 原emitEvent = socket.emitEvent;
+      socket.__塔记忆emitEvent已挂钩 = true;
+      socket.emitEvent = function (参数列表) {
+        安全执行("emitEvent入站预处理", function () {
+          if (Array.isArray(参数列表)) 预处理入站事件(参数列表[0], 参数列表[1]);
+        });
+        return 原emitEvent.apply(this, arguments);
+      };
+      记日志("socket.emitEvent预处理已安装");
+    }
+
     socket.on("game_start", function (数据包) {
+      安全执行("game_start颜色重构", function () {
+        重构玩家颜色(数据包 || {}, "game_start");
+      });
       记日志("收到game_start", {
         数据键: 数据包 ? Object.keys(数据包) : [],
         有map: Array.isArray(数据包 && 数据包.map),
@@ -325,6 +408,9 @@
     });
 
     socket.on("game_update", function (数据包) {
+      安全执行("game_update颜色重构", function () {
+        重构玩家颜色(数据包 || {}, "game_update");
+      });
       记日志("收到game_update", {
         回合: 数据包 && 数据包.turn,
         cities长度: Array.isArray(数据包 && 数据包.cities) ? 数据包.cities.length : null,
@@ -360,7 +446,7 @@
               connected: 新socket && 新socket.connected,
               id: 新socket && 新socket.id
             });
-            延后执行("挂钩socket", function () {
+            安全执行("挂钩socket", function () {
               挂钩socket(新socket);
             });
           }
@@ -641,7 +727,7 @@
 
   function 暴露调试接口() {
     window.gio塔标记 = {
-      版本: "0.4.0",
+      版本: "0.5.0",
       日志: function () {
         return 状态.最近日志.slice();
       },
@@ -654,6 +740,10 @@
           已知敌方基地数量: 状态.已知敌方基地集合.size,
           我方索引: 状态.我方索引,
           队伍: 状态.队伍,
+          颜色规则: {
+            我方蓝色索引: 我方蓝色索引,
+            敌方红色索引: 敌方红色索引
+          },
           socket已挂钩: 状态.socket已挂钩
         };
       },
@@ -715,7 +805,7 @@
   }
 
   function 启动() {
-    记日志("脚本启动", { 版本: "0.4.0", 页面: location.href });
+    记日志("脚本启动", { 版本: "0.5.0", 页面: location.href });
     暴露调试接口();
     安装socket访问器();
     轮询socket();
