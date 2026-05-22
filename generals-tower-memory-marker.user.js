@@ -360,11 +360,14 @@
         }
         const 基地集合 = new Set(
           Array.isArray(数据包 && 数据包.generals)
-            ? 数据包.generals.filter((索引) => Number.isInteger(索引) && 索引 >= 0)
+            ? 数据包.generals.filter(
+                (索引) => Number.isInteger(索引) && 索引 >= 0,
+              )
             : [],
         )
         状态.已知敌方基地集合.forEach((_基地, 基地索引) => {
-          if (Number.isInteger(基地索引) && 基地索引 >= 0) 基地集合.add(基地索引)
+          if (Number.isInteger(基地索引) && 基地索引 >= 0)
+            基地集合.add(基地索引)
         })
         for (let 索引 = 0; 索引 < 格子数; 索引 += 1) {
           const 兵力 = 地图数组[2 + 索引]
@@ -792,7 +795,10 @@
       ctx.save()
       状态.兵力分布着色列表.forEach((地块) => {
         const 相对强度 = (地块.兵力 - 最低兵力) / 兵力跨度
-        const 绝对强度 = Math.min(1, Math.max(0, (地块.兵力 - 兵力着色最小兵力) / 22))
+        const 绝对强度 = Math.min(
+          1,
+          Math.max(0, (地块.兵力 - 兵力着色最小兵力) / 22),
+        )
         const 强度 = Math.max(相对强度, 绝对强度)
         const 透明度 = 0.62 + 强度 * 0.33
         const 边线透明度 = 0.7 + 强度 * 0.3
@@ -946,16 +952,24 @@
     }
 
     function 画敌方基地标记(ctx, x, y, 大小) {
-      const 外线宽 = Math.max(3, 大小 * 0.13)
-      const 内线宽 = Math.max(2, 大小 * 0.06)
+      const 外线宽 = Math.max(4, 大小 * 0.16)
+      const 内线宽 = Math.max(2.5, 大小 * 0.075)
+      const 警示线宽 = Math.max(2, 大小 * 0.07)
       const 外偏移 = 外线宽 / 2 + 1
       const 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2
-      const 角长 = Math.max(6, 大小 * 0.34)
-      const 角偏移 = Math.max(2, 大小 * 0.08)
+      const 警示偏移 = Math.max(3, 大小 * 0.12)
+      const 角长 = Math.max(8, 大小 * 0.42)
+      const 角偏移 = Math.max(2, 大小 * 0.06)
+      const 中心x = x + 大小 / 2
+      const 中心y = y + 大小 / 2
+      const 靶心半径 = Math.max(3, 大小 * 0.18)
 
       ctx.save()
       ctx.lineJoin = 'round'
       ctx.lineCap = 'round'
+
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.2)'
+      ctx.fillRect(x + 1, y + 1, Math.max(1, 大小 - 2), Math.max(1, 大小 - 2))
 
       ctx.lineWidth = 外线宽
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)'
@@ -967,7 +981,7 @@
       )
 
       ctx.lineWidth = 内线宽
-      ctx.strokeStyle = '#ff3030'
+      ctx.strokeStyle = '#ff1818'
       ctx.strokeRect(
         x + 内偏移,
         y + 内偏移,
@@ -975,8 +989,19 @@
         Math.max(1, 大小 - 内偏移 * 2),
       )
 
-      ctx.lineWidth = Math.max(2, 大小 * 0.075)
-      ctx.strokeStyle = '#fff2f2'
+      ctx.globalAlpha = 0.78
+      ctx.lineWidth = 警示线宽
+      ctx.strokeStyle = '#ffd400'
+      ctx.strokeRect(
+        x + 警示偏移,
+        y + 警示偏移,
+        Math.max(1, 大小 - 警示偏移 * 2),
+        Math.max(1, 大小 - 警示偏移 * 2),
+      )
+
+      ctx.globalAlpha = 1
+      ctx.lineWidth = Math.max(2.5, 大小 * 0.09)
+      ctx.strokeStyle = '#fff4f4'
       ctx.beginPath()
       ctx.moveTo(x + 角偏移, y + 角偏移 + 角长)
       ctx.lineTo(x + 角偏移, y + 角偏移)
@@ -993,6 +1018,16 @@
       ctx.moveTo(x + 角偏移 + 角长, y + 大小 - 角偏移)
       ctx.lineTo(x + 角偏移, y + 大小 - 角偏移)
       ctx.lineTo(x + 角偏移, y + 大小 - 角偏移 - 角长)
+      ctx.stroke()
+
+      ctx.lineWidth = Math.max(2, 大小 * 0.065)
+      ctx.strokeStyle = '#ff1818'
+      ctx.beginPath()
+      ctx.arc(中心x, 中心y, 靶心半径, 0, Math.PI * 2)
+      ctx.moveTo(中心x - 靶心半径 * 1.45, 中心y)
+      ctx.lineTo(中心x + 靶心半径 * 1.45, 中心y)
+      ctx.moveTo(中心x, 中心y - 靶心半径 * 1.45)
+      ctx.lineTo(中心x, 中心y + 靶心半径 * 1.45)
       ctx.stroke()
 
       ctx.restore()
