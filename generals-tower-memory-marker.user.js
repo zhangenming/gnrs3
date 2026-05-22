@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.6
+// @version      0.8.7
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 ;(() => {
   'use strict'
 
-  const 脚本版本 = '0.8.6'
+  const 脚本版本 = '0.8.7'
   const 覆盖层类名 = 'gio-tower-memory-overlay'
   const 样式编号 = 'gio-tower-memory-style'
   const 我方蓝色 = '#2792ff'
@@ -26,6 +26,7 @@
   const 大回合倒计时类名 = 'gio-big-turn-cell'
   const 兵力着色最小兵力 = 3
   const 兵力着色最多数量 = 25
+  const 日志前缀 = '[塔记忆]'
 
   const 状态 = {
     宽度: 0,
@@ -50,12 +51,22 @@
     上次兵力分布着色签名: '',
     上次操作轨迹渲染签名: '',
     上次固定标记渲染签名: '',
+    最近日志: [],
+  }
+
+  function 记日志(事件, 数据) {
+    const 条目 = { 时间: new Date().toISOString(), 事件, 数据: 数据 || null }
+    状态.最近日志.push(条目)
+    if (状态.最近日志.length > 300) 状态.最近日志.shift()
+    if (数据 === undefined) console.log(日志前缀, 事件)
+    else console.log(日志前缀, 事件, 数据)
   }
 
   function 安全执行(事件, 函数体) {
     try {
       return 函数体()
-    } catch (_错误) {
+    } catch (错误) {
+      记日志(`${事件}失败`, 错误 && 错误.stack ? 错误.stack : String(错误))
       return null
     }
   }
@@ -68,13 +79,25 @@
   }
 
   function 挂钩socket(socket) {
-    if (!socket || socket.__塔记忆已挂钩) return
+    if (!socket || socket.__塔记忆挂钩版本 === 脚本版本) return
     socket.__塔记忆已挂钩 = true
+    socket.__塔记忆挂钩版本 = 脚本版本
     状态.socket已挂钩 = true
+    记日志('socket已挂钩', {
+      版本: 脚本版本,
+      connected: socket.connected,
+      id: socket.id,
+      on: typeof socket.on,
+      emit: typeof socket.emit,
+    })
 
-    if (typeof socket.emit === 'function' && !socket.__塔记忆emit已挂钩) {
+    if (
+      typeof socket.emit === 'function' &&
+      socket.__塔记忆emit挂钩版本 !== 脚本版本
+    ) {
       const 原emit = socket.emit
       socket.__塔记忆emit已挂钩 = true
+      socket.__塔记忆emit挂钩版本 = 脚本版本
       socket.emit = function (事件名, ...参数) {
         安全执行('emit出站操作记录', () => {
           if (事件名 === 'attack') {
@@ -87,11 +110,16 @@
         })
         return 原emit.call(this, 事件名, ...参数)
       }
+      记日志('socket.emit出站操作记录已安装')
     }
 
-    if (typeof socket.onevent === 'function' && !socket.__塔记忆onevent已挂钩) {
+    if (
+      typeof socket.onevent === 'function' &&
+      socket.__塔记忆onevent挂钩版本 !== 脚本版本
+    ) {
       const 原onevent = socket.onevent
       socket.__塔记忆onevent已挂钩 = true
+      socket.__塔记忆onevent挂钩版本 = 脚本版本
       socket.onevent = function (包) {
         安全执行('onevent入站预处理', () => {
           const 数据 = Array.isArray(包?.data) ? 包.data : null
@@ -99,20 +127,23 @@
         })
         return 原onevent.call(this, 包)
       }
+      记日志('socket.onevent预处理已安装')
     }
 
     if (
       typeof socket.emitEvent === 'function' &&
-      !socket.__塔记忆emitEvent已挂钩
+      socket.__塔记忆emitEvent挂钩版本 !== 脚本版本
     ) {
       const 原emitEvent = socket.emitEvent
       socket.__塔记忆emitEvent已挂钩 = true
+      socket.__塔记忆emitEvent挂钩版本 = 脚本版本
       socket.emitEvent = function (参数列表) {
         安全执行('emitEvent入站预处理', () => {
           if (Array.isArray(参数列表)) 预处理入站事件(参数列表[0], 参数列表[1])
         })
         return 原emitEvent.call(this, 参数列表)
       }
+      记日志('socket.emitEvent预处理已安装')
     }
 
     socket.on('game_start', (数据包) => {
@@ -126,6 +157,12 @@
         重置本局(数据包 || {})
         处理塔位置(数据包 || {}, 'game_start')
         处理基地位置(数据包 || {}, 'game_start')
+      })
+      记日志('收到game_start', {
+        有map: Array.isArray(数据包 && 数据包.map),
+        有cities: Array.isArray(数据包 && 数据包.cities),
+        有generals: Array.isArray(数据包 && 数据包.generals),
+        playerIndex: 数据包 && 数据包.playerIndex,
       })
     })
 
@@ -181,6 +218,12 @@
       }
 
       if (新塔.length > 0) {
+        记日志('发现塔并固定标记', {
+          来源事件,
+          回合: 数据包 && 数据包.turn,
+          新塔数量: 新塔.length,
+          已知塔总数: 状态.已知塔集合.size,
+        })
       }
 
       请求渲染()
@@ -220,6 +263,12 @@
       }
 
       if (新敌方基地.length > 0) {
+        记日志('发现敌方基地并固定标记', {
+          来源事件,
+          回合: 数据包 && 数据包.turn,
+          新敌方基地数量: 新敌方基地.length,
+          已知敌方基地总数: 状态.已知敌方基地集合.size,
+        })
       }
 
       请求渲染()
@@ -244,12 +293,23 @@
       }
       状态.移动队列.push(移动)
       if (状态.移动队列.length > 200) 状态.移动队列.shift()
+      记日志('记录移动操作', {
+        起点,
+        终点,
+        是否半兵: Boolean(是否半兵),
+        攻击序号: 移动.攻击序号,
+        移动队列长度: 状态.移动队列.length,
+      })
       重算兵力分布着色('记录移动操作')
       请求渲染()
     }
 
     function 撤销移动操作() {
-      状态.移动队列.pop()
+      const 已撤销 = 状态.移动队列.pop()
+      记日志('撤销移动操作', {
+        已撤销: 已撤销 ? { 起点: 已撤销.起点, 终点: 已撤销.终点 } : null,
+        移动队列长度: 状态.移动队列.length,
+      })
       重算兵力分布着色('撤销移动操作')
       请求渲染()
     }
@@ -265,6 +325,11 @@
 
       if (状态.移动队列.length !== 原长度) {
         状态.上次操作轨迹渲染签名 = ''
+        记日志('按攻击序号清理移动队列', {
+          攻击序号,
+          原长度,
+          新长度: 状态.移动队列.length,
+        })
         重算兵力分布着色('按攻击序号清理移动队列')
         请求渲染()
       }
@@ -293,6 +358,11 @@
       更新地图缓存和兵力分布(数据包 || {}, '新局重置')
       更新大回合倒计时()
       清空覆盖层()
+      记日志('新局重置', {
+        宽度: 状态.宽度,
+        高度: 状态.高度,
+        我方索引: 状态.我方索引,
+      })
     }
 
     function 更新地图缓存和兵力分布(数据包, 来源事件) {
@@ -534,8 +604,17 @@
       const 原长度 = 状态.移动队列.length
       状态.移动队列 = []
       状态.上次操作轨迹渲染签名 = ''
+      记日志('清空移动队列', {
+        来源: 来源 || '未知',
+        原长度,
+      })
       if (原长度) 重算兵力分布着色(`清空移动队列:${来源 || '未知'}`)
       请求渲染()
+    }
+
+    function 重算兵力分布着色(来源事件) {
+      if (!Array.isArray(状态.地图数组)) return
+      更新地图缓存和兵力分布({ map: 状态.地图数组 }, 来源事件)
     }
 
     function 读取玩家信息(数据包) {
@@ -731,10 +810,6 @@
       return null
     }
 
-    function 重算兵力分布着色(来源事件) {
-      if (!Array.isArray(状态.地图数组)) return
-      更新地图缓存和兵力分布({ map: 状态.地图数组 }, 来源事件)
-    }
   }
 
   function 清空覆盖层() {
@@ -1397,6 +1472,9 @@
     function 暴露调试接口() {
       window.gio塔标记 = {
         版本: 脚本版本,
+        日志() {
+          return 状态.最近日志.slice()
+        },
         状态() {
           return {
             宽度: 状态.宽度,
