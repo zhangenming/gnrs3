@@ -19,6 +19,7 @@
   const 样式编号 = "gio-tower-memory-style";
   const 我方蓝色 = "#2792ff";
   const 敌方红色 = "#ff0000";
+  const 中立黄色 = "#ffd84d";
   const 我方蓝色索引 = 1;
   const 敌方红色索引 = 0;
   const 大回合turn数 = 50;
@@ -185,7 +186,7 @@
         if (!Number.isInteger(塔索引) || 塔索引 < 0) continue;
         if (!状态.已知塔集合.has(塔索引)) {
           状态.已知塔集合.add(塔索引);
-          状态.已知塔类型.set(塔索引, "塔");
+          状态.已知塔类型.set(塔索引, "中立塔");
           新塔.push(塔索引);
         }
         更新塔类型(数据包, 塔索引);
@@ -494,11 +495,15 @@
     function 更新塔类型(数据包, 塔索引) {
       if (!Number.isInteger(塔索引) || 塔索引 < 0) return;
       if (!状态.已知塔类型.has(塔索引)) {
-        状态.已知塔类型.set(塔索引, "塔");
+        状态.已知塔类型.set(塔索引, "中立塔");
       }
 
       const 地块归属 = 读取可见地块归属(数据包, 塔索引);
-      if (!Number.isInteger(地块归属) || 地块归属 < 0) return;
+      if (!Number.isInteger(地块归属) || 地块归属 < 0) {
+        const 旧类型 = 状态.已知塔类型.get(塔索引);
+        if (旧类型 !== "中立塔") 状态.已知塔类型.set(塔索引, "中立塔");
+        return;
+      }
 
       const 新类型 = 是我方或队友(地块归属) ? "我方塔" : "敌方塔";
       const 旧类型 = 状态.已知塔类型.get(塔索引);
@@ -969,12 +974,13 @@
 
     function 画塔标记(ctx, x, y, 大小, 类型) {
       const 是敌方塔 = 类型 === "敌方塔";
+      const 是我方塔 = 类型 === "我方塔";
       const 外线宽 = Math.max(2, 大小 * 0.09);
-      const 内线宽 = Math.max(1.5, 大小 * (是敌方塔 ? 0.065 : 0.045));
+      const 内线宽 = Math.max(1.5, 大小 * (是敌方塔 ? 0.065 : 0.05));
       const 外偏移 = 外线宽 / 2 + 1;
       const 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2;
-      const 主色 = 是敌方塔 ? 敌方红色 : 我方蓝色;
-      const 高光色 = 是敌方塔 ? "#ffb3b3" : "#b8dcff";
+      const 主色 = 是敌方塔 ? 敌方红色 : 是我方塔 ? 我方蓝色 : 中立黄色;
+      const 高光色 = 是敌方塔 ? "#ffb3b3" : 是我方塔 ? "#b8dcff" : "#fff4a8";
 
       ctx.save();
       ctx.lineJoin = "round";
@@ -1008,12 +1014,12 @@
         Math.max(1, 大小 - (内偏移 + 内线宽 * 1.5) * 2),
       );
 
-      if (是敌方塔) {
+      if (是敌方塔 || 是我方塔) {
         const 角长 = Math.max(5, 大小 * 0.24);
         const 角偏移 = Math.max(3, 大小 * 0.12);
         ctx.globalAlpha = 1;
         ctx.lineWidth = Math.max(2, 大小 * 0.055);
-        ctx.strokeStyle = 敌方红色;
+        ctx.strokeStyle = 主色;
         ctx.beginPath();
         ctx.moveTo(x + 角偏移, y + 角偏移 + 角长);
         ctx.lineTo(x + 角偏移, y + 角偏移);
@@ -1474,7 +1480,7 @@
           return Array.from(状态.已知塔集合).map((塔索引) => {
             return {
               索引: 塔索引,
-              类型: 状态.已知塔类型.get(塔索引) ?? "塔",
+              类型: 状态.已知塔类型.get(塔索引) ?? "中立塔",
               行: 状态.宽度 ? Math.floor(塔索引 / 状态.宽度) : null,
               列: 状态.宽度 ? 塔索引 % 状态.宽度 : null,
             };
@@ -1506,7 +1512,14 @@
         手动加塔(塔索引) {
           if (Number.isInteger(塔索引) && 塔索引 >= 0) {
             状态.已知塔集合.add(塔索引);
-            if (!状态.已知塔类型.has(塔索引)) 状态.已知塔类型.set(塔索引, "塔");
+            if (!状态.已知塔类型.has(塔索引)) 状态.已知塔类型.set(塔索引, "中立塔");
+            请求渲染();
+          }
+        },
+        手动设我方塔(塔索引) {
+          if (Number.isInteger(塔索引) && 塔索引 >= 0) {
+            状态.已知塔集合.add(塔索引);
+            状态.已知塔类型.set(塔索引, "我方塔");
             请求渲染();
           }
         },
