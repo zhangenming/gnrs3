@@ -433,8 +433,7 @@
         for (const 同兵力地块 of 兵力分组.values()) {
           if (着色列表.length + 同兵力地块.length > 兵力着色最多数量) {
             超限同兵力跳过数量 += 同兵力地块.length
-            if (!着色列表.length) 着色列表.push(...同兵力地块)
-            break
+            continue
           }
           着色列表.push(...同兵力地块)
         }
