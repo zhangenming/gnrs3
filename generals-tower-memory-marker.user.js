@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.14
+// @version      0.8.15
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 (() => {
   "use strict";
 
-  const 脚本版本 = "0.8.14";
+  const 脚本版本 = "0.8.15";
   const 覆盖层类名 = "gio-tower-memory-overlay";
   const 样式编号 = "gio-tower-memory-style";
   const 我方蓝色 = "#2792ff";
@@ -26,7 +26,7 @@
   const 大回合倒计时元素编号 = "gio-big-turn-countdown";
   const 大回合倒计时类名 = "gio-big-turn-cell";
   const 兵力着色最小兵力 = 3;
-  const 兵力着色最多数量 = 35;
+  const 兵力着色最多级别 = 5;
 
   const 状态 = {
     宽度: 0,
@@ -359,7 +359,7 @@
         let 达标地块数量 = 0;
         let 被排除塔和基地数量 = 0;
         let 被排除路径数量 = 0;
-        let 超限同兵力跳过数量 = 0;
+        let 超限兵力级别跳过数量 = 0;
         let 最高兵力 = 0;
         const 当前塔信息 = 取得本次塔列表(数据包);
         const 当前塔集合 = new Set(状态.已知塔集合);
@@ -422,7 +422,7 @@
           达标地块数量,
           被排除塔和基地数量,
           被排除路径数量,
-          超限同兵力跳过数量,
+          超限兵力级别跳过数量,
           着色数量: 着色列表.length,
           最高兵力,
           我方索引: 状态.我方索引,
@@ -438,12 +438,14 @@
           兵力分组.get(地块.兵力).push(地块);
         }
 
+        let 已添加级别数量 = 0;
         for (const 同兵力地块 of 兵力分组.values()) {
-          if (着色列表.length + 同兵力地块.length > 兵力着色最多数量) {
-            超限同兵力跳过数量 += 同兵力地块.length;
+          if (已添加级别数量 >= 兵力着色最多级别) {
+            超限兵力级别跳过数量 += 同兵力地块.length;
             break;
           }
           着色列表.push(...同兵力地块);
+          已添加级别数量 += 1;
         }
         return 着色列表;
       }
