@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.8
+// @version      0.8.9
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 ;(() => {
   'use strict'
 
-  const 脚本版本 = '0.8.8'
+  const 脚本版本 = '0.8.9'
   const 覆盖层类名 = 'gio-tower-memory-overlay'
   const 样式编号 = 'gio-tower-memory-style'
   const 我方蓝色 = '#2792ff'
@@ -34,6 +34,7 @@
     塔列表: null,
     已知塔集合: new Set(),
     已知塔类型: new Map(),
+    已知基地集合: new Set(),
     已知敌方基地集合: new Map(),
     地图数组: null,
     兵力分布着色列表: [],
@@ -176,9 +177,9 @@
       延后执行('game_update', () => {
         按攻击序号清理移动队列(数据包 && 数据包.attackIndex)
         尝试从地图读取尺寸(数据包 || {})
-        更新地图缓存和兵力分布(数据包 || {}, 'game_update')
         处理塔位置(数据包 || {}, 'game_update')
         处理基地位置(数据包 || {}, 'game_update')
+        更新地图缓存和兵力分布(数据包 || {}, 'game_update')
       })
     })
 
@@ -251,6 +252,7 @@
       for (let 玩家索引 = 0; 玩家索引 < 基地列表.length; 玩家索引 += 1) {
         const 基地索引 = 基地列表[玩家索引]
         if (!Number.isInteger(基地索引) || 基地索引 < 0) continue
+        状态.已知基地集合.add(基地索引)
         if (是我方或队友(玩家索引)) continue
         if (!状态.已知敌方基地集合.has(基地索引)) {
           状态.已知敌方基地集合.set(基地索引, {
@@ -341,6 +343,7 @@
       状态.塔列表 = null
       状态.已知塔集合.clear()
       状态.已知塔类型.clear()
+      状态.已知基地集合.clear()
       状态.已知敌方基地集合.clear()
       状态.地图数组 = null
       状态.兵力分布着色列表 = []
@@ -442,6 +445,10 @@
             : [],
         )
         状态.已知敌方基地集合.forEach((_基地, 基地索引) => {
+          if (Number.isInteger(基地索引) && 基地索引 >= 0)
+            基地集合.add(基地索引)
+        })
+        状态.已知基地集合.forEach((基地索引) => {
           if (Number.isInteger(基地索引) && 基地索引 >= 0)
             基地集合.add(基地索引)
         })
@@ -809,7 +816,6 @@
 
       return null
     }
-
   }
 
   function 清空覆盖层() {
@@ -883,28 +889,30 @@
     }
 
     function 画兵力分布着色() {
-      if (!状态.兵力分布着色列表.length) return
+      const 可绘制着色列表 = 取得当前有效着色列表()
+      if (!可绘制着色列表.length) return
 
-      const 最高兵力 = 状态.兵力分布着色列表[0].兵力
-      const 最低兵力 =
-        状态.兵力分布着色列表[状态.兵力分布着色列表.length - 1].兵力
+      const 最高兵力 = 可绘制着色列表[0].兵力
+      const 最低兵力 = 可绘制着色列表[可绘制着色列表.length - 1].兵力
       const 兵力跨度 = Math.max(1, 最高兵力 - 最低兵力)
-      const 内缩 = Math.max(1, 大小 * 0.02)
-      const 高兵力阈值 = 最低兵力 + 兵力跨度 * 0.7
+      const 内缩 = Math.max(0.5, 大小 * 0.025)
 
       ctx.save()
-      状态.兵力分布着色列表.forEach((地块) => {
+      可绘制着色列表.forEach((地块) => {
         const 相对强度 = (地块.兵力 - 最低兵力) / 兵力跨度
         const 绝对强度 = Math.min(
           1,
-          Math.max(0, (地块.兵力 - 兵力着色最小兵力) / 22),
+          Math.max(0, (地块.兵力 - 兵力着色最小兵力) / 18),
         )
-        const 强度 = Math.max(相对强度, 绝对强度)
-        const 填充透明度 = 0.32 + 强度 * 0.2
-        const 边框透明度 = 0.92 + 强度 * 0.08
-        const 红 = Math.round(58 - 强度 * 46)
-        const 绿 = Math.round(184 - 强度 * 116)
-        const 蓝 = 255
+        const 单组强度 = Math.min(1, Math.log2(Math.max(1, 地块.兵力 - 1)) / 5)
+        const 强度 =
+          最高兵力 === 最低兵力
+            ? 单组强度
+            : Math.min(1, 0.12 + 相对强度 * 0.76 + 绝对强度 * 0.12)
+        const 填充透明度 = 0.42 + 强度 * 0.18
+        const 红 = Math.round(72 - 强度 * 66)
+        const 绿 = Math.round(178 - 强度 * 132)
+        const 蓝 = Math.round(255 - 强度 * 20)
         const 行 = Math.floor(地块.索引 / 状态.宽度)
         const 列 = 地块.索引 % 状态.宽度
         const x = 列 * 格宽
@@ -914,46 +922,70 @@
 
         ctx.fillStyle = `rgba(${红}, ${绿}, ${蓝}, ${填充透明度.toFixed(3)})`
         ctx.fillRect(x + 内缩, y + 内缩, 宽, 高)
-
-        ctx.lineWidth = Math.max(2.5, 大小 * 0.1)
-        ctx.strokeStyle = `rgba(0, 24, 150, ${边框透明度.toFixed(3)})`
-        ctx.strokeRect(
-          x + 内缩 + ctx.lineWidth / 2,
-          y + 内缩 + ctx.lineWidth / 2,
-          Math.max(1, 宽 - ctx.lineWidth),
-          Math.max(1, 高 - ctx.lineWidth),
-        )
-
-        ctx.lineWidth = Math.max(1.2, 大小 * 0.04)
-        ctx.strokeStyle = `rgba(225, 252, 255, ${(0.82 + 强度 * 0.12).toFixed(3)})`
-        ctx.strokeRect(
-          x + 内缩 + ctx.lineWidth * 2.2,
-          y + 内缩 + ctx.lineWidth * 2.2,
-          Math.max(1, 宽 - ctx.lineWidth * 4.4),
-          Math.max(1, 高 - ctx.lineWidth * 4.4),
-        )
-
-        const 条宽 = Math.max(2, 大小 * 0.11)
-        ctx.fillStyle = `rgba(0, 28, 185, ${(0.68 + 强度 * 0.22).toFixed(3)})`
-        ctx.fillRect(x + 内缩, y + 内缩, 宽, 条宽)
-        ctx.fillRect(x + 内缩, y + 内缩, 条宽, 高)
-
-        if (地块.兵力 >= 高兵力阈值) {
-          const 角长 = Math.max(5, 大小 * 0.24)
-          const 角偏移 = 内缩 + Math.max(2, 大小 * 0.08)
-          ctx.lineWidth = Math.max(2, 大小 * 0.065)
-          ctx.strokeStyle = `rgba(235, 252, 255, ${(0.72 + 强度 * 0.2).toFixed(3)})`
-          ctx.beginPath()
-          ctx.moveTo(x + 角偏移, y + 角偏移 + 角长)
-          ctx.lineTo(x + 角偏移, y + 角偏移)
-          ctx.lineTo(x + 角偏移 + 角长, y + 角偏移)
-          ctx.moveTo(x + 格宽 - 角偏移 - 角长, y + 角偏移)
-          ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移)
-          ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移 + 角长)
-          ctx.stroke()
-        }
       })
       ctx.restore()
+
+      function 取得当前有效着色列表() {
+        const 原列表 = 状态.兵力分布着色列表
+        if (!原列表.length) return 原列表
+        if (!Array.isArray(状态.地图数组) || !状态.宽度 || !状态.高度) {
+          return 原列表
+        }
+
+        const 格子数 = 状态.宽度 * 状态.高度
+        const 路径集合 = new Set()
+        状态.移动队列.forEach((移动) => {
+          if (Number.isInteger(移动.起点) && 移动.起点 >= 0) {
+            路径集合.add(移动.起点)
+          }
+          if (Number.isInteger(移动.终点) && 移动.终点 >= 0) {
+            路径集合.add(移动.终点)
+          }
+        })
+
+        const 有效列表 = []
+        let 发生变化 = false
+        for (const 地块 of 原列表) {
+          if (
+            !地块 ||
+            !Number.isInteger(地块.索引) ||
+            地块.索引 < 0 ||
+            地块.索引 >= 格子数
+          ) {
+            发生变化 = true
+            continue
+          }
+
+          const 兵力 = 状态.地图数组[2 + 地块.索引]
+          const 归属 = 状态.地图数组[2 + 格子数 + 地块.索引]
+          const 符合要求 =
+            Number.isInteger(兵力) &&
+            兵力 >= 兵力着色最小兵力 &&
+            Number.isInteger(归属) &&
+            是我方或队友(归属) &&
+            !状态.已知塔集合.has(地块.索引) &&
+            !状态.已知基地集合.has(地块.索引) &&
+            !状态.已知敌方基地集合.has(地块.索引) &&
+            !路径集合.has(地块.索引)
+          if (!符合要求) {
+            发生变化 = true
+            continue
+          }
+
+          if (兵力 !== 地块.兵力 || 归属 !== 地块.归属) {
+            发生变化 = true
+          }
+          有效列表.push({ 索引: 地块.索引, 兵力, 归属 })
+        }
+
+        if (发生变化) {
+          状态.兵力分布着色列表 = 有效列表
+          状态.上次兵力分布着色签名 = 有效列表
+            .map((地块) => `${地块.索引}:${地块.兵力}:${地块.归属}`)
+            .join('|')
+        }
+        return 有效列表
+      }
     }
 
     function 确保覆盖层() {
@@ -1488,6 +1520,7 @@
             大回合倒计时: 取得大回合倒计时(状态.当前回合),
             塔列表长度: 状态.塔列表 ? 状态.塔列表.length : null,
             已知塔数量: 状态.已知塔集合.size,
+            已知基地数量: 状态.已知基地集合.size,
             敌方塔数量: Array.from(状态.已知塔类型.values()).filter((类型) => {
               return 类型 === '敌方塔'
             }).length,
@@ -1552,6 +1585,7 @@
         },
         手动加敌方基地(基地索引, 玩家索引) {
           if (Number.isInteger(基地索引) && 基地索引 >= 0) {
+            状态.已知基地集合.add(基地索引)
             状态.已知敌方基地集合.set(基地索引, {
               索引: 基地索引,
               玩家索引: Number.isInteger(玩家索引) ? 玩家索引 : null,
@@ -1568,6 +1602,7 @@
         清空() {
           状态.已知塔集合.clear()
           状态.已知塔类型.clear()
+          状态.已知基地集合.clear()
           状态.已知敌方基地集合.clear()
           状态.塔列表 = null
           清空覆盖层()
