@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.6.0
+// @version      0.8.0
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -18,8 +18,10 @@
   var 样式编号 = "gio-tower-memory-style";
   var 日志前缀 = "[塔记忆]";
   var 详细日志 = true;
-  var 我方蓝色索引 = 10;
+  var 我方蓝色索引 = 1;
   var 敌方红色索引 = 0;
+  var 大回合turn数 = 50;
+  var 大回合倒计时元素编号 = "gio-big-turn-countdown";
 
   var 状态 = {
     宽度: 0,
@@ -28,6 +30,11 @@
     已知塔集合: new Set(),
     已知塔类型: new Map(),
     已知敌方基地集合: new Map(),
+    移动队列: [],
+    当前回合: null,
+    大回合倒计时元素: null,
+    大回合倒计时是否备用: false,
+    上次大回合倒计时文本: "",
     我方索引: null,
     队伍: null,
     已请求渲染: false,
@@ -36,7 +43,8 @@
     最近日志: [],
     已处理颜色数据包: typeof WeakSet === "function" ? new WeakSet() : null,
     上次无尺寸日志: 0,
-    上次无画布日志: 0
+    上次无画布日志: 0,
+    上次操作轨迹渲染签名: ""
   };
 
   function 记日志(事件, 数据) {
@@ -172,6 +180,27 @@
     return 我方队伍 !== undefined && 我方队伍 !== null && 对方队伍 === 我方队伍;
   }
 
+  function 取得大回合倒计时(回合) {
+    if (!Number.isInteger(回合) || 回合 < 0) return null;
+    var 余数 = 回合 % 大回合turn数;
+    if (回合 > 0 && 余数 === 0) return 0;
+    return 大回合turn数 - 余数;
+  }
+
+  function 记录回合(数据包, 来源事件) {
+    if (!Number.isInteger(数据包 && 数据包.turn)) return;
+    var 原回合 = 状态.当前回合;
+    状态.当前回合 = 数据包.turn;
+    更新大回合倒计时();
+    if (原回合 !== 状态.当前回合) {
+      记日志("大回合倒计时更新", {
+        来源事件: 来源事件,
+        回合: 状态.当前回合,
+        倒计时: 取得大回合倒计时(状态.当前回合)
+      });
+    }
+  }
+
   function 读取可见地块归属(数据包, 索引) {
     var 地图数组 = 取得完整地图数组(数据包);
     if (地图数组 && Number.isInteger(索引)) {
@@ -276,12 +305,13 @@
       队伍: 状态.队伍,
       原颜色: 原颜色,
       新颜色: 数据包.playerColors.slice(),
-      规则: "我方/队友=blue(10), 敌方=red(0)"
+      规则: "我方/队友=lightblue(1, --map-color-p2 #2792ff), 敌方=red(0)"
     });
   }
 
   function 预处理入站事件(事件名, 数据包) {
     if (事件名 !== "game_start" && 事件名 !== "game_update") return;
+    记录回合(数据包 || {}, 事件名 + ":预处理");
     重构玩家颜色(数据包 || {}, 事件名 + ":预处理");
   }
 
@@ -399,6 +429,86 @@
     请求渲染();
   }
 
+  function 取得移动摘要(移动) {
+    return {
+      起点: 移动.起点,
+      终点: 移动.终点,
+      是否半兵: 移动.是否半兵,
+      攻击序号: 移动.攻击序号,
+      起点行: 状态.宽度 ? Math.floor(移动.起点 / 状态.宽度) : null,
+      起点列: 状态.宽度 ? 移动.起点 % 状态.宽度 : null,
+      终点行: 状态.宽度 ? Math.floor(移动.终点 / 状态.宽度) : null,
+      终点列: 状态.宽度 ? 移动.终点 % 状态.宽度 : null
+    };
+  }
+
+  function 记录移动操作(起点, 终点, 是否半兵, 攻击序号) {
+    if (!Number.isInteger(起点) || !Number.isInteger(终点) || 起点 < 0 || 终点 < 0) {
+      记日志("记录移动操作跳过: 参数无效", {
+        起点: 起点,
+        终点: 终点,
+        是否半兵: 是否半兵,
+        攻击序号: 攻击序号
+      });
+      return;
+    }
+
+    var 移动 = {
+      起点: 起点,
+      终点: 终点,
+      是否半兵: Boolean(是否半兵),
+      攻击序号: Number.isInteger(攻击序号) ? 攻击序号 : null,
+      记录时间: Date.now()
+    };
+    状态.移动队列.push(移动);
+    if (状态.移动队列.length > 200) 状态.移动队列.shift();
+    记日志("记录移动操作", {
+      移动: 取得移动摘要(移动),
+      移动队列长度: 状态.移动队列.length
+    });
+    请求渲染();
+  }
+
+  function 撤销移动操作() {
+    var 移动 = 状态.移动队列.pop();
+    记日志("撤销移动操作", {
+      已撤销: 移动 ? 取得移动摘要(移动) : null,
+      移动队列长度: 状态.移动队列.length
+    });
+    请求渲染();
+  }
+
+  function 清空移动队列(来源) {
+    var 原长度 = 状态.移动队列.length;
+    状态.移动队列 = [];
+    状态.上次操作轨迹渲染签名 = "";
+    记日志("清空移动队列", {
+      来源: 来源 || "未知",
+      原移动队列长度: 原长度
+    });
+    请求渲染();
+  }
+
+  function 按攻击序号清理移动队列(攻击序号) {
+    if (!Number.isInteger(攻击序号)) return;
+    var 原长度 = 状态.移动队列.length;
+    if (!原长度) return;
+
+    状态.移动队列 = 状态.移动队列.filter(function (移动) {
+      return !Number.isInteger(移动.攻击序号) || 移动.攻击序号 > 攻击序号;
+    });
+
+    if (状态.移动队列.length !== 原长度) {
+      状态.上次操作轨迹渲染签名 = "";
+      记日志("按攻击序号清理移动队列", {
+        攻击序号: 攻击序号,
+        原移动队列长度: 原长度,
+        新移动队列长度: 状态.移动队列.length
+      });
+      请求渲染();
+    }
+  }
+
   function 重置本局(数据包) {
     状态.宽度 = 0;
     状态.高度 = 0;
@@ -406,8 +516,11 @@
     状态.已知塔集合.clear();
     状态.已知塔类型.clear();
     状态.已知敌方基地集合.clear();
+    清空移动队列("新局重置");
+    状态.当前回合 = Number.isInteger(数据包 && 数据包.turn) ? 数据包.turn : 0;
     状态.我方索引 = Number.isInteger(数据包 && 数据包.playerIndex) ? 数据包.playerIndex : null;
     状态.队伍 = Array.isArray(数据包 && 数据包.teams) ? 数据包.teams.slice() : null;
+    更新大回合倒计时();
     清空覆盖层();
     记日志("新局重置", {
       数据键: 数据包 ? Object.keys(数据包) : [],
@@ -416,6 +529,8 @@
       有cities: Array.isArray(数据包 && 数据包.cities),
       有cities_diff: Array.isArray(数据包 && 数据包.cities_diff),
       有generals: Array.isArray(数据包 && 数据包.generals),
+      回合: 状态.当前回合,
+      大回合倒计时: 取得大回合倒计时(状态.当前回合),
       我方索引: 状态.我方索引,
       队伍: 状态.队伍
     });
@@ -432,6 +547,25 @@
       on: typeof socket.on,
       emit: typeof socket.emit
     });
+
+    if (typeof socket.emit === "function" && !socket.__塔记忆emit已挂钩) {
+      var 原emit = socket.emit;
+      socket.__塔记忆emit已挂钩 = true;
+      socket.emit = function (事件名) {
+        var 参数 = Array.prototype.slice.call(arguments, 1);
+        安全执行("emit出站操作记录", function () {
+          if (事件名 === "attack") {
+            记录移动操作(参数[0], 参数[1], 参数[2], 参数[3]);
+          } else if (事件名 === "undo_move") {
+            撤销移动操作();
+          } else if (事件名 === "clear_moves") {
+            清空移动队列("clear_moves");
+          }
+        });
+        return 原emit.apply(this, arguments);
+      };
+      记日志("socket.emit出站操作记录已安装");
+    }
 
     if (typeof socket.onevent === "function" && !socket.__塔记忆onevent已挂钩) {
       var 原onevent = socket.onevent;
@@ -459,6 +593,9 @@
     }
 
     socket.on("game_start", function (数据包) {
+      安全执行("game_start回合倒计时", function () {
+        记录回合(数据包 || {}, "game_start");
+      });
       安全执行("game_start颜色重构", function () {
         重构玩家颜色(数据包 || {}, "game_start");
       });
@@ -480,6 +617,9 @@
     });
 
     socket.on("game_update", function (数据包) {
+      安全执行("game_update回合倒计时", function () {
+        记录回合(数据包 || {}, "game_update");
+      });
       安全执行("game_update颜色重构", function () {
         重构玩家颜色(数据包 || {}, "game_update");
       });
@@ -494,6 +634,7 @@
         generals: Array.isArray(数据包 && 数据包.generals) ? 数据包.generals : null
       });
       延后执行("game_update", function () {
+        按攻击序号清理移动队列(数据包 && 数据包.attackIndex);
         处理塔位置(数据包 || {}, "game_update");
         处理基地位置(数据包 || {}, "game_update");
       });
@@ -537,6 +678,100 @@
     setTimeout(轮询socket, 状态.socket已挂钩 ? 2000 : 200);
   }
 
+  function 更新大回合倒计时() {
+    var 倒计时 = 取得大回合倒计时(状态.当前回合);
+    if (倒计时 == null) return;
+
+    var 文本 = "全图+1: " + 倒计时;
+    var 目标元素 = 状态.大回合倒计时元素;
+    if (状态.大回合倒计时是否备用) {
+      var 左上角元素 = 取得左上角回合文本元素();
+      if (左上角元素) {
+        目标元素 = 左上角元素;
+        状态.大回合倒计时元素 = 左上角元素;
+        状态.大回合倒计时是否备用 = false;
+        var 备用元素 = document.getElementById(大回合倒计时元素编号);
+        if (备用元素 && 备用元素.parentNode) 备用元素.parentNode.removeChild(备用元素);
+      }
+    }
+    if (!目标元素 || !document.documentElement.contains(目标元素)) {
+      目标元素 = 取得大回合倒计时元素();
+    }
+    if (!目标元素) return;
+
+    目标元素.textContent = 文本;
+    目标元素.title = "距离所有兵力+1的大回合";
+    状态.上次大回合倒计时文本 = 文本;
+  }
+
+  function 取得大回合倒计时元素() {
+    var 已有备用 = document.getElementById(大回合倒计时元素编号);
+    if (已有备用) {
+      状态.大回合倒计时元素 = 已有备用;
+      状态.大回合倒计时是否备用 = true;
+      return 已有备用;
+    }
+
+    var 候选元素 = [
+      ".turn-counter",
+      ".game-turn",
+      ".game-status .turn",
+      ".game-info .turn",
+      "#turn-counter",
+      "#turn"
+    ];
+    for (var i = 0; i < 候选元素.length; i += 1) {
+      var 元素 = document.querySelector(候选元素[i]);
+      if (元素) {
+        状态.大回合倒计时元素 = 元素;
+        状态.大回合倒计时是否备用 = false;
+        return 元素;
+      }
+    }
+
+    var 左上角文本元素 = 取得左上角回合文本元素();
+    if (左上角文本元素) {
+      状态.大回合倒计时元素 = 左上角文本元素;
+      状态.大回合倒计时是否备用 = false;
+      return 左上角文本元素;
+    }
+
+    if (!document.body) return null;
+    var 备用元素 = document.createElement("div");
+    备用元素.id = 大回合倒计时元素编号;
+    备用元素.className = 大回合倒计时元素编号;
+    备用元素.setAttribute("aria-label", "大回合倒计时");
+    document.body.appendChild(备用元素);
+    状态.大回合倒计时元素 = 备用元素;
+    状态.大回合倒计时是否备用 = true;
+    记日志("已创建大回合倒计时备用显示");
+    return 备用元素;
+  }
+
+  function 取得左上角回合文本元素() {
+    if (!document.body) return null;
+    var 元素列表 = Array.prototype.slice.call(document.body.querySelectorAll("div, span, p"));
+    var 最佳元素 = null;
+    var 最佳分数 = -1;
+    元素列表.forEach(function (元素) {
+      if (!元素 || 元素.id === 大回合倒计时元素编号 || 元素.children.length > 3) return;
+      var 文本 = (元素.textContent || "").trim();
+      if (!文本 || 文本.length > 24) return;
+      if (!/(turn|round|回合)/i.test(文本)) return;
+
+      var 矩形 = 元素.getBoundingClientRect();
+      if (!矩形.width || !矩形.height) return;
+      if (矩形.left > 260 || 矩形.top > 180) return;
+
+      var 分数 = 1000 - 矩形.left * 2 - 矩形.top * 3 - 文本.length;
+      if (分数 > 最佳分数) {
+        最佳分数 = 分数;
+        最佳元素 = 元素;
+      }
+    });
+    return 最佳元素;
+  }
+
   function 安装样式() {
     if (!document.documentElement || document.getElementById(样式编号)) return;
     var 样式 = document.createElement("style");
@@ -551,6 +786,41 @@
       "}",
       ".gio-tower-memory-host {",
       "  position: relative !important;",
+      "}",
+      "#" + 大回合倒计时元素编号 + " {",
+      "  position: fixed;",
+      "  left: 8px;",
+      "  top: 8px;",
+      "  z-index: 2147483647;",
+      "  min-width: 78px;",
+      "  padding: 4px 8px;",
+      "  border-radius: 4px;",
+      "  background: rgba(0, 0, 0, 0.72);",
+      "  color: #ffffff;",
+      "  font: 700 14px/1.25 Arial, sans-serif;",
+      "  text-align: center;",
+      "  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.85);",
+      "  pointer-events: none;",
+      "}",
+      "@keyframes gio-current-move-pulse {",
+      "  0% { box-shadow: inset 0 0 0 2px #00eaff, 0 0 0 2px rgba(0, 0, 0, 0.95), 0 0 7px rgba(0, 234, 255, 0.85) !important; }",
+      "  50% { box-shadow: inset 0 0 0 3px #ffffff, 0 0 0 2px rgba(0, 0, 0, 0.95), 0 0 14px rgba(0, 234, 255, 1) !important; }",
+      "  100% { box-shadow: inset 0 0 0 2px #00eaff, 0 0 0 2px rgba(0, 0, 0, 0.95), 0 0 7px rgba(0, 234, 255, 0.85) !important; }",
+      "}",
+      "#gameMap td.selected, #gameMap td.selected50, #gameMap td[class*='selected-'],",
+      ".tiles-canvas-preview td.selected, .tiles-canvas-preview td.selected50, .tiles-canvas-preview td[class*='selected-'] {",
+      "  border-color: #ffffff !important;",
+      "  outline: 2px solid #00eaff !important;",
+      "  outline-offset: -3px !important;",
+      "  animation: gio-current-move-pulse 0.9s infinite !important;",
+      "}",
+      ".lightblue, .selected-lightblue, .leaderboard .lightblue, #leaderboard .lightblue {",
+      "  background-color: #2792ff !important;",
+      "  fill: #2792ff !important;",
+      "}",
+      ".blue, .selected-blue, .leaderboard .blue, #leaderboard .blue {",
+      "  background-color: #2792ff !important;",
+      "  fill: #2792ff !important;",
       "}"
     ].join("\n");
     document.documentElement.appendChild(样式);
@@ -737,10 +1007,173 @@
     ctx.restore();
   }
 
+  function 取得格子中心(索引, 格宽, 格高) {
+    var 行 = Math.floor(索引 / 状态.宽度);
+    var 列 = 索引 % 状态.宽度;
+    return {
+      x: 列 * 格宽 + 格宽 / 2,
+      y: 行 * 格高 + 格高 / 2,
+      行: 行,
+      列: 列
+    };
+  }
+
+  function 画箭头线(ctx, 起点, 终点, 线宽, 半兵) {
+    var dx = 终点.x - 起点.x;
+    var dy = 终点.y - 起点.y;
+    var 距离 = Math.sqrt(dx * dx + dy * dy);
+    if (!Number.isFinite(距离) || 距离 < 1) return;
+
+    var 缩进 = Math.max(3, 线宽 * 1.6);
+    var 起x = 起点.x + dx / 距离 * 缩进;
+    var 起y = 起点.y + dy / 距离 * 缩进;
+    var 终x = 终点.x - dx / 距离 * 缩进;
+    var 终y = 终点.y - dy / 距离 * 缩进;
+    var 角度 = Math.atan2(终y - 起y, 终x - 起x);
+    var 箭头长 = Math.max(8, 线宽 * 3.4);
+    var 箭头角 = Math.PI / 7;
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.lineWidth = 线宽 + Math.max(4, 线宽 * 0.9);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
+    ctx.setLineDash(半兵 ? [Math.max(6, 线宽 * 1.8), Math.max(4, 线宽 * 1.2)] : []);
+    ctx.beginPath();
+    ctx.moveTo(起x, 起y);
+    ctx.lineTo(终x, 终y);
+    ctx.stroke();
+
+    ctx.lineWidth = 线宽;
+    ctx.strokeStyle = 半兵 ? "#b6f7ff" : "#00eaff";
+    ctx.beginPath();
+    ctx.moveTo(起x, 起y);
+    ctx.lineTo(终x, 终y);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.fillStyle = "#00eaff";
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
+    ctx.lineWidth = Math.max(2, 线宽 * 0.7);
+    ctx.beginPath();
+    ctx.moveTo(终x, 终y);
+    ctx.lineTo(终x - 箭头长 * Math.cos(角度 - 箭头角), 终y - 箭头长 * Math.sin(角度 - 箭头角));
+    ctx.lineTo(终x - 箭头长 * Math.cos(角度 + 箭头角), 终y - 箭头长 * Math.sin(角度 + 箭头角));
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fill();
+
+    if (半兵) {
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.9)";
+      ctx.lineWidth = Math.max(1.5, 线宽 * 0.45);
+      ctx.beginPath();
+      ctx.arc((起x + 终x) / 2, (起y + 终y) / 2, Math.max(3, 线宽 * 0.85), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  function 画当前移动位置(ctx, 索引, 格宽, 格高, 大小) {
+    var 行 = Math.floor(索引 / 状态.宽度);
+    var 列 = 索引 % 状态.宽度;
+    var x = 列 * 格宽;
+    var y = 行 * 格高;
+    var 外线宽 = Math.max(3, 大小 * 0.12);
+    var 内线宽 = Math.max(2, 大小 * 0.055);
+    var 外偏移 = 外线宽 / 2 + 1;
+    var 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2;
+    var 角长 = Math.max(6, 大小 * 0.32);
+    var 角偏移 = Math.max(2, 大小 * 0.09);
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.globalAlpha = 0.78;
+    ctx.lineWidth = 外线宽;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.95)";
+    ctx.strokeRect(
+      x + 外偏移,
+      y + 外偏移,
+      Math.max(1, 格宽 - 外偏移 * 2),
+      Math.max(1, 格高 - 外偏移 * 2)
+    );
+
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 内线宽;
+    ctx.strokeStyle = "#00eaff";
+    ctx.strokeRect(
+      x + 内偏移,
+      y + 内偏移,
+      Math.max(1, 格宽 - 内偏移 * 2),
+      Math.max(1, 格高 - 内偏移 * 2)
+    );
+
+    ctx.lineWidth = Math.max(2, 大小 * 0.065);
+    ctx.strokeStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(x + 角偏移, y + 角偏移 + 角长);
+    ctx.lineTo(x + 角偏移, y + 角偏移);
+    ctx.lineTo(x + 角偏移 + 角长, y + 角偏移);
+    ctx.moveTo(x + 格宽 - 角偏移 - 角长, y + 角偏移);
+    ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移);
+    ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移 + 角长);
+    ctx.moveTo(x + 格宽 - 角偏移, y + 格高 - 角偏移 - 角长);
+    ctx.lineTo(x + 格宽 - 角偏移, y + 格高 - 角偏移);
+    ctx.lineTo(x + 格宽 - 角偏移 - 角长, y + 格高 - 角偏移);
+    ctx.moveTo(x + 角偏移 + 角长, y + 格高 - 角偏移);
+    ctx.lineTo(x + 角偏移, y + 格高 - 角偏移);
+    ctx.lineTo(x + 角偏移, y + 格高 - 角偏移 - 角长);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function 画操作轨迹(ctx, 格宽, 格高, 大小) {
+    if (!状态.移动队列.length) return;
+
+    var 格子数 = 状态.宽度 * 状态.高度;
+    var 可绘制移动 = 状态.移动队列.filter(function (移动) {
+      return Number.isInteger(移动.起点) && Number.isInteger(移动.终点)
+        && 移动.起点 >= 0 && 移动.终点 >= 0
+        && 移动.起点 < 格子数 && 移动.终点 < 格子数;
+    });
+    if (!可绘制移动.length) return;
+
+    var 线宽 = Math.max(3, Math.min(7, 大小 * 0.16));
+    ctx.save();
+    ctx.globalAlpha = 0.95;
+    可绘制移动.forEach(function (移动, 下标) {
+      var 起点 = 取得格子中心(移动.起点, 格宽, 格高);
+      var 终点 = 取得格子中心(移动.终点, 格宽, 格高);
+      ctx.globalAlpha = 下标 === 可绘制移动.length - 1 ? 1 : 0.74;
+      画箭头线(ctx, 起点, 终点, 线宽, 移动.是否半兵);
+    });
+    ctx.restore();
+
+    画当前移动位置(ctx, 可绘制移动[可绘制移动.length - 1].终点, 格宽, 格高, 大小);
+
+    var 签名 = 可绘制移动.length + ":" + 可绘制移动.map(function (移动) {
+      return 移动.起点 + ">" + 移动.终点 + ":" + (移动.是否半兵 ? "半" : "全") + ":" + 移动.攻击序号;
+    }).join("|");
+    if (签名 !== 状态.上次操作轨迹渲染签名) {
+      状态.上次操作轨迹渲染签名 = 签名;
+      记日志("操作轨迹已渲染", {
+        移动队列长度: 状态.移动队列.length,
+        可绘制移动数量: 可绘制移动.length,
+        当前移动位置: 取得移动摘要(可绘制移动[可绘制移动.length - 1])
+      });
+    }
+  }
+
   function 渲染() {
     状态.已请求渲染 = false;
 
-    if (!状态.已知塔集合.size && !状态.已知敌方基地集合.size) {
+    if (!状态.已知塔集合.size && !状态.已知敌方基地集合.size && !状态.移动队列.length) {
       清空覆盖层();
       return;
     }
@@ -752,8 +1185,10 @@
         记日志("已有标记位置但缺少地图宽高，无法换算坐标", {
           已知塔数量: 状态.已知塔集合.size,
           已知敌方基地数量: 状态.已知敌方基地集合.size,
+          移动队列长度: 状态.移动队列.length,
           已知塔: Array.from(状态.已知塔集合).slice(0, 20),
-          已知敌方基地: Array.from(状态.已知敌方基地集合.values()).slice(0, 20)
+          已知敌方基地: Array.from(状态.已知敌方基地集合.values()).slice(0, 20),
+          移动队列: 状态.移动队列.slice(0, 20).map(取得移动摘要)
         });
       }
       return;
@@ -773,6 +1208,8 @@
     var 格高 = 尺寸.css高 / 状态.高度;
     var 大小 = Math.min(格宽, 格高);
 
+    画操作轨迹(ctx, 格宽, 格高, 大小);
+
     状态.已知塔集合.forEach(function (索引) {
       var 行 = Math.floor(索引 / 状态.宽度);
       var 列 = 索引 % 状态.宽度;
@@ -789,6 +1226,7 @@
       已知塔数量: 状态.已知塔集合.size,
       敌方塔数量: Array.from(状态.已知塔类型.values()).filter(function (类型) { return 类型 === "敌方塔"; }).length,
       已知敌方基地数量: 状态.已知敌方基地集合.size,
+      移动队列长度: 状态.移动队列.length,
       地图尺寸: 状态.宽度 + "x" + 状态.高度,
       覆盖层尺寸: Math.round(尺寸.css宽) + "x" + Math.round(尺寸.css高)
     });
@@ -809,6 +1247,7 @@
       return;
     }
     状态.页面观察器 = new MutationObserver(function () {
+      更新大回合倒计时();
       请求渲染();
     });
     状态.页面观察器.observe(document.body, {
@@ -821,12 +1260,13 @@
     window.addEventListener("wheel", 请求渲染, { passive: true, capture: true });
     window.addEventListener("mousemove", 请求渲染, { passive: true, capture: true });
     window.addEventListener("keydown", 请求渲染, { passive: true, capture: true });
+    window.addEventListener("resize", 更新大回合倒计时, { passive: true });
     记日志("页面观察器已安装", { zem: true });
   }
 
   function 暴露调试接口() {
     window.gio塔标记 = {
-      版本: "0.6.0",
+      版本: "0.8.0",
       日志: function () {
         return 状态.最近日志.slice();
       },
@@ -834,6 +1274,8 @@
         return {
           宽度: 状态.宽度,
           高度: 状态.高度,
+          当前回合: 状态.当前回合,
+          大回合倒计时: 取得大回合倒计时(状态.当前回合),
           塔列表长度: 状态.塔列表 ? 状态.塔列表.length : null,
           已知塔数量: 状态.已知塔集合.size,
           敌方塔数量: Array.from(状态.已知塔类型.values()).filter(function (类型) { return 类型 === "敌方塔"; }).length,
@@ -916,7 +1358,7 @@
   }
 
   function 启动() {
-    记日志("脚本启动", { 版本: "0.6.0", 页面: location.href });
+    记日志("脚本启动", { 版本: "0.8.0", 页面: location.href });
     暴露调试接口();
     安装socket访问器();
     轮询socket();
