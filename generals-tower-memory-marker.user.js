@@ -22,6 +22,8 @@
   var 敌方红色索引 = 0;
   var 大回合turn数 = 50;
   var 大回合倒计时元素编号 = "gio-big-turn-countdown";
+  var 兵力着色最小兵力 = 3;
+  var 兵力着色最多数量 = 30;
 
   var 状态 = {
     宽度: 0,
@@ -30,6 +32,8 @@
     已知塔集合: new Set(),
     已知塔类型: new Map(),
     已知敌方基地集合: new Map(),
+    地图数组: null,
+    兵力分布着色列表: [],
     移动队列: [],
     当前回合: null,
     大回合倒计时元素: null,
@@ -44,6 +48,7 @@
     已处理颜色数据包: typeof WeakSet === "function" ? new WeakSet() : null,
     上次无尺寸日志: 0,
     上次无画布日志: 0,
+    上次兵力分布着色签名: "",
     上次操作轨迹渲染签名: ""
   };
 
@@ -119,6 +124,60 @@
     if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) return null;
     if (地图数组.length < 2 + 格子数 * 2) return null;
     return 地图数组;
+  }
+
+  function 更新地图缓存和兵力分布(数据包, 来源事件) {
+    function 取得兵力分布着色列表() {
+      var 地图数组 = 状态.地图数组;
+      if (!Array.isArray(地图数组) || !状态.宽度 || !状态.高度) return [];
+
+      var 格子数 = 状态.宽度 * 状态.高度;
+      if (地图数组.length < 2 + 格子数 * 2) return [];
+
+      var 地块列表 = [];
+      for (var 索引 = 0; 索引 < 格子数; 索引 += 1) {
+        var 兵力 = 地图数组[2 + 索引];
+        var 地形 = 地图数组[2 + 格子数 + 索引];
+        if (!Number.isInteger(兵力) || 兵力 < 兵力着色最小兵力) continue;
+        if (!Number.isInteger(地形) || 地形 < -1) continue;
+        地块列表.push({ 索引: 索引, 兵力: 兵力 });
+      }
+
+      地块列表.sort(function (左, 右) {
+        if (右.兵力 !== 左.兵力) return 右.兵力 - 左.兵力;
+        return 左.索引 - 右.索引;
+      });
+      return 地块列表.slice(0, 兵力着色最多数量);
+    }
+
+    var 完整地图数组 = 取得完整地图数组(数据包);
+    if (完整地图数组) {
+      状态.地图数组 = 完整地图数组.slice();
+    } else if (Array.isArray(数据包 && 数据包.map_diff) && Array.isArray(状态.地图数组)) {
+      var 新地图数组 = 应用增量(状态.地图数组, 数据包.map_diff);
+      if (Array.isArray(新地图数组) && 新地图数组.length >= 状态.地图数组.length) {
+        状态.地图数组 = 新地图数组;
+      }
+    }
+
+    状态.兵力分布着色列表 = 取得兵力分布着色列表();
+    if (状态.兵力分布着色列表.length) {
+      var 签名 = 状态.兵力分布着色列表.map(function (地块) {
+        return 地块.索引 + ":" + 地块.兵力;
+      }).join("|");
+      if (签名 !== 状态.上次兵力分布着色签名) {
+        状态.上次兵力分布着色签名 = 签名;
+        记日志("兵力分布着色已更新", {
+          来源事件: 来源事件,
+          着色数量: 状态.兵力分布着色列表.length,
+          最高兵力: 状态.兵力分布着色列表[0].兵力,
+          最低兵力: 状态.兵力分布着色列表[状态.兵力分布着色列表.length - 1].兵力
+        });
+      }
+    } else if (状态.上次兵力分布着色签名) {
+      状态.上次兵力分布着色签名 = "";
+      记日志("兵力分布着色已清空", { 来源事件: 来源事件 });
+    }
   }
 
   function 尝试从地图读取尺寸(数据包) {
@@ -516,10 +575,15 @@
     状态.已知塔集合.clear();
     状态.已知塔类型.clear();
     状态.已知敌方基地集合.clear();
+    状态.地图数组 = null;
+    状态.兵力分布着色列表 = [];
+    状态.上次兵力分布着色签名 = "";
     清空移动队列("新局重置");
     状态.当前回合 = Number.isInteger(数据包 && 数据包.turn) ? 数据包.turn : 0;
     状态.我方索引 = Number.isInteger(数据包 && 数据包.playerIndex) ? 数据包.playerIndex : null;
     状态.队伍 = Array.isArray(数据包 && 数据包.teams) ? 数据包.teams.slice() : null;
+    尝试从地图读取尺寸(数据包 || {});
+    更新地图缓存和兵力分布(数据包 || {}, "新局重置");
     更新大回合倒计时();
     清空覆盖层();
     记日志("新局重置", {
@@ -635,6 +699,8 @@
       });
       延后执行("game_update", function () {
         按攻击序号清理移动队列(数据包 && 数据包.attackIndex);
+        尝试从地图读取尺寸(数据包 || {});
+        更新地图缓存和兵力分布(数据包 || {}, "game_update");
         处理塔位置(数据包 || {}, "game_update");
         处理基地位置(数据包 || {}, "game_update");
       });
@@ -1173,7 +1239,7 @@
   function 渲染() {
     状态.已请求渲染 = false;
 
-    if (!状态.已知塔集合.size && !状态.已知敌方基地集合.size && !状态.移动队列.length) {
+    if (!状态.已知塔集合.size && !状态.已知敌方基地集合.size && !状态.移动队列.length && !状态.兵力分布着色列表.length) {
       清空覆盖层();
       return;
     }
@@ -1208,6 +1274,46 @@
     var 格高 = 尺寸.css高 / 状态.高度;
     var 大小 = Math.min(格宽, 格高);
 
+    function 画兵力分布着色() {
+      if (!状态.兵力分布着色列表.length) return;
+
+      var 最高兵力 = 状态.兵力分布着色列表[0].兵力;
+      var 最低兵力 = 状态.兵力分布着色列表[状态.兵力分布着色列表.length - 1].兵力;
+      var 兵力跨度 = Math.max(1, 最高兵力 - 最低兵力);
+      var 内缩 = Math.max(1, 大小 * 0.08);
+
+      ctx.save();
+      状态.兵力分布着色列表.forEach(function (地块) {
+        var 强度 = (地块.兵力 - 最低兵力) / 兵力跨度;
+        var 透明度 = 0.14 + 强度 * 0.24;
+        var 边线透明度 = 0.16 + 强度 * 0.22;
+        var 行 = Math.floor(地块.索引 / 状态.宽度);
+        var 列 = 地块.索引 % 状态.宽度;
+        var x = 列 * 格宽;
+        var y = 行 * 格高;
+
+        ctx.fillStyle = "rgba(255, 190, 72, " + 透明度.toFixed(3) + ")";
+        ctx.fillRect(
+          x + 内缩,
+          y + 内缩,
+          Math.max(1, 格宽 - 内缩 * 2),
+          Math.max(1, 格高 - 内缩 * 2)
+        );
+
+        ctx.lineWidth = Math.max(1, 大小 * 0.035);
+        ctx.strokeStyle = "rgba(255, 230, 150, " + 边线透明度.toFixed(3) + ")";
+        ctx.strokeRect(
+          x + 内缩 + ctx.lineWidth / 2,
+          y + 内缩 + ctx.lineWidth / 2,
+          Math.max(1, 格宽 - 内缩 * 2 - ctx.lineWidth),
+          Math.max(1, 格高 - 内缩 * 2 - ctx.lineWidth)
+        );
+      });
+      ctx.restore();
+    }
+
+    画兵力分布着色();
+
     画操作轨迹(ctx, 格宽, 格高, 大小);
 
     状态.已知塔集合.forEach(function (索引) {
@@ -1226,6 +1332,7 @@
       已知塔数量: 状态.已知塔集合.size,
       敌方塔数量: Array.from(状态.已知塔类型.values()).filter(function (类型) { return 类型 === "敌方塔"; }).length,
       已知敌方基地数量: 状态.已知敌方基地集合.size,
+      兵力分布着色数量: 状态.兵力分布着色列表.length,
       移动队列长度: 状态.移动队列.length,
       地图尺寸: 状态.宽度 + "x" + 状态.高度,
       覆盖层尺寸: Math.round(尺寸.css宽) + "x" + Math.round(尺寸.css高)
@@ -1280,6 +1387,7 @@
           已知塔数量: 状态.已知塔集合.size,
           敌方塔数量: Array.from(状态.已知塔类型.values()).filter(function (类型) { return 类型 === "敌方塔"; }).length,
           已知敌方基地数量: 状态.已知敌方基地集合.size,
+          兵力分布着色数量: 状态.兵力分布着色列表.length,
           我方索引: 状态.我方索引,
           队伍: 状态.队伍,
           颜色规则: {
@@ -1305,6 +1413,16 @@
             行: 状态.宽度 ? Math.floor(基地.索引 / 状态.宽度) : null,
             列: 状态.宽度 ? 基地.索引 % 状态.宽度 : null
           });
+        });
+      },
+      兵力分布着色: function () {
+        return 状态.兵力分布着色列表.map(function (地块) {
+          return {
+            索引: 地块.索引,
+            兵力: 地块.兵力,
+            行: 状态.宽度 ? Math.floor(地块.索引 / 状态.宽度) : null,
+            列: 状态.宽度 ? 地块.索引 % 状态.宽度 : null
+          };
         });
       },
       手动加塔: function (索引) {
