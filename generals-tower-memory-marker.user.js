@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.12
+// @version      0.8.13
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 (() => {
   "use strict";
 
-  const 脚本版本 = "0.8.12";
+  const 脚本版本 = "0.8.13";
   const 覆盖层类名 = "gio-tower-memory-overlay";
   const 样式编号 = "gio-tower-memory-style";
   const 我方蓝色 = "#2792ff";
@@ -833,36 +833,27 @@
       const 可绘制着色列表 = 取得当前有效着色列表();
       if (!可绘制着色列表.length) return;
 
-      const 最高兵力 = 可绘制着色列表[0].兵力;
-      const 最低兵力 = 可绘制着色列表[可绘制着色列表.length - 1].兵力;
-      const 兵力跨度 = Math.max(1, 最高兵力 - 最低兵力);
-      const 内缩 = Math.max(0.5, 大小 * 0.025);
+      const 兵力级别 = Array.from(
+        new Set(可绘制着色列表.map((地块) => 地块.兵力)),
+      ).slice(0, 5);
+      const 级别覆盖比例 = [1, 0.7, 0.4, 0.2, 0.1];
+      const 兵力级别覆盖比例 = new Map(
+        兵力级别.map((兵力, idx) => [兵力, 级别覆盖比例[idx]]),
+      );
 
       ctx.save();
+      ctx.fillStyle = "rgba(0, 54, 220, 0.72)";
       可绘制着色列表.forEach((地块) => {
-        const 相对强度 = (地块.兵力 - 最低兵力) / 兵力跨度;
-        const 绝对强度 = Math.min(
-          1,
-          Math.max(0, (地块.兵力 - 兵力着色最小兵力) / 18),
-        );
-        const 单组强度 = Math.min(1, Math.log2(Math.max(1, 地块.兵力 - 1)) / 5);
-        const 强度 =
-          最高兵力 === 最低兵力
-            ? 单组强度
-            : Math.min(1, 0.12 + 相对强度 * 0.76 + 绝对强度 * 0.12);
-        const 填充透明度 = 0.42 + 强度 * 0.16;
-        const 红 = Math.round(10 - 强度 * 10);
-        const 绿 = Math.round(105 - 强度 * 72);
-        const 蓝 = Math.round(240 - 强度 * 42);
+        const 覆盖比例 = 兵力级别覆盖比例.get(地块.兵力);
+        if (!覆盖比例) return;
         const 行 = Math.floor(地块.索引 / 状态.宽度);
         const 列 = 地块.索引 % 状态.宽度;
         const x = 列 * 格宽;
         const y = 行 * 格高;
-        const 宽 = Math.max(1, 格宽 - 内缩 * 2);
-        const 高 = Math.max(1, 格高 - 内缩 * 2);
+        const 宽 = Math.max(1, 格宽 * 覆盖比例);
+        const 高 = Math.max(1, 格高 * 覆盖比例);
 
-        ctx.fillStyle = `rgba(${红}, ${绿}, ${蓝}, ${填充透明度.toFixed(3)})`;
-        ctx.fillRect(x + 内缩, y + 内缩, 宽, 高);
+        ctx.fillRect(x + (格宽 - 宽) / 2, y + (格高 - 高) / 2, 宽, 高);
       });
       ctx.restore();
 
