@@ -1091,52 +1091,64 @@
     var 距离 = Math.sqrt(dx * dx + dy * dy);
     if (!Number.isFinite(距离) || 距离 < 1) return;
 
-    var 缩进 = Math.max(3, 线宽 * 1.6);
+    var 缩进 = Math.max(4, 线宽 * 2.2);
     var 起x = 起点.x + dx / 距离 * 缩进;
     var 起y = 起点.y + dy / 距离 * 缩进;
     var 终x = 终点.x - dx / 距离 * 缩进;
     var 终y = 终点.y - dy / 距离 * 缩进;
     var 角度 = Math.atan2(终y - 起y, 终x - 起x);
-    var 箭头长 = Math.max(8, 线宽 * 3.4);
-    var 箭头角 = Math.PI / 7;
+    var 箭头长 = Math.max(5, Math.min(10, 线宽 * 3.1));
+    var 箭头角 = Math.PI / 6;
 
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    ctx.lineWidth = 线宽 + Math.max(4, 线宽 * 0.9);
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
-    ctx.setLineDash(半兵 ? [Math.max(6, 线宽 * 1.8), Math.max(4, 线宽 * 1.2)] : []);
+    ctx.globalAlpha = 0.62;
+    ctx.lineWidth = 线宽 + Math.max(1.5, 线宽 * 0.75);
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.72)";
+    ctx.setLineDash(半兵 ? [Math.max(4, 线宽 * 2.2), Math.max(3, 线宽 * 1.4)] : []);
     ctx.beginPath();
     ctx.moveTo(起x, 起y);
     ctx.lineTo(终x, 终y);
     ctx.stroke();
 
+    ctx.globalAlpha = 0.78;
     ctx.lineWidth = 线宽;
-    ctx.strokeStyle = 半兵 ? "#b6f7ff" : "#00eaff";
+    ctx.strokeStyle = 半兵 ? "#d7fbff" : "#25f1ff";
     ctx.beginPath();
     ctx.moveTo(起x, 起y);
     ctx.lineTo(终x, 终y);
     ctx.stroke();
 
     ctx.setLineDash([]);
-    ctx.fillStyle = "#00eaff";
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
-    ctx.lineWidth = Math.max(2, 线宽 * 0.7);
+    ctx.globalAlpha = 0.68;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.76)";
+    ctx.lineWidth = 线宽 + Math.max(1.5, 线宽 * 0.6);
     ctx.beginPath();
     ctx.moveTo(终x, 终y);
     ctx.lineTo(终x - 箭头长 * Math.cos(角度 - 箭头角), 终y - 箭头长 * Math.sin(角度 - 箭头角));
+    ctx.moveTo(终x, 终y);
     ctx.lineTo(终x - 箭头长 * Math.cos(角度 + 箭头角), 终y - 箭头长 * Math.sin(角度 + 箭头角));
-    ctx.closePath();
     ctx.stroke();
-    ctx.fill();
+
+    ctx.globalAlpha = 0.95;
+    ctx.strokeStyle = 半兵 ? "#d7fbff" : "#25f1ff";
+    ctx.lineWidth = 线宽;
+    ctx.beginPath();
+    ctx.moveTo(终x, 终y);
+    ctx.lineTo(终x - 箭头长 * Math.cos(角度 - 箭头角), 终y - 箭头长 * Math.sin(角度 - 箭头角));
+    ctx.moveTo(终x, 终y);
+    ctx.lineTo(终x - 箭头长 * Math.cos(角度 + 箭头角), 终y - 箭头长 * Math.sin(角度 + 箭头角));
+    ctx.stroke();
 
     if (半兵) {
+      ctx.globalAlpha = 0.85;
       ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "rgba(0, 0, 0, 0.9)";
-      ctx.lineWidth = Math.max(1.5, 线宽 * 0.45);
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.72)";
+      ctx.lineWidth = Math.max(1, 线宽 * 0.45);
       ctx.beginPath();
-      ctx.arc((起x + 终x) / 2, (起y + 终y) / 2, Math.max(3, 线宽 * 0.85), 0, Math.PI * 2);
+      ctx.arc((起x + 终x) / 2, (起y + 终y) / 2, Math.max(2, 线宽 * 0.75), 0, Math.PI * 2);
       ctx.stroke();
       ctx.fill();
     }
@@ -1149,39 +1161,36 @@
     var 列 = 索引 % 状态.宽度;
     var x = 列 * 格宽;
     var y = 行 * 格高;
-    var 外线宽 = Math.max(3, 大小 * 0.12);
-    var 内线宽 = Math.max(2, 大小 * 0.055);
-    var 外偏移 = 外线宽 / 2 + 1;
-    var 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2;
-    var 角长 = Math.max(6, 大小 * 0.32);
-    var 角偏移 = Math.max(2, 大小 * 0.09);
+    var 外线宽 = Math.max(2, 大小 * 0.07);
+    var 内线宽 = Math.max(1.2, 大小 * 0.035);
+    var 角长 = Math.max(4, 大小 * 0.2);
+    var 角偏移 = Math.max(4, 大小 * 0.18);
 
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    ctx.globalAlpha = 0.78;
+    ctx.globalAlpha = 0.46;
     ctx.lineWidth = 外线宽;
     ctx.strokeStyle = "rgba(0, 0, 0, 0.95)";
-    ctx.strokeRect(
-      x + 外偏移,
-      y + 外偏移,
-      Math.max(1, 格宽 - 外偏移 * 2),
-      Math.max(1, 格高 - 外偏移 * 2)
-    );
+    ctx.beginPath();
+    ctx.moveTo(x + 角偏移, y + 角偏移 + 角长);
+    ctx.lineTo(x + 角偏移, y + 角偏移);
+    ctx.lineTo(x + 角偏移 + 角长, y + 角偏移);
+    ctx.moveTo(x + 格宽 - 角偏移 - 角长, y + 角偏移);
+    ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移);
+    ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移 + 角长);
+    ctx.moveTo(x + 格宽 - 角偏移, y + 格高 - 角偏移 - 角长);
+    ctx.lineTo(x + 格宽 - 角偏移, y + 格高 - 角偏移);
+    ctx.lineTo(x + 格宽 - 角偏移 - 角长, y + 格高 - 角偏移);
+    ctx.moveTo(x + 角偏移 + 角长, y + 格高 - 角偏移);
+    ctx.lineTo(x + 角偏移, y + 格高 - 角偏移);
+    ctx.lineTo(x + 角偏移, y + 格高 - 角偏移 - 角长);
+    ctx.stroke();
 
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = 0.9;
     ctx.lineWidth = 内线宽;
-    ctx.strokeStyle = "#00eaff";
-    ctx.strokeRect(
-      x + 内偏移,
-      y + 内偏移,
-      Math.max(1, 格宽 - 内偏移 * 2),
-      Math.max(1, 格高 - 内偏移 * 2)
-    );
-
-    ctx.lineWidth = Math.max(2, 大小 * 0.065);
-    ctx.strokeStyle = "#ffffff";
+    ctx.strokeStyle = "#25f1ff";
     ctx.beginPath();
     ctx.moveTo(x + 角偏移, y + 角偏移 + 角长);
     ctx.lineTo(x + 角偏移, y + 角偏移);
@@ -1211,13 +1220,13 @@
     });
     if (!可绘制移动.length) return;
 
-    var 线宽 = Math.max(3, Math.min(7, 大小 * 0.16));
+    var 线宽 = Math.max(1.5, Math.min(3, 大小 * 0.07));
     ctx.save();
-    ctx.globalAlpha = 0.95;
+    ctx.globalAlpha = 0.78;
     可绘制移动.forEach(function (移动, 下标) {
       var 起点 = 取得格子中心(移动.起点, 格宽, 格高);
       var 终点 = 取得格子中心(移动.终点, 格宽, 格高);
-      ctx.globalAlpha = 下标 === 可绘制移动.length - 1 ? 1 : 0.74;
+      ctx.globalAlpha = 下标 === 可绘制移动.length - 1 ? 0.9 : 0.45;
       画箭头线(ctx, 起点, 终点, 线宽, 移动.是否半兵);
     });
     ctx.restore();
