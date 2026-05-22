@@ -17,7 +17,7 @@
   var 覆盖层类名 = "gio-tower-memory-overlay";
   var 样式编号 = "gio-tower-memory-style";
   var 日志前缀 = "[塔记忆]";
-  var 详细日志 = true;
+  var 详细日志 = false;
   var 我方蓝色索引 = 1;
   var 敌方红色索引 = 0;
   var 大回合turn数 = 50;
@@ -49,7 +49,8 @@
     上次无尺寸日志: 0,
     上次无画布日志: 0,
     上次兵力分布着色签名: "",
-    上次操作轨迹渲染签名: ""
+    上次操作轨迹渲染签名: "",
+    上次固定标记渲染签名: ""
   };
 
   function 记日志(事件, 数据) {
@@ -1328,15 +1329,27 @@
       画敌方基地标记(ctx, 列 * 格宽, 行 * 格高, 大小);
     });
 
-    记日志("固定标记已渲染", {
-      已知塔数量: 状态.已知塔集合.size,
-      敌方塔数量: Array.from(状态.已知塔类型.values()).filter(function (类型) { return 类型 === "敌方塔"; }).length,
-      已知敌方基地数量: 状态.已知敌方基地集合.size,
-      兵力分布着色数量: 状态.兵力分布着色列表.length,
-      移动队列长度: 状态.移动队列.length,
-      地图尺寸: 状态.宽度 + "x" + 状态.高度,
-      覆盖层尺寸: Math.round(尺寸.css宽) + "x" + Math.round(尺寸.css高)
-    });
+    var 固定标记渲染签名 = [
+      状态.已知塔集合.size,
+      Array.from(状态.已知塔类型.values()).filter(function (类型) { return 类型 === "敌方塔"; }).length,
+      状态.已知敌方基地集合.size,
+      状态.兵力分布着色列表.length,
+      状态.移动队列.length,
+      状态.宽度 + "x" + 状态.高度,
+      Math.round(尺寸.css宽) + "x" + Math.round(尺寸.css高)
+    ].join("|");
+    if (固定标记渲染签名 !== 状态.上次固定标记渲染签名) {
+      状态.上次固定标记渲染签名 = 固定标记渲染签名;
+      记日志("固定标记已渲染", {
+        已知塔数量: 状态.已知塔集合.size,
+        敌方塔数量: Array.from(状态.已知塔类型.values()).filter(function (类型) { return 类型 === "敌方塔"; }).length,
+        已知敌方基地数量: 状态.已知敌方基地集合.size,
+        兵力分布着色数量: 状态.兵力分布着色列表.length,
+        移动队列长度: 状态.移动队列.length,
+        地图尺寸: 状态.宽度 + "x" + 状态.高度,
+        覆盖层尺寸: Math.round(尺寸.css宽) + "x" + Math.round(尺寸.css高)
+      });
+    }
   }
 
   function 请求渲染() {
