@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.11
+// @version      0.8.12
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 (() => {
   "use strict";
 
-  const 脚本版本 = "0.8.11";
+  const 脚本版本 = "0.8.12";
   const 覆盖层类名 = "gio-tower-memory-overlay";
   const 样式编号 = "gio-tower-memory-style";
   const 我方蓝色 = "#2792ff";
@@ -850,10 +850,10 @@
           最高兵力 === 最低兵力
             ? 单组强度
             : Math.min(1, 0.12 + 相对强度 * 0.76 + 绝对强度 * 0.12);
-        const 填充透明度 = 0.28 + 强度 * 0.26;
-        const 红 = Math.round(170 - 强度 * 130);
-        const 绿 = Math.round(245 - 强度 * 58);
-        const 蓝 = 255;
+        const 填充透明度 = 0.42 + 强度 * 0.16;
+        const 红 = Math.round(10 - 强度 * 10);
+        const 绿 = Math.round(105 - 强度 * 72);
+        const 蓝 = Math.round(240 - 强度 * 42);
         const 行 = Math.floor(地块.索引 / 状态.宽度);
         const 列 = 地块.索引 % 状态.宽度;
         const x = 列 * 格宽;
@@ -1512,7 +1512,8 @@
         手动加塔(塔索引) {
           if (Number.isInteger(塔索引) && 塔索引 >= 0) {
             状态.已知塔集合.add(塔索引);
-            if (!状态.已知塔类型.has(塔索引)) 状态.已知塔类型.set(塔索引, "中立塔");
+            if (!状态.已知塔类型.has(塔索引))
+              状态.已知塔类型.set(塔索引, "中立塔");
             请求渲染();
           }
         },
