@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.20
+// @version      0.8.21
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 (() => {
   "use strict";
 
-  const 脚本版本 = "0.8.20";
+  const 脚本版本 = "0.8.21";
   const 覆盖层类名 = "gio-tower-memory-overlay";
   const 样式编号 = "gio-tower-memory-style";
   const 我方蓝色 = "#2792ff";
@@ -37,6 +37,7 @@
     已知基地集合: new Set(),
     已知敌方基地集合: new Map(),
     地图数组: null,
+    原始兵力文本: new Map(),
     兵力分布着色列表: [],
     兵力分布调试: null,
     移动队列: [],
@@ -52,6 +53,7 @@
     上次兵力分布着色签名: "",
     上次操作轨迹渲染签名: "",
     上次固定标记渲染签名: "",
+    原始兵力文本待渲染: false,
   };
 
   const 安全执行 = (事件, 函数体) => {
@@ -67,6 +69,137 @@
     const 余数 = 回合 % 大回合turn数;
     if (回合 > 0 && 余数 === 0) return 0;
     return 大回合turn数 - 余数;
+  };
+
+  const 安装原始兵力文本捕获 = () => {
+    const 钩子键 = "__gio兵力文本捕获钩子";
+    const 记录器键 = "__gio兵力文本记录器";
+    const 清理器键 = "__gio兵力文本清理器";
+    const 原型 = window.CanvasRenderingContext2D?.prototype;
+    if (!原型) return;
+
+    if (!window[钩子键]) {
+      const 原fillText = 原型.fillText;
+      const 原strokeText = 原型.strokeText;
+      const 原clearRect = 原型.clearRect;
+      原型.fillText = function (文本, x, y, ...参数) {
+        window[记录器键]?.(this, 文本, x, y);
+        return 原fillText.call(this, 文本, x, y, ...参数);
+      };
+      原型.strokeText = function (文本, x, y, ...参数) {
+        window[记录器键]?.(this, 文本, x, y);
+        return 原strokeText.call(this, 文本, x, y, ...参数);
+      };
+      原型.clearRect = function (x, y, 宽, 高) {
+        window[清理器键]?.(this, x, y, 宽, 高);
+        return 原clearRect.call(this, x, y, 宽, 高);
+      };
+      window[钩子键] = true;
+    }
+
+    window[记录器键] = 捕获原始兵力文本;
+    window[清理器键] = 清理原始兵力文本;
+
+    function 捕获原始兵力文本(ctx, 文本, x, y) {
+      const 画布 = ctx?.canvas;
+      if (!画布?.classList?.contains("game-map-canvas")) return;
+      if (!状态.宽度 || !状态.高度) return;
+
+      const 兵力 = 解析兵力文本(文本);
+      if (!Number.isInteger(兵力)) return;
+
+      const 点 = 取得画布坐标(ctx, Number(x), Number(y));
+      if (!点) return;
+
+      const 格宽 = 画布.width / 状态.宽度;
+      const 格高 = 画布.height / 状态.高度;
+      if (
+        !Number.isFinite(格宽) ||
+        !Number.isFinite(格高) ||
+        格宽 <= 0 ||
+        格高 <= 0
+      )
+        return;
+
+      const 列 = Math.floor(点.x / 格宽);
+      const 行 = Math.floor(点.y / 格高);
+      if (行 < 0 || 列 < 0 || 行 >= 状态.高度 || 列 >= 状态.宽度) return;
+
+      状态.原始兵力文本.set(行 * 状态.宽度 + 列, {
+        兵力,
+        文本: String(兵力),
+        画布,
+        画布宽: 画布.width,
+        画布高: 画布.height,
+        时间: performance.now(),
+      });
+      请求原始兵力文本重绘();
+    }
+
+    function 清理原始兵力文本(ctx, x, y, 宽, 高) {
+      const 画布 = ctx?.canvas;
+      if (!画布?.classList?.contains("game-map-canvas")) return;
+      if (!状态.宽度 || !状态.高度) {
+        状态.原始兵力文本.clear();
+        return;
+      }
+
+      const 起点 = 取得画布坐标(ctx, Number(x), Number(y));
+      const 终点 = 取得画布坐标(
+        ctx,
+        Number(x) + Number(宽),
+        Number(y) + Number(高),
+      );
+      if (!起点 || !终点) return;
+
+      const 左 = Math.min(起点.x, 终点.x);
+      const 右 = Math.max(起点.x, 终点.x);
+      const 上 = Math.min(起点.y, 终点.y);
+      const 下 = Math.max(起点.y, 终点.y);
+      if (左 <= 1 && 上 <= 1 && 右 >= 画布.width - 1 && 下 >= 画布.height - 1) {
+        状态.原始兵力文本.clear();
+        请求原始兵力文本重绘();
+        return;
+      }
+
+      const 格宽 = 画布.width / 状态.宽度;
+      const 格高 = 画布.height / 状态.高度;
+      for (const [索引] of 状态.原始兵力文本) {
+        const 行 = Math.floor(索引 / 状态.宽度);
+        const 列 = 索引 % 状态.宽度;
+        const 中心x = 列 * 格宽 + 格宽 / 2;
+        const 中心y = 行 * 格高 + 格高 / 2;
+        if (中心x >= 左 && 中心x <= 右 && 中心y >= 上 && 中心y <= 下) {
+          状态.原始兵力文本.delete(索引);
+        }
+      }
+      请求原始兵力文本重绘();
+    }
+
+    function 解析兵力文本(文本) {
+      const 内容 = String(文本 ?? "").trim();
+      if (!/^\d+$/.test(内容)) return null;
+      return Number(内容);
+    }
+
+    function 取得画布坐标(ctx, x, y) {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+      const 变换 = ctx.getTransform?.();
+      if (!变换) return { x, y };
+      return {
+        x: x * 变换.a + y * 变换.c + 变换.e,
+        y: x * 变换.b + y * 变换.d + 变换.f,
+      };
+    }
+
+    function 请求原始兵力文本重绘() {
+      if (状态.原始兵力文本待渲染) return;
+      状态.原始兵力文本待渲染 = true;
+      requestAnimationFrame(() => {
+        状态.原始兵力文本待渲染 = false;
+        安全执行("原始兵力文本重绘", 请求渲染);
+      });
+    }
   };
 
   const 挂钩socket = (socket) => {
@@ -284,6 +417,7 @@
       状态.已知基地集合.clear();
       状态.已知敌方基地集合.clear();
       状态.地图数组 = null;
+      状态.原始兵力文本.clear();
       状态.兵力分布着色列表 = [];
       状态.兵力分布调试 = null;
       状态.上次兵力分布着色签名 = "";
@@ -835,9 +969,11 @@
       const 可绘制着色列表 = 取得当前有效着色列表();
       if (!可绘制着色列表.length) return;
 
+      const 同步着色列表 = 取得同步着色列表(可绘制着色列表);
       const 兵力级别 = Array.from(
-        new Set(可绘制着色列表.map((地块) => 地块.兵力)),
+        new Set(同步着色列表.map((地块) => 地块.兵力)),
       ).slice(0, 5);
+      if (!兵力级别.length) return;
       const 级别覆盖比例 = [1, 0.7, 0.4, 0.2, 0.1];
       const 兵力级别覆盖比例 = new Map(
         兵力级别.map((兵力, idx) => [兵力, 级别覆盖比例[idx]]),
@@ -854,7 +990,7 @@
       );
 
       ctx.save();
-      可绘制着色列表.forEach((地块) => {
+      同步着色列表.forEach((地块) => {
         const 覆盖比例 = 兵力级别覆盖比例.get(地块.兵力);
         if (!覆盖比例) return;
         ctx.fillStyle = 兵力级别背景色.get(地块.兵力);
@@ -871,10 +1007,7 @@
       ctx.restore();
 
       function 画同步兵力数字() {
-        if (状态.移动队列.length) return;
-        if (!Array.isArray(状态.地图数组)) return;
-        const 格子数 = 状态.宽度 * 状态.高度;
-        if (状态.地图数组.length < 2 + 格子数 * 2) return;
+        if (!状态.原始兵力文本.size) return;
 
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -883,19 +1016,39 @@
         ctx.lineWidth = Math.max(2, 大小 * 0.08);
         ctx.strokeStyle = "rgba(0, 0, 0, 0.82)";
         ctx.fillStyle = "#fff7d1";
-        可绘制着色列表.forEach((地块) => {
+        同步着色列表.forEach((地块) => {
           if (!兵力级别覆盖比例.has(地块.兵力)) return;
-          const 当前兵力 = 状态.地图数组[2 + 地块.索引];
-          if (!Number.isInteger(当前兵力) || 当前兵力 !== 地块.兵力) return;
+          const 原始文本 = 状态.原始兵力文本.get(地块.索引);
+          if (!原始文本 || 原始文本.兵力 !== 地块.兵力) return;
           const 行 = Math.floor(地块.索引 / 状态.宽度);
           const 列 = 地块.索引 % 状态.宽度;
           const x = 列 * 格宽 + 格宽 / 2;
           const y = 行 * 格高 + 格高 / 2;
-          const 文本 = String(当前兵力);
+          const 文本 = 原始文本.文本;
 
           ctx.strokeText(文本, x, y);
           ctx.fillText(文本, x, y);
         });
+      }
+
+      function 取得同步着色列表(列表) {
+        if (!状态.原始兵力文本.size) return 列表;
+
+        const 同步列表 = [];
+        for (const 地块 of 列表) {
+          const 原始文本 = 状态.原始兵力文本.get(地块.索引);
+          if (原始文本) {
+            if (原始文本.兵力 < 兵力着色最小兵力) continue;
+            同步列表.push({ ...地块, 兵力: 原始文本.兵力 });
+          } else {
+            同步列表.push(地块);
+          }
+        }
+        同步列表.sort((左, 右) => {
+          if (右.兵力 !== 左.兵力) return 右.兵力 - 左.兵力;
+          return 左.索引 - 右.索引;
+        });
+        return 同步列表;
       }
 
       function 取得当前有效着色列表() {
@@ -1584,6 +1737,7 @@
           状态.已知塔类型.clear();
           状态.已知基地集合.clear();
           状态.已知敌方基地集合.clear();
+          状态.原始兵力文本.clear();
           状态.塔列表 = null;
           清空覆盖层();
         },
@@ -1594,4 +1748,5 @@
   };
 
   安全执行("启动", 启动);
+  安全执行("原始兵力文本捕获", 安装原始兵力文本捕获);
 })();
