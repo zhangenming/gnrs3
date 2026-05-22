@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.18
+// @version      0.8.20
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 (() => {
   "use strict";
 
-  const 脚本版本 = "0.8.18";
+  const 脚本版本 = "0.8.20";
   const 覆盖层类名 = "gio-tower-memory-overlay";
   const 样式编号 = "gio-tower-memory-style";
   const 我方蓝色 = "#2792ff";
@@ -867,7 +867,36 @@
 
         ctx.fillRect(x + (格宽 - 宽) / 2, y + (格高 - 高) / 2, 宽, 高);
       });
+      画同步兵力数字();
       ctx.restore();
+
+      function 画同步兵力数字() {
+        if (状态.移动队列.length) return;
+        if (!Array.isArray(状态.地图数组)) return;
+        const 格子数 = 状态.宽度 * 状态.高度;
+        if (状态.地图数组.length < 2 + 格子数 * 2) return;
+
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `700 ${Math.max(12, Math.min(22, 大小 * 0.52))}px Arial, sans-serif`;
+        ctx.lineJoin = "round";
+        ctx.lineWidth = Math.max(2, 大小 * 0.08);
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.82)";
+        ctx.fillStyle = "#fff7d1";
+        可绘制着色列表.forEach((地块) => {
+          if (!兵力级别覆盖比例.has(地块.兵力)) return;
+          const 当前兵力 = 状态.地图数组[2 + 地块.索引];
+          if (!Number.isInteger(当前兵力) || 当前兵力 !== 地块.兵力) return;
+          const 行 = Math.floor(地块.索引 / 状态.宽度);
+          const 列 = 地块.索引 % 状态.宽度;
+          const x = 列 * 格宽 + 格宽 / 2;
+          const y = 行 * 格高 + 格高 / 2;
+          const 文本 = String(当前兵力);
+
+          ctx.strokeText(文本, x, y);
+          ctx.fillText(文本, x, y);
+        });
+      }
 
       function 取得当前有效着色列表() {
         const 原列表 = 状态.兵力分布着色列表;
