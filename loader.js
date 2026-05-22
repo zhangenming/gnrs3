@@ -12,8 +12,3 @@
 // @run-at       document-start
 // ==/UserScript==
 
-(function () {
-  "use strict";
-
-  console.log("[塔记忆加载器] 已运行，若没有看到 [塔记忆] 日志，说明 @require 的本地脚本没有成功加载。");
-})();
