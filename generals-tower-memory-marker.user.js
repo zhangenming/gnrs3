@@ -365,7 +365,7 @@
         const 基地集合 = new Set(
           Array.isArray(数据包 && 数据包.generals)
             ? 数据包.generals.filter(
-                (索引) => Number.isInteger(索引) && 索引 >= 0,
+                (基地索引) => Number.isInteger(基地索引) && 基地索引 >= 0,
               )
             : [],
         )
@@ -380,23 +380,23 @@
           if (Number.isInteger(移动.终点) && 移动.终点 >= 0)
             路径集合.add(移动.终点)
         })
-        for (let 索引 = 0; 索引 < 格子数; 索引 += 1) {
-          const 兵力 = 地图数组[2 + 索引]
-          const 地形 = 地图数组[2 + 格子数 + 索引]
+        for (let i = 0; i < 格子数; i += 1) {
+          const 兵力 = 地图数组[2 + i]
+          const 地形 = 地图数组[2 + 格子数 + i]
           if (!Number.isInteger(地形) || !是我方或队友(地形)) continue
           可调用地块数量 += 1
           if (!Number.isInteger(兵力) || 兵力 < 兵力着色最小兵力) continue
-          if (当前塔集合.has(索引) || 基地集合.has(索引)) {
+          if (当前塔集合.has(i) || 基地集合.has(i)) {
             被排除塔和基地数量 += 1
             continue
           }
-          if (路径集合.has(索引)) {
+          if (路径集合.has(i)) {
             被排除路径数量 += 1
             continue
           }
           达标地块数量 += 1
           if (兵力 > 最高兵力) 最高兵力 = 兵力
-          地块列表.push({ 索引, 兵力, 归属: 地形 })
+          地块列表.push({ 索引: i, 兵力, 归属: 地形 })
         }
 
         地块列表.sort((左, 右) => {
@@ -457,14 +457,14 @@
           return 结果
         }
 
-        function 取得相邻索引(索引) {
+        function 取得相邻索引(格子索引) {
           const 相邻索引列表 = []
-          const 列 = 索引 % 状态.宽度
-          if (索引 >= 状态.宽度) 相邻索引列表.push(索引 - 状态.宽度)
-          if (索引 < 状态.宽度 * 状态.高度 - 状态.宽度)
-            相邻索引列表.push(索引 + 状态.宽度)
-          if (列 > 0) 相邻索引列表.push(索引 - 1)
-          if (列 < 状态.宽度 - 1) 相邻索引列表.push(索引 + 1)
+          const 列 = 格子索引 % 状态.宽度
+          if (格子索引 >= 状态.宽度) 相邻索引列表.push(格子索引 - 状态.宽度)
+          if (格子索引 < 状态.宽度 * 状态.高度 - 状态.宽度)
+            相邻索引列表.push(格子索引 + 状态.宽度)
+          if (列 > 0) 相邻索引列表.push(格子索引 - 1)
+          if (列 < 状态.宽度 - 1) 相邻索引列表.push(格子索引 + 1)
           return 相邻索引列表
         }
       }
@@ -590,22 +590,22 @@
       )
     }
 
-    function 读取可见地块归属(数据包, 索引) {
+    function 读取可见地块归属(数据包, 格子索引) {
       const 地图数组 = 取得完整地图数组(数据包)
-      if (地图数组 && Number.isInteger(索引)) {
+      if (地图数组 && Number.isInteger(格子索引)) {
         const 宽度 = 地图数组[0]
         const 高度 = 地图数组[1]
         const 格子数 = 宽度 * 高度
-        if (索引 >= 0 && 索引 < 格子数) {
-          const 地块值 = 地图数组[2 + 格子数 + 索引]
+        if (格子索引 >= 0 && 格子索引 < 格子数) {
+          const 地块值 = 地图数组[2 + 格子数 + 格子索引]
           return Number.isInteger(地块值) ? 地块值 : null
         }
       }
 
       if (!Array.isArray(数据包 && 数据包.map_diff)) return null
-      if (!状态.宽度 || !状态.高度 || !Number.isInteger(索引)) return null
+      if (!状态.宽度 || !状态.高度 || !Number.isInteger(格子索引)) return null
 
-      const 目标位置 = 2 + 状态.宽度 * 状态.高度 + 索引
+      const 目标位置 = 2 + 状态.宽度 * 状态.高度 + 格子索引
       let 输出位置 = 0
       for (let i = 0; i < 数据包.map_diff.length; ) {
         const 保留数量 = 数据包.map_diff[i] || 0
@@ -724,35 +724,35 @@
 
     function 取得排行榜标识元素() {
       if (!document.body) return null
-      const 表格列表 = document.body.querySelectorAll(
+      const tables = document.body.querySelectorAll(
         'table, .leaderboard, #leaderboard',
       )
 
-      for (const 表格 of 表格列表) {
-        const 文本 = (表格.textContent || '').trim()
+      for (const table of tables) {
+        const text = (table.textContent || '').trim()
         if (
-          文本.indexOf('Player') < 0 &&
-          文本.indexOf('Army') < 0 &&
-          文本.indexOf('Land') < 0
+          text.indexOf('Player') < 0 &&
+          text.indexOf('Army') < 0 &&
+          text.indexOf('Land') < 0
         )
           continue
 
-        const 行列表 = 表格.querySelectorAll('tr')
-        for (const 行 of 行列表) {
-          const 单元格列表 = Array.from(行.children).filter((单元格) => {
-            const 标签 = 单元格.tagName?.toLowerCase() || ''
-            return 标签 === 'td' || 标签 === 'th'
+        const rows = table.querySelectorAll('tr')
+        for (const row of rows) {
+          const cells = Array.from(row.children).filter((cell) => {
+            const tag = cell.tagName?.toLowerCase() || ''
+            return tag === 'td' || tag === 'th'
           })
-          if (单元格列表.length >= 2) {
-            const 第一格文本 = (单元格列表[0].textContent || '').trim()
-            const 第二格文本 = (单元格列表[1].textContent || '').trim()
+          if (cells.length >= 2) {
+            const 第一格文本 = (cells[0].textContent || '').trim()
+            const 第二格文本 = (cells[1].textContent || '').trim()
             if (
               第一格文本 === '★' ||
               第一格文本 === '*' ||
               第二格文本 === 'Player' ||
-              单元格列表[0].querySelector('.star, .icon, svg')
+              cells[0].querySelector('.star, .icon, svg')
             ) {
-              return 单元格列表[0]
+              return cells[0]
             }
           }
         }
@@ -809,15 +809,15 @@
 
     画操作轨迹(ctx, 格宽, 格高, 大小)
 
-    状态.已知塔集合.forEach((索引) => {
-      const 行 = Math.floor(索引 / 状态.宽度)
-      const 列 = 索引 % 状态.宽度
-      画塔标记(ctx, 列 * 格宽, 行 * 格高, 大小, 状态.已知塔类型.get(索引))
+    状态.已知塔集合.forEach((塔索引) => {
+      const 行 = Math.floor(塔索引 / 状态.宽度)
+      const 列 = 塔索引 % 状态.宽度
+      画塔标记(ctx, 列 * 格宽, 行 * 格高, 大小, 状态.已知塔类型.get(塔索引))
     })
 
-    状态.已知敌方基地集合.forEach((基地, 索引) => {
-      const 行 = Math.floor(索引 / 状态.宽度)
-      const 列 = 索引 % 状态.宽度
+    状态.已知敌方基地集合.forEach((基地, 基地索引) => {
+      const 行 = Math.floor(基地索引 / 状态.宽度)
+      const 列 = 基地索引 % 状态.宽度
       画敌方基地标记(ctx, 列 * 格宽, 行 * 格高, 大小)
     })
 
@@ -829,9 +829,7 @@
       状态.已知敌方基地集合.size,
       状态.兵力分布着色列表.length,
       状态.移动队列.length,
-      状态.移动队列
-        .map((移动) => `${移动.起点}>${移动.终点}`)
-        .join(','),
+      状态.移动队列.map((移动) => `${移动.起点}>${移动.终点}`).join(','),
       `${状态.宽度}x${状态.高度}`,
       `${Math.round(尺寸.css宽)}x${Math.round(尺寸.css高)}`,
     ].join('|')
@@ -1164,14 +1162,12 @@
 }
 .${大回合倒计时类名} .gio-big-turn-main {
     display: inline-block;
-    color: #ffffff;
     font: 800 18px/1 Arial, sans-serif;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
 }
 .${大回合倒计时类名} .gio-big-turn-index {
     display: inline-block;
     margin-left: 2px;
-    color: rgba(255, 255, 255, 0.82);
     font: 700 10px/1 Arial, sans-serif;
     vertical-align: baseline;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
@@ -1195,7 +1191,11 @@
 .blue, .selected-blue, .leaderboard .blue, #leaderboard .blue {
     background-color: #2792ff !important;
     fill: #2792ff !important;
-}`.trim()
+}
+#turn-counter{
+      display: none !important;
+}    
+`.trim()
       document.documentElement.appendChild(样式)
     }
 
@@ -1217,9 +1217,9 @@
       return 候选宿主
     }
 
-    function 取得格子中心(索引, 格宽, 格高) {
-      const 行 = Math.floor(索引 / 状态.宽度)
-      const 列 = 索引 % 状态.宽度
+    function 取得格子中心(格子索引, 格宽, 格高) {
+      const 行 = Math.floor(格子索引 / 状态.宽度)
+      const 列 = 格子索引 % 状态.宽度
       return {
         x: 列 * 格宽 + 格宽 / 2,
         y: 行 * 格高 + 格高 / 2,
@@ -1319,9 +1319,9 @@
       ctx.restore()
     }
 
-    function 画当前移动位置(ctx, 索引, 格宽, 格高, 大小) {
-      const 行 = Math.floor(索引 / 状态.宽度)
-      const 列 = 索引 % 状态.宽度
+    function 画当前移动位置(ctx, 格子索引, 格宽, 格高, 大小) {
+      const 行 = Math.floor(格子索引 / 状态.宽度)
+      const 列 = 格子索引 % 状态.宽度
       const x = 列 * 格宽
       const y = 行 * 格高
       const 外线宽 = Math.max(2, 大小 * 0.07)
@@ -1450,12 +1450,12 @@
           }
         },
         已知塔() {
-          return Array.from(状态.已知塔集合).map((索引) => {
+          return Array.from(状态.已知塔集合).map((塔索引) => {
             return {
-              索引,
-              类型: 状态.已知塔类型.get(索引) || '塔',
-              行: 状态.宽度 ? Math.floor(索引 / 状态.宽度) : null,
-              列: 状态.宽度 ? 索引 % 状态.宽度 : null,
+              索引: 塔索引,
+              类型: 状态.已知塔类型.get(塔索引) || '塔',
+              行: 状态.宽度 ? Math.floor(塔索引 / 状态.宽度) : null,
+              列: 状态.宽度 ? 塔索引 % 状态.宽度 : null,
             }
           })
         },
@@ -1482,24 +1482,24 @@
         兵力分布调试() {
           return 状态.兵力分布调试
         },
-        手动加塔(索引) {
-          if (Number.isInteger(索引) && 索引 >= 0) {
-            状态.已知塔集合.add(索引)
-            if (!状态.已知塔类型.has(索引)) 状态.已知塔类型.set(索引, '塔')
+        手动加塔(塔索引) {
+          if (Number.isInteger(塔索引) && 塔索引 >= 0) {
+            状态.已知塔集合.add(塔索引)
+            if (!状态.已知塔类型.has(塔索引)) 状态.已知塔类型.set(塔索引, '塔')
             请求渲染()
           }
         },
-        手动设敌方塔(索引) {
-          if (Number.isInteger(索引) && 索引 >= 0) {
-            状态.已知塔集合.add(索引)
-            状态.已知塔类型.set(索引, '敌方塔')
+        手动设敌方塔(塔索引) {
+          if (Number.isInteger(塔索引) && 塔索引 >= 0) {
+            状态.已知塔集合.add(塔索引)
+            状态.已知塔类型.set(塔索引, '敌方塔')
             请求渲染()
           }
         },
-        手动加敌方基地(索引, 玩家索引) {
-          if (Number.isInteger(索引) && 索引 >= 0) {
-            状态.已知敌方基地集合.set(索引, {
-              索引,
+        手动加敌方基地(基地索引, 玩家索引) {
+          if (Number.isInteger(基地索引) && 基地索引 >= 0) {
+            状态.已知敌方基地集合.set(基地索引, {
+              索引: 基地索引,
               玩家索引: Number.isInteger(玩家索引) ? 玩家索引 : null,
               首次回合: null,
             })
