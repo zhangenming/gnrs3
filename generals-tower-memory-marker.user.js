@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.4
+// @version      0.8.5
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 ;(() => {
   'use strict'
 
-  const 脚本版本 = '0.8.4'
+  const 脚本版本 = '0.8.5'
   const 覆盖层类名 = 'gio-tower-memory-overlay'
   const 样式编号 = 'gio-tower-memory-style'
   const 我方蓝色索引 = 1
@@ -242,11 +242,13 @@
       }
       状态.移动队列.push(移动)
       if (状态.移动队列.length > 200) 状态.移动队列.shift()
+      重算兵力分布着色('记录移动操作')
       请求渲染()
     }
 
     function 撤销移动操作() {
-      const 移动 = 状态.移动队列.pop()
+      状态.移动队列.pop()
+      重算兵力分布着色('撤销移动操作')
       请求渲染()
     }
 
@@ -261,6 +263,7 @@
 
       if (状态.移动队列.length !== 原长度) {
         状态.上次操作轨迹渲染签名 = ''
+        重算兵力分布着色('按攻击序号清理移动队列')
         请求渲染()
       }
     }
@@ -349,6 +352,7 @@
         let 可调用地块数量 = 0
         let 达标地块数量 = 0
         let 被排除塔和基地数量 = 0
+        let 被排除路径数量 = 0
         let 超限同兵力跳过数量 = 0
         let 最高兵力 = 0
         const 当前塔信息 = 取得本次塔列表(数据包)
@@ -369,6 +373,13 @@
           if (Number.isInteger(基地索引) && 基地索引 >= 0)
             基地集合.add(基地索引)
         })
+        const 路径集合 = new Set()
+        状态.移动队列.forEach((移动) => {
+          if (Number.isInteger(移动.起点) && 移动.起点 >= 0)
+            路径集合.add(移动.起点)
+          if (Number.isInteger(移动.终点) && 移动.终点 >= 0)
+            路径集合.add(移动.终点)
+        })
         for (let 索引 = 0; 索引 < 格子数; 索引 += 1) {
           const 兵力 = 地图数组[2 + 索引]
           const 地形 = 地图数组[2 + 格子数 + 索引]
@@ -377,6 +388,10 @@
           if (!Number.isInteger(兵力) || 兵力 < 兵力着色最小兵力) continue
           if (当前塔集合.has(索引) || 基地集合.has(索引)) {
             被排除塔和基地数量 += 1
+            continue
+          }
+          if (路径集合.has(索引)) {
+            被排除路径数量 += 1
             continue
           }
           达标地块数量 += 1
@@ -396,6 +411,7 @@
           可调用地块数量,
           达标地块数量,
           被排除塔和基地数量,
+          被排除路径数量,
           超限同兵力跳过数量,
           着色数量: 着色列表.length,
           最高兵力,
@@ -516,6 +532,7 @@
       const 原长度 = 状态.移动队列.length
       状态.移动队列 = []
       状态.上次操作轨迹渲染签名 = ''
+      if (原长度) 重算兵力分布着色(`清空移动队列:${来源 || '未知'}`)
       请求渲染()
     }
 
@@ -711,6 +728,11 @@
 
       return null
     }
+
+    function 重算兵力分布着色(来源事件) {
+      if (!Array.isArray(状态.地图数组)) return
+      更新地图缓存和兵力分布({ map: 状态.地图数组 }, 来源事件)
+    }
   }
 
   function 清空覆盖层() {
@@ -775,6 +797,9 @@
       状态.已知敌方基地集合.size,
       状态.兵力分布着色列表.length,
       状态.移动队列.length,
+      状态.移动队列
+        .map((移动) => `${移动.起点}>${移动.终点}`)
+        .join(','),
       `${状态.宽度}x${状态.高度}`,
       `${Math.round(尺寸.css宽)}x${Math.round(尺寸.css高)}`,
     ].join('|')
@@ -800,11 +825,11 @@
           Math.max(0, (地块.兵力 - 兵力着色最小兵力) / 22),
         )
         const 强度 = Math.max(相对强度, 绝对强度)
-        const 透明度 = 0.62 + 强度 * 0.33
-        const 边线透明度 = 0.7 + 强度 * 0.3
-        const 红 = Math.round(255 - 强度 * 12)
-        const 绿 = Math.round(210 - 强度 * 108)
-        const 蓝 = Math.round(48 - 强度 * 44)
+        const 透明度 = 0.42 + 强度 * 0.28
+        const 边线透明度 = 0.62 + 强度 * 0.26
+        const 红 = Math.round(108 - 强度 * 58)
+        const 绿 = Math.round(205 - 强度 * 90)
+        const 蓝 = Math.round(255 - 强度 * 32)
         const 行 = Math.floor(地块.索引 / 状态.宽度)
         const 列 = 地块.索引 % 状态.宽度
         const x = 列 * 格宽
@@ -815,8 +840,8 @@
         ctx.fillStyle = `rgba(${红}, ${绿}, ${蓝}, ${透明度.toFixed(3)})`
         ctx.fillRect(x + 内缩, y + 内缩, 宽, 高)
 
-        ctx.lineWidth = Math.max(2, 大小 * 0.07)
-        ctx.strokeStyle = `rgba(255, 255, 190, ${边线透明度.toFixed(3)})`
+        ctx.lineWidth = Math.max(1.5, 大小 * 0.055)
+        ctx.strokeStyle = `rgba(205, 244, 255, ${边线透明度.toFixed(3)})`
         ctx.strokeRect(
           x + 内缩 + ctx.lineWidth / 2,
           y + 内缩 + ctx.lineWidth / 2,
@@ -827,8 +852,8 @@
         if (地块.兵力 >= 高兵力阈值) {
           const 角长 = Math.max(5, 大小 * 0.24)
           const 角偏移 = 内缩 + Math.max(2, 大小 * 0.08)
-          ctx.lineWidth = Math.max(2.5, 大小 * 0.08)
-          ctx.strokeStyle = `rgba(255, 255, 255, ${(0.76 + 强度 * 0.24).toFixed(3)})`
+          ctx.lineWidth = Math.max(2, 大小 * 0.065)
+          ctx.strokeStyle = `rgba(235, 252, 255, ${(0.72 + 强度 * 0.2).toFixed(3)})`
           ctx.beginPath()
           ctx.moveTo(x + 角偏移, y + 角偏移 + 角长)
           ctx.lineTo(x + 角偏移, y + 角偏移)
