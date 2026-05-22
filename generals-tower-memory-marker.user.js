@@ -765,8 +765,8 @@
     }
     if (!目标元素) return;
 
-    目标元素.textContent = 文本;
-    目标元素.title = "距离所有兵力+1的大回合";
+    if (目标元素.textContent !== 文本) 目标元素.textContent = 文本;
+    if (目标元素.title !== "距离所有兵力+1的大回合") 目标元素.title = "距离所有兵力+1的大回合";
     状态.上次大回合倒计时文本 = 文本;
   }
 
@@ -850,9 +850,6 @@
       "  pointer-events: none;",
       "  z-index: 28;",
       "}",
-      ".gio-tower-memory-host {",
-      "  position: relative !important;",
-      "}",
       "#" + 大回合倒计时元素编号 + " {",
       "  position: fixed;",
       "  left: 8px;",
@@ -898,7 +895,11 @@
 
   function 取宿主(画布) {
     if (!画布) return null;
-    return 画布.parentElement || 画布.closest(".relative") || 画布.closest(".game-page");
+    var 候选宿主 = 画布.parentElement || 画布.closest(".relative") || 画布.closest(".game-page");
+    if (!候选宿主) return null;
+    var 样式 = window.getComputedStyle ? window.getComputedStyle(候选宿主) : null;
+    if (样式 && 样式.position === "static") return document.body || 候选宿主;
+    return 候选宿主;
   }
 
   function 确保覆盖层() {
@@ -915,7 +916,6 @@
 
     var 宿主 = 取宿主(画布);
     if (!宿主) return null;
-    宿主.classList.add("gio-tower-memory-host");
 
     var 覆盖层 = 宿主.querySelector("." + 覆盖层类名);
     if (!覆盖层) {
@@ -1478,7 +1478,6 @@
   function 启动() {
     记日志("脚本启动", { 版本: "0.8.0", 页面: location.href });
     暴露调试接口();
-    安装socket访问器();
     轮询socket();
     安装页面观察器();
   }
