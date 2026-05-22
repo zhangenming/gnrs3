@@ -17,8 +17,6 @@
   const 脚本版本 = "0.8.2";
   const 覆盖层类名 = "gio-tower-memory-overlay";
   const 样式编号 = "gio-tower-memory-style";
-  const 日志前缀 = "[塔记忆]";
-  let 详细日志 = false;
   const 我方蓝色索引 = 1;
   const 敌方红色索引 = 0;
   const 大回合turn数 = 50;
@@ -45,37 +43,16 @@
     已请求渲染: false,
     socket已挂钩: false,
     页面观察器: null,
-    最近日志: [],
     已处理颜色数据包: new WeakSet(),
-    上次无尺寸日志: 0,
-    上次无画布日志: 0,
     上次兵力分布着色签名: "",
     上次操作轨迹渲染签名: "",
     上次固定标记渲染签名: ""
   };
 
-  function 记日志(事件, 数据) {
-    const 条目 = { 时间: new Date().toISOString(), 事件, 数据: 数据 ?? null };
-    状态.最近日志.push(条目);
-    if (状态.最近日志.length > 300) 状态.最近日志.shift();
-    if (详细日志) {
-      if (数据 === undefined) console.log(日志前缀, 事件);
-      else console.log(日志前缀, 事件, 数据);
-    }
-  }
-
-  function 记错误(事件, 错误) {
-    const 文本 = 错误?.stack || String(错误);
-    状态.最近日志.push({ 时间: new Date().toISOString(), 事件: `${事件}失败`, 数据: 文本 });
-    if (状态.最近日志.length > 300) 状态.最近日志.shift();
-    console.error(日志前缀, `${事件}失败`, 错误);
-  }
-
   function 安全执行(事件, 函数体) {
     try {
       return 函数体();
-    } catch (错误) {
-      记错误(事件, 错误);
+    } catch (_错误) {
       return null;
     }
   }
@@ -167,16 +144,9 @@
       }).join("|");
       if (签名 !== 状态.上次兵力分布着色签名) {
         状态.上次兵力分布着色签名 = 签名;
-        记日志("兵力分布着色已更新", {
-          来源事件,
-          着色数量: 状态.兵力分布着色列表.length,
-          最高兵力: 状态.兵力分布着色列表[0].兵力,
-          最低兵力: 状态.兵力分布着色列表[状态.兵力分布着色列表.length - 1].兵力
-        });
       }
     } else if (状态.上次兵力分布着色签名) {
       状态.上次兵力分布着色签名 = "";
-      记日志("兵力分布着色已清空", { 来源事件 });
     }
   }
 
@@ -188,11 +158,6 @@
 
     状态.宽度 = 地图数组[0];
     状态.高度 = 地图数组[1];
-    记日志("已读取地图尺寸", {
-      来源: Array.isArray(数据包 && 数据包.map) ? "map" : "首个map_diff",
-      宽度: 状态.宽度,
-      高度: 状态.高度
-    });
   }
 
   function 取得本次塔列表(数据包) {
@@ -209,11 +174,6 @@
         return { 来源: "首个cities_diff", 塔列表: 应用增量([], 数据包.cities_diff) };
       }
 
-      记日志("收到塔增量但还没有塔基准，等待首包", {
-        回合: 数据包 && 数据包.turn,
-        cities_diff: 数据包.cities_diff.slice(0, 20),
-        增量长度: 数据包.cities_diff.length
-      });
     }
 
     return null;
@@ -257,11 +217,6 @@
     状态.当前回合 = 数据包.turn;
     更新大回合倒计时();
     if (原回合 !== 状态.当前回合) {
-      记日志("大回合倒计时更新", {
-        来源事件,
-        回合: 状态.当前回合,
-        倒计时: 取得大回合倒计时(状态.当前回合)
-      });
     }
   }
 
@@ -317,12 +272,6 @@
     const 旧类型 = 状态.已知塔类型.get(塔索引);
     if (旧类型 !== 新类型) {
       状态.已知塔类型.set(塔索引, 新类型);
-      记日志("塔类型更新", {
-        索引: 塔索引,
-        旧类型,
-        新类型,
-        地块归属
-      });
     }
   }
 
@@ -336,20 +285,10 @@
     读取玩家信息(数据包);
 
     if (!Array.isArray(数据包.playerColors)) {
-      记日志("颜色重构跳过: 缺少playerColors", {
-        来源事件,
-        回合: 数据包.turn,
-        数据键: Object.keys(数据包)
-      });
       return;
     }
 
     if (!Number.isInteger(状态.我方索引)) {
-      记日志("颜色重构跳过: 缺少我方索引", {
-        来源事件,
-        回合: 数据包.turn,
-        playerColors: 数据包.playerColors.slice()
-      });
       return;
     }
 
@@ -362,15 +301,6 @@
       }
     }
 
-    记日志("已重构玩家颜色", {
-      来源事件,
-      回合: 数据包.turn,
-      我方索引: 状态.我方索引,
-      队伍: 状态.队伍,
-      原颜色,
-      新颜色: 数据包.playerColors.slice(),
-      规则: "我方/队友=lightblue(1, --map-color-p2 #2792ff), 敌方=red(0)"
-    });
   }
 
   function 预处理入站事件(事件名, 数据包) {
@@ -384,14 +314,6 @@
     尝试从地图读取尺寸(数据包);
 
     const 塔信息 = 取得本次塔列表(数据包);
-    记日志("处理塔位置", {
-      来源事件,
-      回合: 数据包 && 数据包.turn,
-      塔来源: 塔信息 && 塔信息.来源,
-      当前塔列表长度: 塔信息 && 塔信息.塔列表 ? 塔信息.塔列表.length : null,
-      已知塔数量: 状态.已知塔集合.size,
-      地图尺寸: 状态.宽度 && 状态.高度 ? `${状态.宽度}x${状态.高度}` : null
-    });
 
     if (!塔信息 || !Array.isArray(塔信息.塔列表)) {
       请求渲染();
@@ -413,18 +335,6 @@
     }
 
     if (新塔.length > 0) {
-      记日志("发现塔并固定标记", {
-        回合: 数据包 && 数据包.turn,
-        新塔数量: 新塔.length,
-        新塔: 新塔.map(索引 => {
-          return {
-            索引,
-            行: 状态.宽度 ? Math.floor(索引 / 状态.宽度) : null,
-            列: 状态.宽度 ? 索引 % 状态.宽度 : null
-          };
-        }),
-        已知塔总数: 状态.已知塔集合.size
-      });
     }
 
     请求渲染();
@@ -435,15 +345,6 @@
     尝试从地图读取尺寸(数据包);
 
     const 基地列表 = Array.isArray(数据包 && 数据包.generals) ? 数据包.generals : null;
-    记日志("处理基地位置", {
-      来源事件,
-      回合: 数据包 && 数据包.turn,
-      我方索引: 状态.我方索引,
-      队伍: 状态.队伍,
-      基地列表长度: 基地列表 ? 基地列表.length : null,
-      已知敌方基地数量: 状态.已知敌方基地集合.size,
-      地图尺寸: 状态.宽度 && 状态.高度 ? `${状态.宽度}x${状态.高度}` : null
-    });
 
     if (!基地列表) {
       请求渲染();
@@ -451,10 +352,6 @@
     }
 
     if (!Number.isInteger(状态.我方索引)) {
-      记日志("缺少我方索引，暂不标记基地", {
-        来源事件,
-        基地列表
-      });
       请求渲染();
       return;
     }
@@ -475,19 +372,6 @@
     }
 
     if (新敌方基地.length > 0) {
-      记日志("发现敌方基地并固定标记", {
-        回合: 数据包 && 数据包.turn,
-        新敌方基地数量: 新敌方基地.length,
-        新敌方基地: 新敌方基地.map(基地 => {
-          return {
-            索引: 基地.索引,
-            玩家索引: 基地.玩家索引,
-            行: 状态.宽度 ? Math.floor(基地.索引 / 状态.宽度) : null,
-            列: 状态.宽度 ? 基地.索引 % 状态.宽度 : null
-          };
-        }),
-        已知敌方基地总数: 状态.已知敌方基地集合.size
-      });
     }
 
     请求渲染();
@@ -508,12 +392,6 @@
 
   function 记录移动操作(起点, 终点, 是否半兵, 攻击序号) {
     if (!Number.isInteger(起点) || !Number.isInteger(终点) || 起点 < 0 || 终点 < 0) {
-      记日志("记录移动操作跳过: 参数无效", {
-        起点,
-        终点,
-        是否半兵,
-        攻击序号
-      });
       return;
     }
 
@@ -526,19 +404,11 @@
     };
     状态.移动队列.push(移动);
     if (状态.移动队列.length > 200) 状态.移动队列.shift();
-    记日志("记录移动操作", {
-      移动: 取得移动摘要(移动),
-      移动队列长度: 状态.移动队列.length
-    });
     请求渲染();
   }
 
   function 撤销移动操作() {
     const 移动 = 状态.移动队列.pop();
-    记日志("撤销移动操作", {
-      已撤销: 移动 ? 取得移动摘要(移动) : null,
-      移动队列长度: 状态.移动队列.length
-    });
     请求渲染();
   }
 
@@ -546,10 +416,6 @@
     const 原长度 = 状态.移动队列.length;
     状态.移动队列 = [];
     状态.上次操作轨迹渲染签名 = "";
-    记日志("清空移动队列", {
-      来源: 来源 || "未知",
-      原移动队列长度: 原长度
-    });
     请求渲染();
   }
 
@@ -564,11 +430,6 @@
 
     if (状态.移动队列.length !== 原长度) {
       状态.上次操作轨迹渲染签名 = "";
-      记日志("按攻击序号清理移动队列", {
-        攻击序号,
-        原移动队列长度: 原长度,
-        新移动队列长度: 状态.移动队列.length
-      });
       请求渲染();
     }
   }
@@ -591,18 +452,6 @@
     更新地图缓存和兵力分布(数据包 || {}, "新局重置");
     更新大回合倒计时();
     清空覆盖层();
-    记日志("新局重置", {
-      数据键: 数据包 ? Object.keys(数据包) : [],
-      有map: Array.isArray(数据包 && 数据包.map),
-      有map_diff: Array.isArray(数据包 && 数据包.map_diff),
-      有cities: Array.isArray(数据包 && 数据包.cities),
-      有cities_diff: Array.isArray(数据包 && 数据包.cities_diff),
-      有generals: Array.isArray(数据包 && 数据包.generals),
-      回合: 状态.当前回合,
-      大回合倒计时: 取得大回合倒计时(状态.当前回合),
-      我方索引: 状态.我方索引,
-      队伍: 状态.队伍
-    });
   }
 
   function 挂钩socket(socket) {
@@ -610,12 +459,6 @@
     socket.__塔记忆已挂钩 = true;
     状态.socket已挂钩 = true;
 
-    记日志("socket已挂钩", {
-      connected: socket.connected,
-      id: socket.id,
-      on: typeof socket.on,
-      emit: typeof socket.emit
-    });
 
     if (typeof socket.emit === "function" && !socket.__塔记忆emit已挂钩) {
       const 原emit = socket.emit;
@@ -632,7 +475,6 @@
         });
         return 原emit.call(this, 事件名, ...参数);
       };
-      记日志("socket.emit出站操作记录已安装");
     }
 
     if (typeof socket.onevent === "function" && !socket.__塔记忆onevent已挂钩) {
@@ -645,7 +487,6 @@
         });
         return 原onevent.call(this, 包);
       };
-      记日志("socket.onevent预处理已安装");
     }
 
     if (typeof socket.emitEvent === "function" && !socket.__塔记忆emitEvent已挂钩) {
@@ -657,7 +498,6 @@
         });
         return 原emitEvent.call(this, 参数列表);
       };
-      记日志("socket.emitEvent预处理已安装");
     }
 
     socket.on("game_start", 数据包 => {
@@ -666,16 +506,6 @@
       });
       安全执行("game_start颜色重构", () => {
         重构玩家颜色(数据包 || {}, "game_start");
-      });
-      记日志("收到game_start", {
-        数据键: 数据包 ? Object.keys(数据包) : [],
-        有map: Array.isArray(数据包 && 数据包.map),
-        有map_diff: Array.isArray(数据包 && 数据包.map_diff),
-        有cities: Array.isArray(数据包 && 数据包.cities),
-        有cities_diff: Array.isArray(数据包 && 数据包.cities_diff),
-        generals长度: Array.isArray(数据包 && 数据包.generals) ? 数据包.generals.length : null,
-        playerIndex: 数据包 && 数据包.playerIndex,
-        teams: 数据包 && 数据包.teams
       });
       延后执行("game_start", () => {
         重置本局(数据包 || {});
@@ -690,16 +520,6 @@
       });
       安全执行("game_update颜色重构", () => {
         重构玩家颜色(数据包 || {}, "game_update");
-      });
-      记日志("收到game_update", {
-        回合: 数据包 && 数据包.turn,
-        cities长度: Array.isArray(数据包 && 数据包.cities) ? 数据包.cities.length : null,
-        cities_diff长度: Array.isArray(数据包 && 数据包.cities_diff) ? 数据包.cities_diff.length : null,
-        cities_diff前20项: Array.isArray(数据包 && 数据包.cities_diff) ? 数据包.cities_diff.slice(0, 20) : null,
-        有map: Array.isArray(数据包 && 数据包.map),
-        map_diff长度: Array.isArray(数据包 && 数据包.map_diff) ? 数据包.map_diff.length : null,
-        generals长度: Array.isArray(数据包 && 数据包.generals) ? 数据包.generals.length : null,
-        generals: Array.isArray(数据包 && 数据包.generals) ? 数据包.generals : null
       });
       延后执行("game_update", () => {
         按攻击序号清理移动队列(数据包 && 数据包.attackIndex);
@@ -724,20 +544,13 @@
           },
           set(新socket) {
             当前socket = 新socket;
-            记日志("window.socket被赋值", {
-              存在: Boolean(新socket),
-              connected: 新socket && 新socket.connected,
-              id: 新socket && 新socket.id
-            });
             安全执行("挂钩socket", () => {
               挂钩socket(新socket);
             });
           }
         });
-        记日志("socket访问器已安装");
       }
     } catch (错误) {
-      记错误("安装socket访问器", 错误);
     }
 
     if (当前socket) 挂钩socket(当前socket);
@@ -890,11 +703,6 @@
     安装样式();
     const 画布 = 取画布();
     if (!画布) {
-      const 现在 = Date.now();
-      if (现在 - 状态.上次无画布日志 > 2000) {
-        状态.上次无画布日志 = 现在;
-        记日志("未找到棋盘画布", { 已知塔数量: 状态.已知塔集合.size, 页面: location.pathname });
-      }
       return null;
     }
 
@@ -906,7 +714,6 @@
       覆盖层 = document.createElement("canvas");
       覆盖层.className = 覆盖层类名;
       宿主.appendChild(覆盖层);
-      记日志("覆盖层已创建", { 宿主类名: 宿主.className });
     }
 
     return { 画布, 宿主, 覆盖层 };
@@ -1221,11 +1028,6 @@
       .join("|")}`;
     if (签名 !== 状态.上次操作轨迹渲染签名) {
       状态.上次操作轨迹渲染签名 = 签名;
-      记日志("操作轨迹已渲染", {
-        移动队列长度: 状态.移动队列.length,
-        可绘制移动数量: 可绘制移动.length,
-        当前移动位置: 取得移动摘要(可绘制移动[可绘制移动.length - 1])
-      });
     }
   }
 
@@ -1238,18 +1040,6 @@
     }
 
     if (!状态.宽度 || !状态.高度) {
-      const 现在 = Date.now();
-      if (现在 - 状态.上次无尺寸日志 > 2000) {
-        状态.上次无尺寸日志 = 现在;
-        记日志("已有标记位置但缺少地图宽高，无法换算坐标", {
-          已知塔数量: 状态.已知塔集合.size,
-          已知敌方基地数量: 状态.已知敌方基地集合.size,
-          移动队列长度: 状态.移动队列.length,
-          已知塔: Array.from(状态.已知塔集合).slice(0, 20),
-          已知敌方基地: Array.from(状态.已知敌方基地集合.values()).slice(0, 20),
-          移动队列: 状态.移动队列.slice(0, 20).map(取得移动摘要)
-        });
-      }
       return;
     }
 
@@ -1332,15 +1122,6 @@
     ].join("|");
     if (固定标记渲染签名 !== 状态.上次固定标记渲染签名) {
       状态.上次固定标记渲染签名 = 固定标记渲染签名;
-      记日志("固定标记已渲染", {
-        已知塔数量: 状态.已知塔集合.size,
-        敌方塔数量: Array.from(状态.已知塔类型.values()).filter(类型 => { return 类型 === "敌方塔"; }).length,
-        已知敌方基地数量: 状态.已知敌方基地集合.size,
-        兵力分布着色数量: 状态.兵力分布着色列表.length,
-        移动队列长度: 状态.移动队列.length,
-        地图尺寸: `${状态.宽度}x${状态.高度}`,
-        覆盖层尺寸: `${Math.round(尺寸.css宽)}x${Math.round(尺寸.css高)}`
-      });
     }
   }
 
@@ -1373,15 +1154,11 @@
     window.addEventListener("mousemove", 请求渲染, { passive: true, capture: true });
     window.addEventListener("keydown", 请求渲染, { passive: true, capture: true });
     window.addEventListener("resize", 更新大回合倒计时, { passive: true });
-    记日志("页面观察器已安装", { zem: true });
   }
 
   function 暴露调试接口() {
     window.gio塔标记 = {
       版本: 脚本版本,
-      日志() {
-        return 状态.最近日志.slice();
-      },
       状态() {
         return {
           宽度: 状态.宽度,
@@ -1435,7 +1212,6 @@
         if (Number.isInteger(索引) && 索引 >= 0) {
           状态.已知塔集合.add(索引);
           if (!状态.已知塔类型.has(索引)) 状态.已知塔类型.set(索引, "塔");
-          记日志("手动加塔", { 索引 });
           请求渲染();
         }
       },
@@ -1443,7 +1219,6 @@
         if (Number.isInteger(索引) && 索引 >= 0) {
           状态.已知塔集合.add(索引);
           状态.已知塔类型.set(索引, "敌方塔");
-          记日志("手动设敌方塔", { 索引 });
           请求渲染();
         }
       },
@@ -1454,14 +1229,12 @@
             玩家索引: Number.isInteger(玩家索引) ? 玩家索引 : null,
             首次回合: null
           });
-          记日志("手动加敌方基地", { 索引, 玩家索引 });
           请求渲染();
         }
       },
       手动尺寸(宽度, 高度) {
         状态.宽度 = 宽度;
         状态.高度 = 高度;
-        记日志("手动设置地图尺寸", { 宽度, 高度 });
         请求渲染();
       },
       清空() {
@@ -1470,19 +1243,13 @@
         状态.已知敌方基地集合.clear();
         状态.塔列表 = null;
         清空覆盖层();
-        记日志("手动清空");
       },
-      重绘: 请求渲染,
-      开关日志(值) {
-        详细日志 = Boolean(值);
-        记日志("日志开关", { 详细日志 });
-      }
+      重绘: 请求渲染
     };
     window.gioTowerMarker = window.gio塔标记;
   }
 
   function 启动() {
-    记日志("脚本启动", { 版本: 脚本版本, 页面: location.href });
     暴露调试接口();
     轮询socket();
     安装页面观察器();
