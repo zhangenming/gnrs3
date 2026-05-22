@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.0
+// @version      0.8.1
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -22,6 +22,7 @@
   var 敌方红色索引 = 0;
   var 大回合turn数 = 50;
   var 大回合倒计时元素编号 = "gio-big-turn-countdown";
+  var 大回合倒计时类名 = "gio-big-turn-cell";
   var 兵力着色最小兵力 = 3;
   var 兵力着色最多数量 = 30;
 
@@ -37,7 +38,6 @@
     移动队列: [],
     当前回合: null,
     大回合倒计时元素: null,
-    大回合倒计时是否备用: false,
     上次大回合倒计时文本: "",
     我方索引: null,
     队伍: null,
@@ -245,6 +245,11 @@
     var 余数 = 回合 % 大回合turn数;
     if (回合 > 0 && 余数 === 0) return 0;
     return 大回合turn数 - 余数;
+  }
+
+  function 取得大回合序号(回合) {
+    if (!Number.isInteger(回合) || 回合 < 0) return null;
+    return Math.floor(回合 / 大回合turn数) + 1;
   }
 
   function 记录回合(数据包, 来源事件) {
@@ -747,96 +752,66 @@
 
   function 更新大回合倒计时() {
     var 倒计时 = 取得大回合倒计时(状态.当前回合);
+    var 大回合序号 = 取得大回合序号(状态.当前回合);
     if (倒计时 == null) return;
 
-    var 文本 = "全图+1: " + 倒计时;
+    移除左上角倒计时();
+    var 文本 = String(倒计时) + "." + 大回合序号;
     var 目标元素 = 状态.大回合倒计时元素;
-    if (状态.大回合倒计时是否备用) {
-      var 左上角元素 = 取得左上角回合文本元素();
-      if (左上角元素) {
-        目标元素 = 左上角元素;
-        状态.大回合倒计时元素 = 左上角元素;
-        状态.大回合倒计时是否备用 = false;
-        var 备用元素 = document.getElementById(大回合倒计时元素编号);
-        if (备用元素 && 备用元素.parentNode) 备用元素.parentNode.removeChild(备用元素);
-      }
-    }
     if (!目标元素 || !document.documentElement.contains(目标元素)) {
       目标元素 = 取得大回合倒计时元素();
     }
     if (!目标元素) return;
 
-    if (目标元素.textContent !== 文本) 目标元素.textContent = 文本;
-    if (目标元素.title !== "距离所有兵力+1的大回合") 目标元素.title = "距离所有兵力+1的大回合";
+    if (状态.上次大回合倒计时文本 !== 文本 || !目标元素.classList.contains(大回合倒计时类名)) {
+      目标元素.innerHTML = '<span class="gio-big-turn-main">' + 倒计时 + '</span><span class="gio-big-turn-index">' + 大回合序号 + '</span>';
+    }
+    目标元素.classList.add(大回合倒计时类名);
+    if (目标元素.title !== "距离所有兵力+1的大回合；小号数字是当前大回合") {
+      目标元素.title = "距离所有兵力+1的大回合；小号数字是当前大回合";
+    }
     状态.上次大回合倒计时文本 = 文本;
   }
 
   function 取得大回合倒计时元素() {
-    var 已有备用 = document.getElementById(大回合倒计时元素编号);
-    if (已有备用) {
-      状态.大回合倒计时元素 = 已有备用;
-      状态.大回合倒计时是否备用 = true;
-      return 已有备用;
+    var 排行榜标识元素 = 取得排行榜标识元素();
+    if (排行榜标识元素) {
+      状态.大回合倒计时元素 = 排行榜标识元素;
+      return 排行榜标识元素;
     }
-
-    var 候选元素 = [
-      ".turn-counter",
-      ".game-turn",
-      ".game-status .turn",
-      ".game-info .turn",
-      "#turn-counter",
-      "#turn"
-    ];
-    for (var i = 0; i < 候选元素.length; i += 1) {
-      var 元素 = document.querySelector(候选元素[i]);
-      if (元素) {
-        状态.大回合倒计时元素 = 元素;
-        状态.大回合倒计时是否备用 = false;
-        return 元素;
-      }
-    }
-
-    var 左上角文本元素 = 取得左上角回合文本元素();
-    if (左上角文本元素) {
-      状态.大回合倒计时元素 = 左上角文本元素;
-      状态.大回合倒计时是否备用 = false;
-      return 左上角文本元素;
-    }
-
-    if (!document.body) return null;
-    var 备用元素 = document.createElement("div");
-    备用元素.id = 大回合倒计时元素编号;
-    备用元素.className = 大回合倒计时元素编号;
-    备用元素.setAttribute("aria-label", "大回合倒计时");
-    document.body.appendChild(备用元素);
-    状态.大回合倒计时元素 = 备用元素;
-    状态.大回合倒计时是否备用 = true;
-    记日志("已创建大回合倒计时备用显示");
-    return 备用元素;
+    return null;
   }
 
-  function 取得左上角回合文本元素() {
+  function 移除左上角倒计时() {
+    if (!document.body) return;
+    var 旧元素 = document.getElementById(大回合倒计时元素编号);
+    if (旧元素 && 旧元素.parentNode) 旧元素.parentNode.removeChild(旧元素);
+  }
+
+  function 取得排行榜标识元素() {
     if (!document.body) return null;
-    var 元素列表 = Array.prototype.slice.call(document.body.querySelectorAll("div, span, p"));
-    var 最佳元素 = null;
-    var 最佳分数 = -1;
-    元素列表.forEach(function (元素) {
-      if (!元素 || 元素.id === 大回合倒计时元素编号 || 元素.children.length > 3) return;
-      var 文本 = (元素.textContent || "").trim();
-      if (!文本 || 文本.length > 24) return;
-      if (!/(turn|round|回合)/i.test(文本)) return;
+    var 表格列表 = Array.prototype.slice.call(document.body.querySelectorAll("table, .leaderboard, #leaderboard"));
+    for (var i = 0; i < 表格列表.length; i += 1) {
+      var 表格 = 表格列表[i];
+      var 文本 = (表格.textContent || "").trim();
+      if (文本.indexOf("Player") < 0 && 文本.indexOf("Army") < 0 && 文本.indexOf("Land") < 0) continue;
 
-      var 矩形 = 元素.getBoundingClientRect();
-      if (!矩形.width || !矩形.height) return;
-      if (矩形.left > 260 || 矩形.top > 180) return;
-
-      var 分数 = 1000 - 矩形.left * 2 - 矩形.top * 3 - 文本.length;
-      if (分数 > 最佳分数) {
-        最佳分数 = 分数;
-        最佳元素 = 元素;
+      var 行列表 = Array.prototype.slice.call(表格.querySelectorAll("tr"));
+      for (var 行号 = 0; 行号 < 行列表.length; 行号 += 1) {
+        var 单元格列表 = Array.prototype.slice.call(行列表[行号].children).filter(function (单元格) {
+          var 标签 = 单元格.tagName ? 单元格.tagName.toLowerCase() : "";
+          return 标签 === "td" || 标签 === "th";
+        });
+        if (单元格列表.length >= 2) {
+          var 第一格文本 = (单元格列表[0].textContent || "").trim();
+          var 第二格文本 = (单元格列表[1].textContent || "").trim();
+          if (第一格文本 === "★" || 第一格文本 === "*" || 第二格文本 === "Player" || 单元格列表[0].querySelector(".star, .icon, svg")) {
+            return 单元格列表[0];
+          }
+        }
       }
-    });
-    return 最佳元素;
+    }
+    return null;
   }
 
   function 安装样式() {
@@ -852,19 +827,29 @@
       "  z-index: 28;",
       "}",
       "#" + 大回合倒计时元素编号 + " {",
-      "  position: fixed;",
-      "  left: 8px;",
-      "  top: 8px;",
-      "  z-index: 2147483647;",
-      "  min-width: 78px;",
-      "  padding: 4px 8px;",
-      "  border-radius: 4px;",
-      "  background: rgba(0, 0, 0, 0.72);",
+      "  display: none !important;",
+      "}",
+      "." + 大回合倒计时类名 + " {",
+      "  text-align: center !important;",
+      "  vertical-align: middle !important;",
+      "  white-space: nowrap !important;",
+      "  min-width: 38px !important;",
+      "  padding-left: 2px !important;",
+      "  padding-right: 2px !important;",
+      "}",
+      "." + 大回合倒计时类名 + " .gio-big-turn-main {",
+      "  display: inline-block;",
       "  color: #ffffff;",
-      "  font: 700 14px/1.25 Arial, sans-serif;",
-      "  text-align: center;",
-      "  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.85);",
-      "  pointer-events: none;",
+      "  font: 800 18px/1 Arial, sans-serif;",
+      "  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);",
+      "}",
+      "." + 大回合倒计时类名 + " .gio-big-turn-index {",
+      "  display: inline-block;",
+      "  margin-left: 2px;",
+      "  color: rgba(255, 255, 255, 0.82);",
+      "  font: 700 10px/1 Arial, sans-serif;",
+      "  vertical-align: baseline;",
+      "  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);",
       "}",
       "@keyframes gio-current-move-pulse {",
       "  0% { box-shadow: inset 0 0 0 2px #00eaff, 0 0 0 2px rgba(0, 0, 0, 0.95), 0 0 7px rgba(0, 234, 255, 0.85) !important; }",
@@ -1395,7 +1380,7 @@
 
   function 暴露调试接口() {
     window.gio塔标记 = {
-      版本: "0.8.0",
+      版本: "0.8.1",
       日志: function () {
         return 状态.最近日志.slice();
       },
@@ -1498,7 +1483,7 @@
   }
 
   function 启动() {
-    记日志("脚本启动", { 版本: "0.8.0", 页面: location.href });
+    记日志("脚本启动", { 版本: "0.8.1", 页面: location.href });
     暴露调试接口();
     轮询socket();
     安装页面观察器();
