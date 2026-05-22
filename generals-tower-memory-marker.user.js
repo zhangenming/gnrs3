@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.5
+// @version      0.8.6
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,9 +14,11 @@
 ;(() => {
   'use strict'
 
-  const 脚本版本 = '0.8.5'
+  const 脚本版本 = '0.8.6'
   const 覆盖层类名 = 'gio-tower-memory-overlay'
   const 样式编号 = 'gio-tower-memory-style'
+  const 我方蓝色 = '#2792ff'
+  const 敌方红色 = '#ff0000'
   const 我方蓝色索引 = 1
   const 敌方红色索引 = 0
   const 大回合turn数 = 50
@@ -431,6 +433,7 @@
         for (const 同兵力地块 of 兵力分组.values()) {
           if (着色列表.length + 同兵力地块.length > 兵力着色最多数量) {
             超限同兵力跳过数量 += 同兵力地块.length
+            if (!着色列表.length) 着色列表.push(...同兵力地块)
             break
           }
           着色列表.push(...同兵力地块)
@@ -515,7 +518,6 @@
         return
       }
 
-      const 原颜色 = 数据包.playerColors.slice()
       for (
         let 玩家索引 = 0;
         玩家索引 < 数据包.playerColors.length;
@@ -824,11 +826,11 @@
           Math.max(0, (地块.兵力 - 兵力着色最小兵力) / 22),
         )
         const 强度 = Math.max(相对强度, 绝对强度)
-        const 透明度 = 0.42 + 强度 * 0.28
-        const 边线透明度 = 0.62 + 强度 * 0.26
-        const 红 = Math.round(108 - 强度 * 58)
-        const 绿 = Math.round(205 - 强度 * 90)
-        const 蓝 = Math.round(255 - 强度 * 32)
+        const 填充透明度 = 0.28 + 强度 * 0.18
+        const 边框透明度 = 0.82 + 强度 * 0.16
+        const 红 = Math.round(70 - 强度 * 44)
+        const 绿 = Math.round(172 - 强度 * 92)
+        const 蓝 = Math.round(255 - 强度 * 18)
         const 行 = Math.floor(地块.索引 / 状态.宽度)
         const 列 = 地块.索引 % 状态.宽度
         const x = 列 * 格宽
@@ -836,16 +838,25 @@
         const 宽 = Math.max(1, 格宽 - 内缩 * 2)
         const 高 = Math.max(1, 格高 - 内缩 * 2)
 
-        ctx.fillStyle = `rgba(${红}, ${绿}, ${蓝}, ${透明度.toFixed(3)})`
+        ctx.fillStyle = `rgba(${红}, ${绿}, ${蓝}, ${填充透明度.toFixed(3)})`
         ctx.fillRect(x + 内缩, y + 内缩, 宽, 高)
 
-        ctx.lineWidth = Math.max(1.5, 大小 * 0.055)
-        ctx.strokeStyle = `rgba(205, 244, 255, ${边线透明度.toFixed(3)})`
+        ctx.lineWidth = Math.max(2, 大小 * 0.08)
+        ctx.strokeStyle = `rgba(0, 36, 130, ${边框透明度.toFixed(3)})`
         ctx.strokeRect(
           x + 内缩 + ctx.lineWidth / 2,
           y + 内缩 + ctx.lineWidth / 2,
           Math.max(1, 宽 - ctx.lineWidth),
           Math.max(1, 高 - ctx.lineWidth),
+        )
+
+        ctx.lineWidth = Math.max(1, 大小 * 0.035)
+        ctx.strokeStyle = `rgba(202, 247, 255, ${(0.72 + 强度 * 0.16).toFixed(3)})`
+        ctx.strokeRect(
+          x + 内缩 + ctx.lineWidth * 2.2,
+          y + 内缩 + ctx.lineWidth * 2.2,
+          Math.max(1, 宽 - ctx.lineWidth * 4.4),
+          Math.max(1, 高 - ctx.lineWidth * 4.4),
         )
 
         if (地块.兵力 >= 高兵力阈值) {
@@ -915,8 +926,8 @@
       const 内线宽 = Math.max(1.5, 大小 * (是敌方塔 ? 0.065 : 0.045))
       const 外偏移 = 外线宽 / 2 + 1
       const 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2
-      const 主色 = 是敌方塔 ? '#ff5aa5' : '#ffd84d'
-      const 高光色 = 是敌方塔 ? '#ffd1e6' : '#fff4a8'
+      const 主色 = 是敌方塔 ? 敌方红色 : 我方蓝色
+      const 高光色 = 是敌方塔 ? '#ffb3b3' : '#b8dcff'
 
       ctx.save()
       ctx.lineJoin = 'round'
@@ -955,7 +966,7 @@
         const 角偏移 = Math.max(3, 大小 * 0.12)
         ctx.globalAlpha = 1
         ctx.lineWidth = Math.max(2, 大小 * 0.055)
-        ctx.strokeStyle = '#ffb000'
+        ctx.strokeStyle = 敌方红色
         ctx.beginPath()
         ctx.moveTo(x + 角偏移, y + 角偏移 + 角长)
         ctx.lineTo(x + 角偏移, y + 角偏移)
@@ -999,7 +1010,7 @@
       )
 
       ctx.lineWidth = 内线宽
-      ctx.strokeStyle = '#ff1f1f'
+      ctx.strokeStyle = 敌方红色
       ctx.strokeRect(
         x + 内偏移,
         y + 内偏移,
@@ -1017,7 +1028,7 @@
       )
 
       ctx.lineWidth = Math.max(2.5, 大小 * 0.085)
-      ctx.strokeStyle = '#ffd400'
+      ctx.strokeStyle = 敌方红色
       ctx.beginPath()
       ctx.moveTo(x + 角偏移, y + 角偏移 + 角长)
       ctx.lineTo(x + 角偏移, y + 角偏移)
@@ -1135,13 +1146,23 @@
     outline-offset: -3px !important;
     animation: gio-current-move-pulse 0.9s infinite !important;
 }
+:root {
+    --map-rgb-p1: 255,0,0;
+    --map-color-p1: ${敌方红色};
+    --map-rgb-p2: 39,146,255;
+    --map-color-p2: ${我方蓝色};
+}
+.red, .selected-red, .leaderboard .red, #leaderboard .red {
+    background-color: ${敌方红色} !important;
+    fill: ${敌方红色} !important;
+}
 .lightblue, .selected-lightblue, .leaderboard .lightblue, #leaderboard .lightblue {
-    background-color: #2792ff !important;
-    fill: #2792ff !important;
+    background-color: ${我方蓝色} !important;
+    fill: ${我方蓝色} !important;
 }
 .blue, .selected-blue, .leaderboard .blue, #leaderboard .blue {
-    background-color: #2792ff !important;
-    fill: #2792ff !important;
+    background-color: ${我方蓝色} !important;
+    fill: ${我方蓝色} !important;
 }
 #turn-counter{
       display: none !important;
