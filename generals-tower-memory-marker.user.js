@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.7
+// @version      0.8.8
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 ;(() => {
   'use strict'
 
-  const 脚本版本 = '0.8.7'
+  const 脚本版本 = '0.8.8'
   const 覆盖层类名 = 'gio-tower-memory-overlay'
   const 样式编号 = 'gio-tower-memory-style'
   const 我方蓝色 = '#2792ff'
@@ -25,7 +25,7 @@
   const 大回合倒计时元素编号 = 'gio-big-turn-countdown'
   const 大回合倒计时类名 = 'gio-big-turn-cell'
   const 兵力着色最小兵力 = 3
-  const 兵力着色最多数量 = 25
+  const 兵力着色最多数量 = 35
   const 日志前缀 = '[塔记忆]'
 
   const 状态 = {
@@ -503,7 +503,7 @@
         for (const 同兵力地块 of 兵力分组.values()) {
           if (着色列表.length + 同兵力地块.length > 兵力着色最多数量) {
             超限同兵力跳过数量 += 同兵力地块.length
-            continue
+            break
           }
           着色列表.push(...同兵力地块)
         }
@@ -900,11 +900,11 @@
           Math.max(0, (地块.兵力 - 兵力着色最小兵力) / 22),
         )
         const 强度 = Math.max(相对强度, 绝对强度)
-        const 填充透明度 = 0.28 + 强度 * 0.18
-        const 边框透明度 = 0.82 + 强度 * 0.16
-        const 红 = Math.round(70 - 强度 * 44)
-        const 绿 = Math.round(172 - 强度 * 92)
-        const 蓝 = Math.round(255 - 强度 * 18)
+        const 填充透明度 = 0.32 + 强度 * 0.2
+        const 边框透明度 = 0.92 + 强度 * 0.08
+        const 红 = Math.round(58 - 强度 * 46)
+        const 绿 = Math.round(184 - 强度 * 116)
+        const 蓝 = 255
         const 行 = Math.floor(地块.索引 / 状态.宽度)
         const 列 = 地块.索引 % 状态.宽度
         const x = 列 * 格宽
@@ -915,8 +915,8 @@
         ctx.fillStyle = `rgba(${红}, ${绿}, ${蓝}, ${填充透明度.toFixed(3)})`
         ctx.fillRect(x + 内缩, y + 内缩, 宽, 高)
 
-        ctx.lineWidth = Math.max(2, 大小 * 0.08)
-        ctx.strokeStyle = `rgba(0, 36, 130, ${边框透明度.toFixed(3)})`
+        ctx.lineWidth = Math.max(2.5, 大小 * 0.1)
+        ctx.strokeStyle = `rgba(0, 24, 150, ${边框透明度.toFixed(3)})`
         ctx.strokeRect(
           x + 内缩 + ctx.lineWidth / 2,
           y + 内缩 + ctx.lineWidth / 2,
@@ -924,14 +924,19 @@
           Math.max(1, 高 - ctx.lineWidth),
         )
 
-        ctx.lineWidth = Math.max(1, 大小 * 0.035)
-        ctx.strokeStyle = `rgba(202, 247, 255, ${(0.72 + 强度 * 0.16).toFixed(3)})`
+        ctx.lineWidth = Math.max(1.2, 大小 * 0.04)
+        ctx.strokeStyle = `rgba(225, 252, 255, ${(0.82 + 强度 * 0.12).toFixed(3)})`
         ctx.strokeRect(
           x + 内缩 + ctx.lineWidth * 2.2,
           y + 内缩 + ctx.lineWidth * 2.2,
           Math.max(1, 宽 - ctx.lineWidth * 4.4),
           Math.max(1, 高 - ctx.lineWidth * 4.4),
         )
+
+        const 条宽 = Math.max(2, 大小 * 0.11)
+        ctx.fillStyle = `rgba(0, 28, 185, ${(0.68 + 强度 * 0.22).toFixed(3)})`
+        ctx.fillRect(x + 内缩, y + 内缩, 宽, 条宽)
+        ctx.fillRect(x + 内缩, y + 内缩, 条宽, 高)
 
         if (地块.兵力 >= 高兵力阈值) {
           const 角长 = Math.max(5, 大小 * 0.24)
