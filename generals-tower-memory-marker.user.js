@@ -621,11 +621,8 @@
 
     function 记录回合(数据包, 来源事件) {
       if (!Number.isInteger(数据包?.turn)) return;
-      const 原回合 = 状态.当前回合;
       状态.当前回合 = 数据包.turn;
       更新大回合倒计时();
-      if (原回合 !== 状态.当前回合) {
-      }
     }
 
     function 更新塔类型(数据包, 塔索引) {
@@ -699,18 +696,6 @@
       if (Array.isArray(数据包.teams)) {
         状态.队伍 = 数据包.teams.slice();
       }
-    }
-
-    function 是我方或队友(玩家索引) {
-      if (!Number.isInteger(玩家索引) || 玩家索引 < 0) return false;
-      if (!Number.isInteger(状态.我方索引)) return false;
-      if (玩家索引 === 状态.我方索引) return true;
-      if (!Array.isArray(状态.队伍)) return false;
-      const 我方队伍 = 状态.队伍[状态.我方索引];
-      const 对方队伍 = 状态.队伍[玩家索引];
-      return (
-        我方队伍 !== undefined && 我方队伍 !== null && 对方队伍 === 我方队伍
-      );
     }
 
     function 读取可见地块归属(数据包, 格子索引) {
