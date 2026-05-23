@@ -306,7 +306,7 @@
 
       const 塔信息 = 取得本次塔列表(数据包);
 
-      if (!塔信息 || !Array.isArray(塔信息.塔列表)) {
+      if (!Array.isArray(塔信息?.塔列表)) {
         请求渲染();
         return;
       }
@@ -497,7 +497,7 @@
         let 最高兵力 = 0;
         const 当前塔信息 = 取得本次塔列表(数据包);
         const 当前塔集合 = new Set(状态.已知塔集合);
-        if (当前塔信息 && Array.isArray(当前塔信息.塔列表)) {
+        if (Array.isArray(当前塔信息?.塔列表)) {
           当前塔信息.塔列表.forEach((塔索引) => {
             if (Number.isInteger(塔索引) && 塔索引 >= 0) 当前塔集合.add(塔索引);
           });
@@ -792,7 +792,7 @@
     if (!Array.isArray(状态.队伍)) return false;
     const 我方队伍 = 状态.队伍[状态.我方索引];
     const 对方队伍 = 状态.队伍[玩家索引];
-    return 我方队伍 !== undefined && 我方队伍 !== null && 对方队伍 === 我方队伍;
+    return 我方队伍 != null && 对方队伍 === 我方队伍;
   }
 
   function 更新大回合倒计时() {
@@ -849,9 +849,9 @@
       for (const 表格 of 表格列表) {
         const 表格文本 = (表格.textContent ?? "").trim();
         if (
-          表格文本.indexOf("Player") < 0 &&
-          表格文本.indexOf("Army") < 0 &&
-          表格文本.indexOf("Land") < 0
+          !表格文本.includes("Player") &&
+          !表格文本.includes("Army") &&
+          !表格文本.includes("Land")
         )
           continue;
 
@@ -1406,10 +1406,8 @@
         画布.closest(".relative") ||
         画布.closest(".game-page");
       if (!候选宿主) return null;
-      const 样式 = window.getComputedStyle
-        ? window.getComputedStyle(候选宿主)
-        : null;
-      if (样式 && 样式.position === "static") return document.body ?? 候选宿主;
+      const 样式 = window.getComputedStyle(候选宿主);
+      if (样式?.position === "static") return document.body ?? 候选宿主;
       return 候选宿主;
     }
 
@@ -1628,7 +1626,7 @@
             高度: 状态.高度,
             当前回合: 状态.当前回合,
             大回合倒计时: 取得大回合倒计时(状态.当前回合),
-            塔列表长度: 状态.塔列表 ? 状态.塔列表.length : null,
+            塔列表长度: 状态.塔列表?.length ?? null,
             已知塔数量: 状态.已知塔集合.size,
             已知基地数量: 状态.已知基地集合.size,
             敌方塔数量: Array.from(状态.已知塔类型.values()).filter((类型) => {
