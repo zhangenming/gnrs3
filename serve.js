@@ -2,7 +2,7 @@ const fs = require('fs')
 const http = require('http')
 const path = require('path')
 
-const 端口 = 5173
+const 端口 = 48291
 const 根目录 = __dirname
 const 类型表 = {
   '.js': 'text/javascript; charset=utf-8',
