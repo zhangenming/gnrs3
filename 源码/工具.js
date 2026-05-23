@@ -1,4 +1,4 @@
-import { 大回合turn数 } from './config.js'
+import { 大回合turn数 } from './配置.js'
 
 export function 安全执行(事件, 函数体) {
   try {

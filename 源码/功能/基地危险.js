@@ -4,9 +4,9 @@
 // 作用范围:
 // 读取当前地图数组、我方基地索引和玩家归属信息，只维护“基地被敌发现”状态。
 // 一旦发现敌方贴近基地周围九宫格，就给页面根节点和 body 添加危险类名，让样式层做醒目提示。
-import { 基地危险类名 } from '../config.js'
-import { 是我方或队友 } from '../game.js'
-import { 状态 } from '../state.js'
+import { 基地危险类名 } from '../配置.js'
+import { 是我方或队友 } from '../游戏.js'
+import { 状态 } from '../状态.js'
 
 export function 更新基地危险状态() {
   if (状态.基地被敌发现) {

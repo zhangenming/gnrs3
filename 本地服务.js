@@ -15,7 +15,7 @@ http
   .createServer((请求, 响应) => {
     const 网址 = new URL(请求.url, `http://127.0.0.1:${端口}`)
     const 相对路径 = decodeURIComponent(网址.pathname).replace(/^\/+/, '')
-    const 文件路径 = path.resolve(根目录, 相对路径 || 'src/main.js')
+    const 文件路径 = path.resolve(根目录, 相对路径 || '源码/主程序.js')
 
     响应.setHeader('Access-Control-Allow-Origin', '*')
     响应.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
@@ -49,5 +49,5 @@ http
     })
   })
   .listen(端口, '127.0.0.1', () => {
-    console.log(`http://127.0.0.1:${端口}/src/main.js`)
+    console.log(`http://127.0.0.1:${端口}/源码/主程序.js`)
   })

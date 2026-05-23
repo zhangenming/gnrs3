@@ -19,6 +19,6 @@ MutationObserver.prototype.observe = function (target, config) {
   return observe.call(this, target, config)
 }
 
-void import('http://127.0.0.1:48291/src/main.js').catch((错误) => {
+void import('http://127.0.0.1:48291/源码/主程序.js').catch((错误) => {
   console.error('generals.io 塔记忆标记加载失败', 错误)
 })

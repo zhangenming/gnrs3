@@ -1,4 +1,4 @@
-import { 状态 } from './state.js'
+import { 状态 } from './状态.js'
 
 export function 是我方或队友(玩家索引) {
   if (!Number.isInteger(玩家索引) || 玩家索引 < 0) return false

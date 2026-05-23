@@ -10,8 +10,8 @@ import {
   取得本次塔列表,
   尝试从地图读取尺寸,
   是我方或队友,
-} from '../game.js'
-import { 状态 } from '../state.js'
+} from '../游戏.js'
+import { 状态 } from '../状态.js'
 
 export function 处理塔位置(数据包, 请求渲染) {
   读取玩家信息(数据包)

@@ -4,9 +4,9 @@
 // 作用范围:
 // 只处理带 playerColors 的入站数据包，并用 WeakSet 避免同一对象重复处理。
 // 颜色统一后，排行榜识别、地图显示和战场数据差功能都能用稳定的敌我颜色规则。
-import { 敌方红色索引, 我方蓝色索引 } from '../config.js'
-import { 读取玩家信息, 是我方或队友 } from '../game.js'
-import { 状态 } from '../state.js'
+import { 敌方红色索引, 我方蓝色索引 } from '../配置.js'
+import { 读取玩家信息, 是我方或队友 } from '../游戏.js'
+import { 状态 } from '../状态.js'
 
 export function 重构玩家颜色(数据包) {
   if (!数据包) return

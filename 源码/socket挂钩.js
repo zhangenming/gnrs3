@@ -4,24 +4,24 @@
 // 作用范围:
 // 入站侧负责驱动回合记录、颜色重构、塔/基地记忆、地图缓存、基地危险和战场数据差更新。
 // 出站侧只记录本地移动队列用于覆盖层显示，真实 socket 调用仍交回原函数执行。
-import { 脚本版本 } from './config.js'
-import { 读取玩家信息, 尝试从地图读取尺寸 } from './game.js'
-import { 状态 } from './state.js'
-import { 安全执行 } from './utils.js'
-import { 更新战场数据差 } from './feats/battleDataDiff.js'
-import { 处理基地位置 } from './feats/generalMemory.js'
-import { 更新基地危险状态 } from './feats/generalDanger.js'
-import { 更新地图缓存和兵力分布 } from './mapState.js'
+import { 脚本版本 } from './配置.js'
+import { 读取玩家信息, 尝试从地图读取尺寸 } from './游戏.js'
+import { 状态 } from './状态.js'
+import { 安全执行 } from './工具.js'
+import { 更新战场数据差 } from './功能/战场数据差.js'
+import { 处理基地位置 } from './功能/基地记忆.js'
+import { 更新基地危险状态 } from './功能/基地危险.js'
+import { 更新地图缓存和兵力分布 } from './地图状态.js'
 import {
   按攻击序号清理移动队列,
   撤销移动操作,
   记录移动操作,
   清空移动队列,
-} from './feats/moveQueue.js'
-import { 清空覆盖层 } from './overlay.js'
-import { 重构玩家颜色 } from './feats/playerColors.js'
-import { 记录回合, 更新大回合倒计时 } from './feats/roundCountdown.js'
-import { 处理塔位置 } from './feats/towerMemory.js'
+} from './功能/移动队列.js'
+import { 清空覆盖层 } from './覆盖层.js'
+import { 重构玩家颜色 } from './功能/玩家颜色.js'
+import { 记录回合, 更新大回合倒计时 } from './功能/大回合倒计时.js'
+import { 处理塔位置 } from './功能/塔记忆.js'
 
 export function 挂钩socket(socket, 请求渲染) {
   if (!socket || socket.__塔记忆挂钩版本 === 脚本版本) return

@@ -5,7 +5,7 @@
 // 作用范围:
 // 只改写排行榜/战场数据表的表头格内容和样式，不参与地图状态计算。
 // 会根据玩家颜色识别我方与敌方行，并给差值格写入数据属性，供样式层区分优势和劣势。
-import { 战场数据差类名 } from '../config.js'
+import { 战场数据差类名 } from '../配置.js'
 
 export function 更新战场数据差() {
   if (!document.body) return

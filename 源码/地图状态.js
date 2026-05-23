@@ -4,15 +4,15 @@
 // 作用范围:
 // 支持完整地图和 map_diff 增量更新，随后计算兵力分布着色列表。
 // 计算时会排除塔、基地和当前移动路径，让覆盖层优先标出可调用的大兵力地块，辅助 1v1 调兵判断。
-import { 兵力着色最多级别, 兵力着色最小兵力 } from './config.js'
+import { 兵力着色最多级别, 兵力着色最小兵力 } from './配置.js'
 import {
   取得本次塔列表,
   取得完整地图数组,
   应用增量,
   是我方或队友,
-} from './game.js'
-import { 状态 } from './state.js'
-import { 记录已到达视野 } from './feats/vision.js'
+} from './游戏.js'
+import { 状态 } from './状态.js'
+import { 记录已到达视野 } from './功能/视野.js'
 
 export function 更新地图缓存和兵力分布(数据包, 来源事件) {
   const 完整地图数组 = 取得完整地图数组(数据包)

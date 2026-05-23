@@ -8,9 +8,9 @@ import {
   大回合turn数,
   大回合倒计时元素编号,
   大回合倒计时类名,
-} from '../config.js'
-import { 状态 } from '../state.js'
-import { 取得大回合倒计时 } from '../utils.js'
+} from '../配置.js'
+import { 状态 } from '../状态.js'
+import { 取得大回合倒计时 } from '../工具.js'
 
 export function 记录回合(数据包) {
   if (!Number.isInteger(数据包?.turn)) return

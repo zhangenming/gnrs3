@@ -1,11 +1,11 @@
-import { 状态 } from './state.js'
-import { 安全执行 } from './utils.js'
-import { 更新战场数据差 } from './feats/battleDataDiff.js'
-import { 暴露调试接口 } from './debugApi.js'
-import { 安装原始兵力文本捕获 } from './feats/rawArmyText.js'
-import { 清空覆盖层, 渲染 } from './overlay.js'
-import { 更新大回合倒计时 } from './feats/roundCountdown.js'
-import { 挂钩socket } from './socketHook.js'
+import { 状态 } from './状态.js'
+import { 安全执行 } from './工具.js'
+import { 更新战场数据差 } from './功能/战场数据差.js'
+import { 暴露调试接口 } from './调试接口.js'
+import { 安装原始兵力文本捕获 } from './功能/原始兵力文本.js'
+import { 清空覆盖层, 渲染 } from './覆盖层.js'
+import { 更新大回合倒计时 } from './功能/大回合倒计时.js'
+import { 挂钩socket } from './socket挂钩.js'
 
 function 请求渲染() {
   if (状态.已请求渲染) return

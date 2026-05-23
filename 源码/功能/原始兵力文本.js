@@ -4,8 +4,8 @@
 // 作用范围:
 // 通过挂钩 CanvasRenderingContext2D 的 fillText、strokeText 和 clearRect 记录/清理兵力文本。
 // 覆盖层绘制高兵力地块时会复用这些原始数字，避免辅助标记遮住后看不清实际兵力。
-import { 状态 } from '../state.js'
-import { 安全执行 } from '../utils.js'
+import { 状态 } from '../状态.js'
+import { 安全执行 } from '../工具.js'
 
 export function 安装原始兵力文本捕获(请求渲染) {
   const 钩子键 = '__gio兵力文本捕获钩子'

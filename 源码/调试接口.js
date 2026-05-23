@@ -5,9 +5,9 @@
 // 作用范围:
 // 这是开发和实战排查用的辅助接口，不会主动改变游戏逻辑。
 // 只有调用手动方法时才会写入内存状态并触发重绘，便于验证 1v1 相关功能是否正常。
-import { 敌方红色索引, 我方蓝色索引, 脚本版本 } from './config.js'
-import { 状态 } from './state.js'
-import { 取得大回合倒计时 } from './utils.js'
+import { 敌方红色索引, 我方蓝色索引, 脚本版本 } from './配置.js'
+import { 状态 } from './状态.js'
+import { 取得大回合倒计时 } from './工具.js'
 
 export function 暴露调试接口(请求渲染, 清空覆盖层) {
   window.gio塔标记 = {
