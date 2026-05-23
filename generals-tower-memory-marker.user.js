@@ -25,6 +25,8 @@
   const 大回合turn数 = 50;
   const 大回合倒计时元素编号 = "gio-big-turn-countdown";
   const 大回合倒计时类名 = "gio-big-turn-cell";
+  const 战场数据差类名 = "gio-battle-data-diff-cell";
+  const 基地危险类名 = "gio-general-danger";
   const 兵力着色最小兵力 = 3;
   const 兵力着色最多级别 = 5;
   const 玩家最小距离 = 15;
@@ -38,6 +40,8 @@
     已知塔类型: new Map(),
     已知基地集合: new Set(),
     已知敌方基地集合: new Map(),
+    我方基地索引: null,
+    基地被敌发现: false,
     已到达视野集合: new Set(),
     地图数组: null,
     原始兵力文本: new Map(),
@@ -287,6 +291,8 @@
         处理塔位置(数据包 ?? {});
         处理基地位置(数据包 ?? {});
         更新地图缓存和兵力分布(数据包 ?? {}, "game_update");
+        更新基地危险状态();
+        更新战场数据差();
       });
     });
 
@@ -345,7 +351,10 @@
         const 基地索引 = 基地列表[玩家索引];
         if (!Number.isInteger(基地索引) || 基地索引 < 0) continue;
         状态.已知基地集合.add(基地索引);
-        if (是我方或队友(玩家索引)) continue;
+        if (是我方或队友(玩家索引)) {
+          if (玩家索引 === 状态.我方索引) 状态.我方基地索引 = 基地索引;
+          continue;
+        }
         if (!状态.已知敌方基地集合.has(基地索引)) {
           状态.已知敌方基地集合.set(基地索引, {
             索引: 基地索引,
@@ -410,6 +419,8 @@
       状态.已知塔类型.clear();
       状态.已知基地集合.clear();
       状态.已知敌方基地集合.clear();
+      状态.我方基地索引 = null;
+      状态.基地被敌发现 = false;
       状态.已到达视野集合.clear();
       状态.地图数组 = null;
       状态.原始兵力文本.clear();
@@ -423,7 +434,9 @@
       状态.队伍 = Array.isArray(数据包?.teams) ? 数据包.teams.slice() : null;
       尝试从地图读取尺寸(数据包 ?? {});
       更新地图缓存和兵力分布(数据包 ?? {}, "新局重置");
+      更新基地危险状态();
       更新大回合倒计时();
+      更新战场数据差();
       清空覆盖层();
     }
 
@@ -566,6 +579,48 @@
         }
         return 着色列表;
       }
+    }
+
+    function 更新基地危险状态() {
+      if (状态.基地被敌发现) {
+        更新基地危险背景();
+        return;
+      }
+      if (
+        !Number.isInteger(状态.我方基地索引) ||
+        !状态.宽度 ||
+        !状态.高度 ||
+        !Array.isArray(状态.地图数组)
+      ) {
+        更新基地危险背景();
+        return;
+      }
+
+      const 格子数 = 状态.宽度 * 状态.高度;
+      if (状态.地图数组.length < 2 + 格子数 * 2) {
+        更新基地危险背景();
+        return;
+      }
+
+      const 基地行 = Math.floor(状态.我方基地索引 / 状态.宽度);
+      const 基地列 = 状态.我方基地索引 % 状态.宽度;
+      for (let 行偏移 = -1; 行偏移 <= 1; 行偏移 += 1) {
+        const 行 = 基地行 + 行偏移;
+        if (行 < 0 || 行 >= 状态.高度) continue;
+        for (let 列偏移 = -1; 列偏移 <= 1; 列偏移 += 1) {
+          const 列 = 基地列 + 列偏移;
+          if (列 < 0 || 列 >= 状态.宽度) continue;
+          const idx = 行 * 状态.宽度 + 列;
+          const 归属 = 状态.地图数组[2 + 格子数 + idx];
+          if (Number.isInteger(归属) && 归属 >= 0 && !是我方或队友(归属)) {
+            状态.基地被敌发现 = true;
+            更新基地危险背景();
+            return;
+          }
+        }
+      }
+
+      更新基地危险背景();
     }
 
     function 尝试从地图读取尺寸(数据包) {
@@ -841,6 +896,11 @@
     return 状态.已到达视野集合.size < 状态.宽度 * 状态.高度;
   }
 
+  function 更新基地危险背景() {
+    document.documentElement?.classList.toggle(基地危险类名, 状态.基地被敌发现);
+    document.body?.classList.toggle(基地危险类名, 状态.基地被敌发现);
+  }
+
   function 更新大回合倒计时() {
     const 倒计时 = 取得大回合倒计时(状态.当前回合);
     const 大回合序号 = 取得大回合序号(状态.当前回合);
@@ -923,6 +983,126 @@
       }
 
       return null;
+    }
+  }
+
+  function 更新战场数据差() {
+    if (!document.body) return;
+
+    const 表格 = 取得战场数据表格();
+    if (!表格) return;
+
+    const 表头行 = 取得表头行(表格);
+    if (!表头行) return;
+
+    const 表头格列表 = 取得单元格列表(表头行);
+    const 兵力列 = 取得列索引(表头格列表, "Army", "army");
+    const 陆地列 = 取得列索引(表头格列表, "Land", "land");
+    if (兵力列 < 0 || 陆地列 < 0) return;
+
+    const 数据行列表 = Array.from(表格.querySelectorAll("tr")).filter(
+      (行) => 行 !== 表头行 && 取得单元格列表(行).length > 陆地列,
+    );
+    const 我方行 = 数据行列表.find((行) => 行.querySelector(".selected-blue"));
+    const 敌方行 = 数据行列表.find((行) => 行.querySelector(".selected-red"));
+    if (!我方行 || !敌方行) return;
+
+    const 我方格列表 = 取得单元格列表(我方行);
+    const 敌方格列表 = 取得单元格列表(敌方行);
+    更新差值格(
+      表头格列表[兵力列],
+      读取数字(我方格列表[兵力列]) - 读取数字(敌方格列表[兵力列]),
+      "army",
+    );
+    更新差值格(
+      表头格列表[陆地列],
+      读取数字(我方格列表[陆地列]) - 读取数字(敌方格列表[陆地列]),
+      "land",
+    );
+
+    function 取得战场数据表格() {
+      const 表格列表 = document.body.querySelectorAll(
+        "table, .leaderboard, #leaderboard",
+      );
+      for (const 当前表格 of 表格列表) {
+        const 文本 = 当前表格.textContent ?? "";
+        if (文本.includes("Player") && 是战场数据表格(当前表格)) {
+          return 当前表格;
+        }
+      }
+      return null;
+    }
+
+    function 取得表头行(表格元素) {
+      const 行列表 = 表格元素.querySelectorAll("tr");
+      for (const 行 of 行列表) {
+        const 文本列表 = 取得单元格列表(行).map((单元格) =>
+          (单元格.textContent ?? "").trim(),
+        );
+        if (文本列表.includes("Player") && 是战场数据行(行)) {
+          return 行;
+        }
+      }
+      return null;
+    }
+
+    function 是战场数据表格(表格元素) {
+      const 文本 = 表格元素.textContent ?? "";
+      if (文本.includes("Army") && 文本.includes("Land")) return true;
+      return Boolean(
+        表格元素.querySelector(
+          `[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]`,
+        ),
+      );
+    }
+
+    function 是战场数据行(行) {
+      const 文本列表 = 取得单元格列表(行).map((单元格) =>
+        (单元格.textContent ?? "").trim(),
+      );
+      if (文本列表.includes("Army") && 文本列表.includes("Land")) return true;
+      return Boolean(
+        行.querySelector(
+          `[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]`,
+        ),
+      );
+    }
+
+    function 取得单元格列表(行) {
+      return Array.from(行.children).filter((单元格) => {
+        const 标签名 = 单元格.tagName?.toLowerCase() ?? "";
+        return 标签名 === "td" || 标签名 === "th";
+      });
+    }
+
+    function 取得列索引(单元格列表, 原文本, 类型) {
+      return 单元格列表.findIndex((单元格) => {
+        if (单元格.dataset.gioBattleKind === 类型) return true;
+        return (单元格.textContent ?? "").trim() === 原文本;
+      });
+    }
+
+    function 读取数字(单元格) {
+      const 数字 = Number.parseInt((单元格?.textContent ?? "").trim(), 10);
+      return Number.isFinite(数字) ? 数字 : 0;
+    }
+
+    function 更新差值格(单元格, 差值, 类型) {
+      if (!单元格 || !Number.isFinite(差值)) return;
+      const 文本 = 差值 > 0 ? `+${差值}` : String(差值);
+      const 差值状态 = 差值 >= 0 ? "advantage" : "disadvantage";
+      if (
+        单元格.textContent === 文本 &&
+        单元格.classList.contains(战场数据差类名) &&
+        单元格.dataset.gioBattleKind === 类型 &&
+        单元格.dataset.gioBattleDiff === 差值状态
+      )
+        return;
+
+      单元格.textContent = 文本;
+      单元格.classList.add(战场数据差类名);
+      单元格.dataset.gioBattleKind = 类型;
+      单元格.dataset.gioBattleDiff = 差值状态;
     }
   }
 
@@ -1393,6 +1573,20 @@
     vertical-align: baseline;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
 }
+.${战场数据差类名} {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85) !important;
+}
+.${战场数据差类名}[data-gio-battle-diff="advantage"] {
+    background-color: ${我方蓝色} !important;
+}
+.${战场数据差类名}[data-gio-battle-diff="disadvantage"] {
+    background-color: ${敌方红色} !important;
+}
+html.${基地危险类名}, body.${基地危险类名} {
+    background-color: #4a0000 !important;
+}
 @keyframes gio-current-move-pulse {
     0% { box-shadow: inset 0 0 0 2px #00eaff, 0 0 0 2px rgba(0, 0, 0, 0.95), 0 0 7px rgba(0, 234, 255, 0.85) !important; }
     50% { box-shadow: inset 0 0 0 3px #ffffff, 0 0 0 2px rgba(0, 0, 0, 0.95), 0 0 14px rgba(0, 234, 255, 1) !important; }
@@ -1628,6 +1822,7 @@
       }
       状态.页面观察器 = new MutationObserver(() => {
         更新大回合倒计时();
+        更新战场数据差();
         请求渲染();
       });
       状态.页面观察器.observe(document.body, {
