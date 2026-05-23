@@ -27,6 +27,7 @@
   const 大回合倒计时类名 = "gio-big-turn-cell";
   const 兵力着色最小兵力 = 3;
   const 兵力着色最多级别 = 5;
+  const 未到达视野背景色 = "rgba(255, 0, 0, 0.28)";
 
   const 状态 = {
     宽度: 0,
@@ -36,6 +37,7 @@
     已知塔类型: new Map(),
     已知基地集合: new Set(),
     已知敌方基地集合: new Map(),
+    已到达视野集合: new Set(),
     地图数组: null,
     原始兵力文本: new Map(),
     兵力分布着色列表: [],
@@ -407,6 +409,7 @@
       状态.已知塔类型.clear();
       状态.已知基地集合.clear();
       状态.已知敌方基地集合.clear();
+      状态.已到达视野集合.clear();
       状态.地图数组 = null;
       状态.原始兵力文本.clear();
       状态.兵力分布着色列表 = [];
@@ -441,6 +444,7 @@
       }
 
       状态.兵力分布着色列表 = 取得兵力分布着色列表();
+      记录已到达视野(数据包);
 
       function 取得兵力分布着色列表() {
         const 地图数组 = 状态.地图数组;
@@ -760,6 +764,48 @@
       }
       return 新数组;
     }
+
+    function 记录已到达视野(数据包) {
+      if (!状态.宽度 || !状态.高度) return;
+
+      const 格子数 = 状态.宽度 * 状态.高度;
+      const 地图数组 = 状态.地图数组;
+      if (!Array.isArray(地图数组) || 地图数组.length < 2 + 格子数 * 2) return;
+
+      if (Array.isArray(数据包?.generals)) {
+        for (
+          let 玩家索引 = 0;
+          玩家索引 < 数据包.generals.length;
+          玩家索引 += 1
+        ) {
+          const 基地索引 = 数据包.generals[玩家索引];
+          if (Number.isInteger(基地索引) && 是我方或队友(玩家索引)) {
+            记录周围视野(基地索引);
+          }
+        }
+      }
+
+      for (let idx = 0; idx < 格子数; idx += 1) {
+        const 归属 = 地图数组[2 + 格子数 + idx];
+        if (是我方或队友(归属)) 记录周围视野(idx);
+      }
+    }
+
+    function 记录周围视野(中心索引) {
+      if (!Number.isInteger(中心索引) || 中心索引 < 0) return;
+      const 中心行 = Math.floor(中心索引 / 状态.宽度);
+      const 中心列 = 中心索引 % 状态.宽度;
+
+      for (let 行偏移 = -1; 行偏移 <= 1; 行偏移 += 1) {
+        const 行 = 中心行 + 行偏移;
+        if (行 < 0 || 行 >= 状态.高度) continue;
+        for (let 列偏移 = -1; 列偏移 <= 1; 列偏移 += 1) {
+          const 列 = 中心列 + 列偏移;
+          if (列 < 0 || 列 >= 状态.宽度) continue;
+          状态.已到达视野集合.add(行 * 状态.宽度 + 列);
+        }
+      }
+    }
   }
 
   function 是我方或队友(玩家索引) {
@@ -770,6 +816,11 @@
     const 我方队伍 = 状态.队伍[状态.我方索引];
     const 对方队伍 = 状态.队伍[玩家索引];
     return 我方队伍 != null && 对方队伍 === 我方队伍;
+  }
+
+  function 有未到达视野标记() {
+    if (!状态.宽度 || !状态.高度) return false;
+    return 状态.已到达视野集合.size < 状态.宽度 * 状态.高度;
   }
 
   function 更新大回合倒计时() {
@@ -871,7 +922,8 @@
       !状态.已知塔集合.size &&
       !状态.已知敌方基地集合.size &&
       !状态.移动队列.length &&
-      !状态.兵力分布着色列表.length
+      !状态.兵力分布着色列表.length &&
+      !有未到达视野标记()
     ) {
       清空覆盖层();
       return;
@@ -895,6 +947,8 @@
     const 格高 = 尺寸.css高 / 状态.高度;
     const 大小 = Math.min(格宽, 格高);
 
+    画未到达视野背景();
+
     画兵力分布着色();
 
     画操作轨迹(ctx, 格宽, 格高, 大小);
@@ -910,6 +964,21 @@
       const 列 = 基地索引 % 状态.宽度;
       画敌方基地标记(ctx, 列 * 格宽, 行 * 格高, 大小);
     });
+
+    function 画未到达视野背景() {
+      if (!有未到达视野标记()) return;
+      const 格子数 = 状态.宽度 * 状态.高度;
+
+      ctx.save();
+      ctx.fillStyle = 未到达视野背景色;
+      for (let idx = 0; idx < 格子数; idx += 1) {
+        if (状态.已到达视野集合.has(idx)) continue;
+        const 行 = Math.floor(idx / 状态.宽度);
+        const 列 = idx % 状态.宽度;
+        ctx.fillRect(列 * 格宽, 行 * 格高, 格宽, 格高);
+      }
+      ctx.restore();
+    }
 
     function 画兵力分布着色() {
       const 可绘制着色列表 = 取得当前有效着色列表();
@@ -1668,6 +1737,7 @@
           状态.已知塔类型.clear();
           状态.已知基地集合.clear();
           状态.已知敌方基地集合.clear();
+          状态.已到达视野集合.clear();
           状态.原始兵力文本.clear();
           状态.塔列表 = null;
           清空覆盖层();
