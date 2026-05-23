@@ -1,11 +1,11 @@
 import { 状态 } from './state.js'
 import { 安全执行 } from './utils.js'
 import { 更新战场数据差 } from './feats/battleDataDiff.js'
-import { 暴露调试接口 } from './feats/debugApi.js'
+import { 暴露调试接口 } from './debugApi.js'
 import { 安装原始兵力文本捕获 } from './feats/rawArmyText.js'
-import { 清空覆盖层, 渲染 } from './feats/overlay.js'
+import { 清空覆盖层, 渲染 } from './overlay.js'
 import { 更新大回合倒计时 } from './feats/roundCountdown.js'
-import { 挂钩socket } from './feats/socketHook.js'
+import { 挂钩socket } from './socketHook.js'
 
 function 请求渲染() {
   if (状态.已请求渲染) return

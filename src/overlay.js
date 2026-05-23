@@ -17,10 +17,10 @@ import {
   覆盖层类名,
   我方蓝色,
   兵力着色最小兵力,
-} from '../config.js'
-import { 是我方或队友 } from '../game.js'
-import { 状态 } from '../state.js'
-import { 有未到达视野标记 } from './vision.js'
+} from './config.js'
+import { 是我方或队友 } from './game.js'
+import { 状态 } from './state.js'
+import { 有未到达视野标记 } from './feats/vision.js'
 
 export function 清空覆盖层() {
   const 覆盖层 = document.querySelector(`.${覆盖层类名}`)
