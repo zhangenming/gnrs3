@@ -119,44 +119,24 @@ export function 渲染() {
     )
     const 级别样式 = [
       {
-        背景色: 'rgba(255, 184, 0, 0.88)',
-        核心色: 'rgba(255, 255, 255, 0.28)',
-        数字底色: 'rgba(255, 252, 226, 0.92)',
-        数字色: '#1a1200',
-        数字描边色: 'rgba(255, 255, 255, 0.9)',
-        数字阴影色: 'rgba(80, 46, 0, 0.28)',
+        背景色: 'rgba(255, 118, 0, 0.84)',
+        提示色: 'rgba(255, 244, 92, 0.32)',
       },
       {
-        背景色: 'rgba(0, 238, 190, 0.78)',
-        核心色: 'rgba(158, 255, 238, 0.28)',
-        数字底色: 'rgba(0, 24, 32, 0.76)',
-        数字色: '#eaffff',
-        数字描边色: 'rgba(0, 0, 0, 0.92)',
-        数字阴影色: 'rgba(0, 0, 0, 0.5)',
+        背景色: 'rgba(0, 222, 214, 0.78)',
+        提示色: 'rgba(180, 255, 250, 0.28)',
       },
       {
-        背景色: 'rgba(91, 111, 255, 0.72)',
-        核心色: 'rgba(166, 177, 255, 0.22)',
-        数字底色: 'rgba(7, 12, 52, 0.74)',
-        数字色: '#f2f4ff',
-        数字描边色: 'rgba(0, 0, 0, 0.92)',
-        数字阴影色: 'rgba(0, 0, 0, 0.5)',
+        背景色: 'rgba(68, 107, 255, 0.72)',
+        提示色: 'rgba(166, 188, 255, 0.24)',
       },
       {
-        背景色: 'rgba(62, 91, 230, 0.64)',
-        核心色: 'rgba(132, 154, 255, 0.18)',
-        数字底色: 'rgba(6, 10, 42, 0.7)',
-        数字色: '#f3f6ff',
-        数字描边色: 'rgba(0, 0, 0, 0.92)',
-        数字阴影色: 'rgba(0, 0, 0, 0.5)',
+        背景色: 'rgba(45, 76, 214, 0.62)',
+        提示色: 'rgba(128, 158, 255, 0.2)',
       },
       {
-        背景色: 'rgba(38, 66, 190, 0.56)',
-        核心色: 'rgba(105, 132, 255, 0.14)',
-        数字底色: 'rgba(5, 8, 34, 0.66)',
-        数字色: '#f5f7ff',
-        数字描边色: 'rgba(0, 0, 0, 0.92)',
-        数字阴影色: 'rgba(0, 0, 0, 0.5)',
+        背景色: 'rgba(30, 52, 170, 0.54)',
+        提示色: 'rgba(98, 130, 255, 0.16)',
       },
     ]
     const 兵力级别样式 = new Map(
@@ -174,75 +154,76 @@ export function 渲染() {
       const y = 行 * 格高
       const 宽 = Math.max(1, 格宽 * 覆盖比例)
       const 高 = Math.max(1, 格高 * 覆盖比例)
-      const 核心宽 = Math.max(1, 宽 * 0.46)
-      const 核心高 = Math.max(1, 高 * 0.46)
 
-      ctx.fillStyle = 样式.背景色
-      ctx.fillRect(x + (格宽 - 宽) / 2, y + (格高 - 高) / 2, 宽, 高)
-      ctx.fillStyle = 样式.核心色
-      ctx.fillRect(
-        x + (格宽 - 核心宽) / 2,
-        y + (格高 - 核心高) / 2,
-        核心宽,
-        核心高,
-      )
+      画兵力信号块(x, y, 宽, 高, 样式)
     })
-    画同步兵力数字()
+    画兵力读数()
     ctx.restore()
 
-    function 画同步兵力数字() {
-      if (!状态.原始兵力文本.size) return
-
+    function 画兵力读数() {
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.lineJoin = 'round'
       同步着色列表.forEach((地块) => {
         if (!兵力级别覆盖比例.has(地块.兵力)) return
-        const 样式 = 兵力级别样式.get(地块.兵力)
-        const 原始文本 = 状态.原始兵力文本.get(地块.索引)
-        if (!原始文本 || 原始文本.兵力 !== 地块.兵力) return
         const 行 = Math.floor(地块.索引 / 状态.宽度)
         const 列 = 地块.索引 % 状态.宽度
         const x = 列 * 格宽 + 格宽 / 2
         const y = 行 * 格高 + 格高 / 2
-        const 文本 = 原始文本.文本
-        const 字号比例 = 文本.length >= 2 ? 0.58 : 0.68
-        const 字号 = Math.max(13, Math.min(25, 大小 * 字号比例))
+        const 文本 = 取得兵力读数文本(地块)
+        const 字号比例 =
+          文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
+        const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
 
         ctx.font = `900 ${字号}px Arial, sans-serif`
-        画数字底片(x, y, 文本, 字号, 样式.数字底色)
-        ctx.lineWidth = Math.max(1.4, Math.min(2.4, 大小 * 0.045))
-        ctx.strokeStyle = 样式.数字描边色
-        ctx.fillStyle = 样式.数字色
-        ctx.shadowColor = 样式.数字阴影色
-        ctx.shadowBlur = Math.max(0.8, 大小 * 0.018)
-        ctx.shadowOffsetX = 0
-        ctx.shadowOffsetY = Math.max(0.5, 大小 * 0.02)
-        ctx.strokeText(文本, x, y)
+        画读数底片(x, y, 文本, 字号)
+        ctx.shadowColor = 'transparent'
+        ctx.fillStyle = '#ffffff'
         ctx.fillText(文本, x, y)
-        ctx.shadowColor = 'transparent'
       })
+    }
 
-      function 画数字底片(x, y, 文本, 字号, 底色) {
-        const 文本宽 = ctx.measureText(文本).width
-        const 底片宽 = Math.min(
-          格宽 * 0.86,
-          Math.max(格宽 * 0.48, 文本宽 + 大小 * 0.22),
-        )
-        const 底片高 = Math.min(格高 * 0.68, Math.max(字号 * 1.08, 大小 * 0.38))
-        const 圆角 = Math.min(4, 底片高 * 0.22)
+    function 画兵力信号块(x, y, 宽, 高, 样式) {
+      const 左 = x + (格宽 - 宽) / 2
+      const 上 = y + (格高 - 高) / 2
+      const 提示高 = Math.min(高, Math.max(2, 大小 * 0.1))
 
-        ctx.shadowColor = 'transparent'
-        ctx.fillStyle = 底色
-        ctx.beginPath()
-        ctx.roundRect(x - 底片宽 / 2, y - 底片高 / 2, 底片宽, 底片高, 圆角)
-        ctx.fill()
-      }
+      ctx.fillStyle = 样式.背景色
+      ctx.fillRect(左, 上, 宽, 高)
+      ctx.fillStyle = 样式.提示色
+      ctx.fillRect(左, 上, 宽, 提示高)
+    }
+
+    function 画读数底片(x, y, 文本, 字号) {
+      const 文本宽 = ctx.measureText(文本).width
+      const 最小留白 = Math.max(2, 大小 * 0.08)
+      const 底片宽 = Math.min(
+        格宽 - 最小留白,
+        Math.max(大小 * 0.58, 文本宽 + 大小 * 0.26),
+      )
+      const 底片高 = Math.min(
+        格高 - 最小留白,
+        Math.max(字号 * 1.2, 大小 * 0.52),
+      )
+      const 圆角 = Math.min(4, 底片高 * 0.2)
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.65)'
+      ctx.shadowBlur = Math.max(1.5, 大小 * 0.04)
+      ctx.shadowOffsetX = 0
+      ctx.shadowOffsetY = 0
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.86)'
+      ctx.beginPath()
+      ctx.roundRect(x - 底片宽 / 2, y - 底片高 / 2, 底片宽, 底片高, 圆角)
+      ctx.fill()
+    }
+
+    function 取得兵力读数文本(地块) {
+      const 原始文本 = 状态.原始兵力文本.get(地块.索引)
+      if (原始文本?.兵力 === 地块.兵力) return 原始文本.文本
+      return String(地块.兵力)
     }
 
     function 取得同步着色列表(列表) {
-      if (!状态.原始兵力文本.size) return 列表
-
       const 同步列表 = []
       for (const 地块 of 列表) {
         const 原始文本 = 状态.原始兵力文本.get(地块.索引)
