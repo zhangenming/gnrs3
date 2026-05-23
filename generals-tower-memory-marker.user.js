@@ -996,15 +996,29 @@
     if (!表头行) return;
 
     const 表头格列表 = 取得单元格列表(表头行);
+    const 玩家列 = 表头格列表.findIndex(
+      (单元格) => (单元格.textContent ?? "").trim() === "Player",
+    );
     const 兵力列 = 取得列索引(表头格列表, "Army", "army");
     const 陆地列 = 取得列索引(表头格列表, "Land", "land");
-    if (兵力列 < 0 || 陆地列 < 0) return;
+    if (玩家列 < 0 || 兵力列 < 0 || 陆地列 < 0) return;
 
     const 数据行列表 = Array.from(表格.querySelectorAll("tr")).filter(
       (行) => 行 !== 表头行 && 取得单元格列表(行).length > 陆地列,
     );
-    const 我方行 = 数据行列表.find((行) => 行.querySelector(".selected-blue"));
-    const 敌方行 = 数据行列表.find((行) => 行.querySelector(".selected-red"));
+    let 我方行 = 数据行列表.find((行) =>
+      是我方玩家格(取得单元格列表(行)[玩家列]),
+    );
+    let 敌方行 = 数据行列表.find((行) =>
+      是敌方玩家格(取得单元格列表(行)[玩家列]),
+    );
+    if (!我方行 || !敌方行) {
+      const 玩家行列表 = 数据行列表.filter((行) => {
+        return (取得单元格列表(行)[玩家列]?.textContent ?? "").trim();
+      });
+      我方行 ??= 玩家行列表[0] ?? null;
+      敌方行 ??= 玩家行列表.find((行) => 行 !== 我方行) ?? null;
+    }
     if (!我方行 || !敌方行) return;
 
     const 我方格列表 = 取得单元格列表(我方行);
@@ -1079,6 +1093,29 @@
       return 单元格列表.findIndex((单元格) => {
         if (单元格.dataset.gioBattleKind === 类型) return true;
         return (单元格.textContent ?? "").trim() === 原文本;
+      });
+    }
+
+    function 是我方玩家格(单元格) {
+      return 有颜色类(单元格, [
+        "blue",
+        "lightblue",
+        "selected-blue",
+        "selected-lightblue",
+      ]);
+    }
+
+    function 是敌方玩家格(单元格) {
+      return 有颜色类(单元格, ["red", "selected-red"]);
+    }
+
+    function 有颜色类(单元格, 类名列表) {
+      if (!单元格) return false;
+      return 类名列表.some((类名) => {
+        return (
+          单元格.classList.contains(类名) ||
+          Boolean(单元格.querySelector(`.${类名}`))
+        );
       });
     }
 
