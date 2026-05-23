@@ -1,0 +1,17 @@
+export const 脚本版本 = '0.9.0'
+export const 覆盖层类名 = 'gio-tower-memory-overlay'
+export const 样式编号 = 'gio-tower-memory-style'
+export const 我方蓝色 = '#2792ff'
+export const 敌方红色 = '#ff0000'
+export const 中立黄色 = '#ffd84d'
+export const 我方蓝色索引 = 1
+export const 敌方红色索引 = 0
+export const 大回合turn数 = 50
+export const 大回合倒计时元素编号 = 'gio-big-turn-countdown'
+export const 大回合倒计时类名 = 'gio-big-turn-cell'
+export const 战场数据差类名 = 'gio-battle-data-diff-cell'
+export const 基地危险类名 = 'gio-general-danger'
+export const 兵力着色最小兵力 = 3
+export const 兵力着色最多级别 = 5
+export const 玩家最小距离 = 15
+export const 未到达视野背景色 = 'rgba(255, 0, 0, 0.28)'
