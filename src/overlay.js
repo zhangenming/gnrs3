@@ -105,30 +105,65 @@ export function 渲染() {
     const 兵力级别覆盖比例 = new Map(
       兵力级别.map((兵力, idx) => [兵力, 级别覆盖比例[idx]]),
     )
-    const 级别背景色 = [
-      'rgba(0, 24, 170, 0.82)',
-      'rgba(0, 214, 170, 0.74)',
-      'rgba(0, 54, 220, 0.72)',
-      'rgba(0, 54, 220, 0.72)',
-      'rgba(0, 54, 220, 0.72)',
+    const 级别样式 = [
+      {
+        背景色: 'rgba(255, 174, 0, 0.86)',
+        核心色: 'rgba(255, 236, 102, 0.34)',
+        数字底色: 'rgba(18, 12, 0, 0.78)',
+        数字色: '#fff8d8',
+      },
+      {
+        背景色: 'rgba(0, 238, 190, 0.78)',
+        核心色: 'rgba(158, 255, 238, 0.28)',
+        数字底色: 'rgba(0, 24, 32, 0.76)',
+        数字色: '#eaffff',
+      },
+      {
+        背景色: 'rgba(91, 111, 255, 0.72)',
+        核心色: 'rgba(166, 177, 255, 0.22)',
+        数字底色: 'rgba(7, 12, 52, 0.74)',
+        数字色: '#f2f4ff',
+      },
+      {
+        背景色: 'rgba(62, 91, 230, 0.64)',
+        核心色: 'rgba(132, 154, 255, 0.18)',
+        数字底色: 'rgba(6, 10, 42, 0.7)',
+        数字色: '#f3f6ff',
+      },
+      {
+        背景色: 'rgba(38, 66, 190, 0.56)',
+        核心色: 'rgba(105, 132, 255, 0.14)',
+        数字底色: 'rgba(5, 8, 34, 0.66)',
+        数字色: '#f5f7ff',
+      },
     ]
-    const 兵力级别背景色 = new Map(
-      兵力级别.map((兵力, idx) => [兵力, 级别背景色[idx]]),
+    const 兵力级别样式 = new Map(
+      兵力级别.map((兵力, idx) => [兵力, 级别样式[idx]]),
     )
 
     ctx.save()
     同步着色列表.forEach((地块) => {
       const 覆盖比例 = 兵力级别覆盖比例.get(地块.兵力)
       if (!覆盖比例) return
-      ctx.fillStyle = 兵力级别背景色.get(地块.兵力)
+      const 样式 = 兵力级别样式.get(地块.兵力)
       const 行 = Math.floor(地块.索引 / 状态.宽度)
       const 列 = 地块.索引 % 状态.宽度
       const x = 列 * 格宽
       const y = 行 * 格高
       const 宽 = Math.max(1, 格宽 * 覆盖比例)
       const 高 = Math.max(1, 格高 * 覆盖比例)
+      const 核心宽 = Math.max(1, 宽 * 0.46)
+      const 核心高 = Math.max(1, 高 * 0.46)
 
+      ctx.fillStyle = 样式.背景色
       ctx.fillRect(x + (格宽 - 宽) / 2, y + (格高 - 高) / 2, 宽, 高)
+      ctx.fillStyle = 样式.核心色
+      ctx.fillRect(
+        x + (格宽 - 核心宽) / 2,
+        y + (格高 - 核心高) / 2,
+        核心宽,
+        核心高,
+      )
     })
     画同步兵力数字()
     ctx.restore()
@@ -138,17 +173,10 @@ export function 渲染() {
 
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.font = `900 ${Math.max(13, Math.min(24, 大小 * 0.62))}px Arial, sans-serif`
       ctx.lineJoin = 'round'
-      ctx.lineWidth = Math.max(1.5, Math.min(2.6, 大小 * 0.055))
-      ctx.strokeStyle = 'rgba(0, 7, 26, 0.98)'
-      ctx.fillStyle = '#ffe95c'
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.55)'
-      ctx.shadowBlur = Math.max(1, 大小 * 0.025)
-      ctx.shadowOffsetX = 0
-      ctx.shadowOffsetY = Math.max(1, 大小 * 0.03)
       同步着色列表.forEach((地块) => {
         if (!兵力级别覆盖比例.has(地块.兵力)) return
+        const 样式 = 兵力级别样式.get(地块.兵力)
         const 原始文本 = 状态.原始兵力文本.get(地块.索引)
         if (!原始文本 || 原始文本.兵力 !== 地块.兵力) return
         const 行 = Math.floor(地块.索引 / 状态.宽度)
@@ -156,10 +184,38 @@ export function 渲染() {
         const x = 列 * 格宽 + 格宽 / 2
         const y = 行 * 格高 + 格高 / 2
         const 文本 = 原始文本.文本
+        const 字号比例 = 文本.length >= 2 ? 0.58 : 0.68
+        const 字号 = Math.max(13, Math.min(25, 大小 * 字号比例))
 
+        ctx.font = `900 ${字号}px Arial, sans-serif`
+        画数字底片(x, y, 文本, 字号, 样式.数字底色)
+        ctx.lineWidth = Math.max(1.4, Math.min(2.4, 大小 * 0.045))
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)'
+        ctx.fillStyle = 样式.数字色
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
+        ctx.shadowBlur = Math.max(0.8, 大小 * 0.018)
+        ctx.shadowOffsetX = 0
+        ctx.shadowOffsetY = Math.max(0.5, 大小 * 0.02)
         ctx.strokeText(文本, x, y)
         ctx.fillText(文本, x, y)
+        ctx.shadowColor = 'transparent'
       })
+
+      function 画数字底片(x, y, 文本, 字号, 底色) {
+        const 文本宽 = ctx.measureText(文本).width
+        const 底片宽 = Math.min(
+          格宽 * 0.86,
+          Math.max(格宽 * 0.48, 文本宽 + 大小 * 0.22),
+        )
+        const 底片高 = Math.min(格高 * 0.68, Math.max(字号 * 1.08, 大小 * 0.38))
+        const 圆角 = Math.min(4, 底片高 * 0.22)
+
+        ctx.shadowColor = 'transparent'
+        ctx.fillStyle = 底色
+        ctx.beginPath()
+        ctx.roundRect(x - 底片宽 / 2, y - 底片高 / 2, 底片宽, 底片高, 圆角)
+        ctx.fill()
+      }
     }
 
     function 取得同步着色列表(列表) {
