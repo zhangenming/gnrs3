@@ -837,7 +837,7 @@
     function 移除左上角倒计时() {
       if (!document.body) return;
       const 旧元素 = document.getElementById(大回合倒计时元素编号);
-      if (旧元素 && 旧元素.parentNode) 旧元素.parentNode.removeChild(旧元素);
+      旧元素?.remove();
     }
 
     function 取得排行榜标识元素() {
