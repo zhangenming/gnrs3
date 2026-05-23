@@ -419,59 +419,38 @@ export function 渲染() {
   }
 
   function 画敌方基地标记(ctx, x, y, 大小) {
-    const 外线宽 = Math.max(6, 大小 * 0.28)
-    const 内线宽 = Math.max(4, 大小 * 0.16)
-    const 十字线宽 = Math.max(2.5, 大小 * 0.1)
-    const 外偏移 = 外线宽 / 2 + 1
-    const 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2
-    const 中心x = x + 大小 / 2
-    const 中心y = y + 大小 / 2
-    const 十字长度 = Math.max(6, 大小 * 0.34)
+    const 外扩 = Math.max(3, 大小 * 0.12)
+    const 黑框线宽 = Math.max(5, 大小 * 0.18)
+    const 红框线宽 = Math.max(3, 大小 * 0.1)
+    const 黑框偏移 = -外扩 + 黑框线宽 / 2
+    const 红框偏移 = -外扩 + 黑框线宽 + 红框线宽 / 2
 
     ctx.save()
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
 
-    ctx.globalAlpha = 0.5
+    ctx.globalAlpha = 0.24
     ctx.fillStyle = 敌方红色
     ctx.fillRect(x + 1, y + 1, Math.max(1, 大小 - 2), Math.max(1, 大小 - 2))
     ctx.globalAlpha = 1
 
-    ctx.lineWidth = 外线宽
+    ctx.lineWidth = 黑框线宽
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.96)'
     ctx.strokeRect(
-      x + 外偏移,
-      y + 外偏移,
-      Math.max(1, 大小 - 外偏移 * 2),
-      Math.max(1, 大小 - 外偏移 * 2),
+      x + 黑框偏移,
+      y + 黑框偏移,
+      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽),
+      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽),
     )
 
-    ctx.lineWidth = 内线宽
+    ctx.lineWidth = 红框线宽
     ctx.strokeStyle = 敌方红色
     ctx.strokeRect(
-      x + 内偏移,
-      y + 内偏移,
-      Math.max(1, 大小 - 内偏移 * 2),
-      Math.max(1, 大小 - 内偏移 * 2),
+      x + 红框偏移,
+      y + 红框偏移,
+      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽 * 2 - 红框线宽),
+      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽 * 2 - 红框线宽),
     )
-
-    ctx.lineWidth = 十字线宽 + Math.max(2, 大小 * 0.06)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)'
-    ctx.beginPath()
-    ctx.moveTo(中心x - 十字长度, 中心y)
-    ctx.lineTo(中心x + 十字长度, 中心y)
-    ctx.moveTo(中心x, 中心y - 十字长度)
-    ctx.lineTo(中心x, 中心y + 十字长度)
-    ctx.stroke()
-
-    ctx.lineWidth = 十字线宽
-    ctx.strokeStyle = '#ffffff'
-    ctx.beginPath()
-    ctx.moveTo(中心x - 十字长度, 中心y)
-    ctx.lineTo(中心x + 十字长度, 中心y)
-    ctx.moveTo(中心x, 中心y - 十字长度)
-    ctx.lineTo(中心x, 中心y + 十字长度)
-    ctx.stroke()
 
     ctx.restore()
   }
