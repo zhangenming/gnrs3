@@ -1,3 +1,9 @@
+// 功能目的:
+// 捕获游戏原始 canvas 绘制出来的兵力数字，保存每个格子的真实文本。
+//
+// 作用范围:
+// 通过挂钩 CanvasRenderingContext2D 的 fillText、strokeText 和 clearRect 记录/清理兵力文本。
+// 覆盖层绘制高兵力地块时会复用这些原始数字，避免辅助标记遮住后看不清实际兵力。
 import { 状态 } from '../state.js'
 import { 安全执行 } from '../utils.js'
 
