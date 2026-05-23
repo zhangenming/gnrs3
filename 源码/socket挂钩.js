@@ -127,6 +127,7 @@ export function 挂钩socket(socket, 请求渲染) {
     状态.原始兵力文本.clear()
     状态.兵力分布着色列表 = []
     状态.兵力分布调试 = null
+    状态.敌方移动高亮列表 = []
     清空移动队列('新局重置', 请求渲染)
     状态.当前回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 0
     状态.我方索引 = Number.isInteger(数据包?.playerIndex)

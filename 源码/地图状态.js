@@ -12,10 +12,12 @@ import {
   是我方或队友,
 } from './游戏.js'
 import { 状态 } from './状态.js'
+import { 更新敌方移动高亮 } from './功能/敌方移动高亮.js'
 import { 记录已到达视野 } from './功能/视野.js'
 
 export function 更新地图缓存和兵力分布(数据包, 来源事件) {
   const 完整地图数组 = 取得完整地图数组(数据包)
+  const 旧地图数组 = Array.isArray(状态.地图数组) ? 状态.地图数组.slice() : null
   if (完整地图数组) {
     状态.地图数组 = 完整地图数组.slice()
   } else if (Array.isArray(数据包?.map_diff) && Array.isArray(状态.地图数组)) {
@@ -28,6 +30,7 @@ export function 更新地图缓存和兵力分布(数据包, 来源事件) {
     }
   }
 
+  更新敌方移动高亮(旧地图数组, 状态.地图数组, 数据包)
   状态.兵力分布着色列表 = 取得兵力分布着色列表()
   记录已到达视野(数据包)
 

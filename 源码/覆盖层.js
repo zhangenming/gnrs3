@@ -20,6 +20,7 @@ import {
 } from './配置.js'
 import { 是我方或队友 } from './游戏.js'
 import { 状态 } from './状态.js'
+import { 清理敌方移动高亮 } from './功能/敌方移动高亮.js'
 import { 有未到达视野标记 } from './功能/视野.js'
 
 export function 清空覆盖层() {
@@ -31,11 +32,13 @@ export function 清空覆盖层() {
 
 export function 渲染() {
   状态.已请求渲染 = false
+  清理敌方移动高亮()
 
   if (
     !状态.已知塔集合.size &&
     !状态.已知敌方基地集合.size &&
     !状态.移动队列.length &&
+    !状态.敌方移动高亮列表.length &&
     !状态.兵力分布着色列表.length &&
     !有未到达视野标记()
   ) {
@@ -64,6 +67,7 @@ export function 渲染() {
   画未到达视野背景()
   画兵力分布着色()
   画操作轨迹(ctx, 格宽, 格高, 大小)
+  画敌方移动高亮(ctx, 格宽, 格高, 大小)
 
   状态.已知塔集合.forEach((塔索引) => {
     const 行 = Math.floor(塔索引 / 状态.宽度)
@@ -76,6 +80,14 @@ export function 渲染() {
     const 列 = 基地索引 % 状态.宽度
     画敌方基地标记(ctx, 列 * 格宽, 行 * 格高, 大小)
   })
+
+  if (状态.敌方移动高亮列表.length) {
+    requestAnimationFrame(() => {
+      if (!状态.敌方移动高亮列表.length || 状态.已请求渲染) return
+      状态.已请求渲染 = true
+      渲染()
+    })
+  }
 
   function 画未到达视野背景() {
     if (!有未到达视野标记()) return
@@ -508,6 +520,36 @@ export function 渲染() {
     )
   }
 
+  function 画敌方移动高亮(ctx, 格宽, 格高, 大小) {
+    if (!状态.敌方移动高亮列表.length) return
+
+    const 格子数 = 状态.宽度 * 状态.高度
+    const 可绘制移动 = 状态.敌方移动高亮列表.filter((移动) => {
+      return (
+        Number.isInteger(移动.起点) &&
+        Number.isInteger(移动.终点) &&
+        移动.起点 >= 0 &&
+        移动.终点 >= 0 &&
+        移动.起点 < 格子数 &&
+        移动.终点 < 格子数
+      )
+    })
+    if (!可绘制移动.length) return
+
+    const 动画相位 = (performance.now() % 900) / 900
+    const 脉冲 = 0.5 - Math.cos(动画相位 * Math.PI * 2) / 2
+    const 线宽 = Math.max(2, Math.min(5, 大小 * (0.08 + 脉冲 * 0.05)))
+
+    ctx.save()
+    可绘制移动.forEach((移动) => {
+      const 起点 = 取得格子中心(移动.起点, 格宽, 格高)
+      const 终点 = 取得格子中心(移动.终点, 格宽, 格高)
+      画敌方移动箭头(ctx, 起点, 终点, 线宽, 脉冲)
+      画敌方移动终点(ctx, 移动.终点, 格宽, 格高, 大小, 脉冲)
+    })
+    ctx.restore()
+  }
+
   function 安装样式() {
     if (!document.documentElement || document.getElementById(样式编号)) return
     const 样式 = document.createElement('style')
@@ -712,6 +754,117 @@ html.${基地危险类名}, body.${基地危险类名} {
       ctx.fill()
     }
 
+    ctx.restore()
+  }
+
+  function 画敌方移动箭头(ctx, 起点, 终点, 线宽, 脉冲) {
+    const dx = 终点.x - 起点.x
+    const dy = 终点.y - 起点.y
+    const 距离 = Math.hypot(dx, dy)
+    if (!Number.isFinite(距离) || 距离 < 1) return
+
+    const 缩进 = Math.max(4, 线宽 * 2.1)
+    const 起x = 起点.x + (dx / 距离) * 缩进
+    const 起y = 起点.y + (dy / 距离) * 缩进
+    const 终x = 终点.x - (dx / 距离) * 缩进
+    const 终y = 终点.y - (dy / 距离) * 缩进
+    const 角度 = Math.atan2(终y - 起y, 终x - 起x)
+    const 箭头长 = Math.max(7, Math.min(14, 线宽 * 3.2))
+    const 箭头角 = Math.PI / 6
+
+    ctx.save()
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.globalAlpha = 0.68 + 脉冲 * 0.22
+    ctx.lineWidth = 线宽 + Math.max(2, 线宽 * 0.85)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.82)'
+    ctx.beginPath()
+    ctx.moveTo(起x, 起y)
+    ctx.lineTo(终x, 终y)
+    ctx.stroke()
+
+    ctx.globalAlpha = 0.86
+    ctx.lineWidth = 线宽
+    ctx.strokeStyle = 敌方红色
+    ctx.beginPath()
+    ctx.moveTo(起x, 起y)
+    ctx.lineTo(终x, 终y)
+    ctx.stroke()
+
+    ctx.globalAlpha = 0.82
+    ctx.lineWidth = Math.max(1.5, 线宽 * 0.45)
+    ctx.strokeStyle = '#fff0f0'
+    ctx.beginPath()
+    ctx.moveTo(起x, 起y)
+    ctx.lineTo(终x, 终y)
+    ctx.stroke()
+
+    ctx.globalAlpha = 0.78
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.82)'
+    ctx.lineWidth = 线宽 + Math.max(2, 线宽 * 0.7)
+    ctx.beginPath()
+    ctx.moveTo(终x, 终y)
+    ctx.lineTo(
+      终x - 箭头长 * Math.cos(角度 - 箭头角),
+      终y - 箭头长 * Math.sin(角度 - 箭头角),
+    )
+    ctx.moveTo(终x, 终y)
+    ctx.lineTo(
+      终x - 箭头长 * Math.cos(角度 + 箭头角),
+      终y - 箭头长 * Math.sin(角度 + 箭头角),
+    )
+    ctx.stroke()
+
+    ctx.globalAlpha = 0.95
+    ctx.strokeStyle = '#ff3838'
+    ctx.lineWidth = 线宽
+    ctx.beginPath()
+    ctx.moveTo(终x, 终y)
+    ctx.lineTo(
+      终x - 箭头长 * Math.cos(角度 - 箭头角),
+      终y - 箭头长 * Math.sin(角度 - 箭头角),
+    )
+    ctx.moveTo(终x, 终y)
+    ctx.lineTo(
+      终x - 箭头长 * Math.cos(角度 + 箭头角),
+      终y - 箭头长 * Math.sin(角度 + 箭头角),
+    )
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  function 画敌方移动终点(ctx, 格子索引, 格宽, 格高, 大小, 脉冲) {
+    const 行 = Math.floor(格子索引 / 状态.宽度)
+    const 列 = 格子索引 % 状态.宽度
+    const x = 列 * 格宽
+    const y = 行 * 格高
+    const 外线宽 = Math.max(2, 大小 * (0.08 + 脉冲 * 0.06))
+    const 内缩 = Math.max(3, 大小 * (0.12 - 脉冲 * 0.03))
+
+    ctx.save()
+    ctx.lineJoin = 'round'
+    ctx.globalAlpha = 0.36 + 脉冲 * 0.18
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.32)'
+    ctx.fillRect(x + 1, y + 1, Math.max(1, 格宽 - 2), Math.max(1, 格高 - 2))
+
+    ctx.globalAlpha = 0.9
+    ctx.lineWidth = 外线宽
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)'
+    ctx.strokeRect(
+      x + 内缩,
+      y + 内缩,
+      Math.max(1, 格宽 - 内缩 * 2),
+      Math.max(1, 格高 - 内缩 * 2),
+    )
+
+    ctx.lineWidth = Math.max(1.5, 外线宽 * 0.5)
+    ctx.strokeStyle = '#ff3838'
+    ctx.strokeRect(
+      x + 内缩,
+      y + 内缩,
+      Math.max(1, 格宽 - 内缩 * 2),
+      Math.max(1, 格高 - 内缩 * 2),
+    )
     ctx.restore()
   }
 
