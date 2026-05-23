@@ -4,7 +4,6 @@
 // 作用范围:
 // 入站侧负责驱动回合记录、颜色重构、塔/基地记忆、地图缓存、基地危险和战场数据差更新。
 // 出站侧只记录本地移动队列用于覆盖层显示，真实 socket 调用仍交回原函数执行。
-import { 脚本版本 } from './配置.js'
 import { 读取玩家信息, 尝试从地图读取尺寸 } from './游戏.js'
 import { 状态 } from './状态.js'
 import { 安全执行 } from './工具.js'
@@ -24,18 +23,13 @@ import { 记录回合, 更新大回合倒计时 } from './功能/大回合倒计
 import { 处理塔位置 } from './功能/塔记忆.js'
 
 export function 挂钩socket(socket, 请求渲染) {
-  if (!socket || socket.__塔记忆挂钩版本 === 脚本版本) return
+  if (!socket || socket.__塔记忆已挂钩) return
   socket.__塔记忆已挂钩 = true
-  socket.__塔记忆挂钩版本 = 脚本版本
   状态.socket已挂钩 = true
 
-  if (
-    typeof socket.emit === 'function' &&
-    socket.__塔记忆emit挂钩版本 !== 脚本版本
-  ) {
+  if (typeof socket.emit === 'function' && !socket.__塔记忆emit已挂钩) {
     const 原emit = socket.emit
     socket.__塔记忆emit已挂钩 = true
-    socket.__塔记忆emit挂钩版本 = 脚本版本
     socket.emit = function (事件名, ...参数) {
       安全执行('emit出站操作记录', () => {
         if (事件名 === 'attack') {
@@ -50,13 +44,9 @@ export function 挂钩socket(socket, 请求渲染) {
     }
   }
 
-  if (
-    typeof socket.onevent === 'function' &&
-    socket.__塔记忆onevent挂钩版本 !== 脚本版本
-  ) {
+  if (typeof socket.onevent === 'function' && !socket.__塔记忆onevent已挂钩) {
     const 原onevent = socket.onevent
     socket.__塔记忆onevent已挂钩 = true
-    socket.__塔记忆onevent挂钩版本 = 脚本版本
     socket.onevent = function (包) {
       安全执行('onevent入站预处理', () => {
         const 数据 = Array.isArray(包?.data) ? 包.data : null
@@ -68,11 +58,10 @@ export function 挂钩socket(socket, 请求渲染) {
 
   if (
     typeof socket.emitEvent === 'function' &&
-    socket.__塔记忆emitEvent挂钩版本 !== 脚本版本
+    !socket.__塔记忆emitEvent已挂钩
   ) {
     const 原emitEvent = socket.emitEvent
     socket.__塔记忆emitEvent已挂钩 = true
-    socket.__塔记忆emitEvent挂钩版本 = 脚本版本
     socket.emitEvent = function (参数列表) {
       安全执行('emitEvent入站预处理', () => {
         if (Array.isArray(参数列表)) 预处理入站事件(参数列表[0], 参数列表[1])

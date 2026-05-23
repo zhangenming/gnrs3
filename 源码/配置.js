@@ -1,4 +1,3 @@
-export const 脚本版本 = '0.9.1'
 export const 覆盖层类名 = 'gio-tower-memory-overlay'
 export const 样式编号 = 'gio-tower-memory-style'
 export const 我方蓝色 = '#2792ff'
