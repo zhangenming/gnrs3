@@ -133,6 +133,9 @@ export function 挂钩socket(socket, 请求渲染) {
     状态.我方索引 = Number.isInteger(数据包?.playerIndex)
       ? 数据包.playerIndex
       : null
+    状态.玩家名列表 = Array.isArray(数据包?.usernames)
+      ? 数据包.usernames.slice()
+      : null
     状态.队伍 = Array.isArray(数据包?.teams) ? 数据包.teams.slice() : null
     读取玩家信息(数据包 ?? {})
     尝试从地图读取尺寸(数据包 ?? {})

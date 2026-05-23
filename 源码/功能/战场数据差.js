@@ -4,8 +4,10 @@
 //
 // 作用范围:
 // 只改写排行榜/战场数据表的表头格内容和样式，不参与地图状态计算。
-// 会根据玩家颜色识别我方与敌方行，并给差值格写入数据属性，供样式层区分优势和劣势。
+// 会优先根据玩家索引和用户名识别我方与敌方行，并给差值格写入数据属性，供样式层区分优势和劣势。
 import { 战场数据差类名 } from '../配置.js'
+import { 是我方或队友 } from '../游戏.js'
+import { 状态 } from '../状态.js'
 
 export function 更新战场数据差() {
   if (!document.body) return
@@ -27,12 +29,17 @@ export function 更新战场数据差() {
   const 数据行列表 = Array.from(表格.querySelectorAll('tr')).filter(
     (行) => 行 !== 表头行 && 取得单元格列表(行).length > 陆地列,
   )
-  let 我方行 = 数据行列表.find((行) => 是我方玩家格(取得单元格列表(行)[玩家列]))
-  let 敌方行 = 数据行列表.find((行) => 是敌方玩家格(取得单元格列表(行)[玩家列]))
+  const 玩家行列表 = 数据行列表.filter((行) => {
+    return (取得单元格列表(行)[玩家列]?.textContent ?? '').trim()
+  })
+  let 我方行 = 取得玩家行(状态.我方索引, 玩家行列表)
+  let 敌方行 = 玩家行列表.find((行) => {
+    const 玩家索引 = 取得行玩家索引(行)
+    return Number.isInteger(玩家索引) && !是我方或队友(玩家索引)
+  })
+  我方行 ??= 数据行列表.find((行) => 是我方玩家格(取得单元格列表(行)[玩家列]))
+  敌方行 ??= 数据行列表.find((行) => 是敌方玩家格(取得单元格列表(行)[玩家列]))
   if (!我方行 || !敌方行) {
-    const 玩家行列表 = 数据行列表.filter((行) => {
-      return (取得单元格列表(行)[玩家列]?.textContent ?? '').trim()
-    })
     我方行 ??= 玩家行列表[0] ?? null
     敌方行 ??= 玩家行列表.find((行) => 行 !== 我方行) ?? null
   }
@@ -111,6 +118,27 @@ export function 更新战场数据差() {
       if (单元格.dataset.gioBattleKind === 类型) return true
       return (单元格.textContent ?? '').trim() === 原文本
     })
+  }
+
+  function 取得玩家行(玩家索引, 玩家行列表) {
+    const 玩家名 = 状态.玩家名列表?.[玩家索引]
+    if (!玩家名) return null
+    return (
+      玩家行列表.find((行) => {
+        return 取得玩家名(行) === 玩家名
+      }) ?? null
+    )
+  }
+
+  function 取得行玩家索引(行) {
+    const 玩家名 = 取得玩家名(行)
+    if (!玩家名 || !Array.isArray(状态.玩家名列表)) return null
+    const 玩家索引 = 状态.玩家名列表.indexOf(玩家名)
+    return 玩家索引 >= 0 ? 玩家索引 : null
+  }
+
+  function 取得玩家名(行) {
+    return (取得单元格列表(行)[玩家列]?.textContent ?? '').trim()
   }
 
   function 是我方玩家格(单元格) {

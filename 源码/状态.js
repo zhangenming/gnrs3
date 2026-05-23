@@ -19,6 +19,7 @@ export const 状态 = {
   大回合倒计时元素: null,
   上次大回合倒计时文本: '',
   我方索引: null,
+  玩家名列表: null,
   队伍: null,
   已请求渲染: false,
   socket已挂钩: false,

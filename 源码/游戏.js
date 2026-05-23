@@ -15,6 +15,9 @@ export function 读取玩家信息(数据包) {
   if (Number.isInteger(数据包.playerIndex)) {
     状态.我方索引 = 数据包.playerIndex
   }
+  if (Array.isArray(数据包.usernames)) {
+    状态.玩家名列表 = 数据包.usernames.slice()
+  }
   if (Array.isArray(数据包.teams)) {
     状态.队伍 = 数据包.teams.slice()
   }
