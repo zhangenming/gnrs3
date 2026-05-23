@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.21
+// @version      0.8.22
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 (() => {
   "use strict";
 
-  const 脚本版本 = "0.8.21";
+  const 脚本版本 = "0.8.22";
   const 覆盖层类名 = "gio-tower-memory-overlay";
   const 样式编号 = "gio-tower-memory-style";
   const 我方蓝色 = "#2792ff";
@@ -524,23 +524,23 @@
           if (Number.isInteger(移动.终点) && 移动.终点 >= 0)
             路径集合.add(移动.终点);
         });
-        for (let i = 0; i < 格子数; i += 1) {
-          const 兵力 = 地图数组[2 + i];
-          const 地形 = 地图数组[2 + 格子数 + i];
+        for (let idx = 0; idx < 格子数; idx += 1) {
+          const 兵力 = 地图数组[2 + idx];
+          const 地形 = 地图数组[2 + 格子数 + idx];
           if (!Number.isInteger(地形) || !是我方或队友(地形)) continue;
           可调用地块数量 += 1;
           if (!Number.isInteger(兵力) || 兵力 < 兵力着色最小兵力) continue;
-          if (当前塔集合.has(i) || 基地集合.has(i)) {
+          if (当前塔集合.has(idx) || 基地集合.has(idx)) {
             被排除塔和基地数量 += 1;
             continue;
           }
-          if (路径集合.has(i)) {
+          if (路径集合.has(idx)) {
             被排除路径数量 += 1;
             continue;
           }
           达标地块数量 += 1;
           if (兵力 > 最高兵力) 最高兵力 = 兵力;
-          地块列表.push({ 索引: i, 兵力, 归属: 地形 });
+          地块列表.push({ 索引: idx, 兵力, 归属: 地形 });
         }
 
         地块列表.sort((左, 右) => {
@@ -730,23 +730,23 @@
 
       const 目标位置 = 2 + 状态.宽度 * 状态.高度 + 格子索引;
       let 输出位置 = 0;
-      for (let i = 0; i < 数据包.map_diff.length; ) {
-        const 保留数量 = 数据包.map_diff[i] ?? 0;
+      for (let idx = 0; idx < 数据包.map_diff.length; ) {
+        const 保留数量 = 数据包.map_diff[idx] ?? 0;
         if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 保留数量) return null;
         输出位置 += 保留数量;
 
-        i += 1;
-        if (i < 数据包.map_diff.length) {
-          const 插入数量 = 数据包.map_diff[i] ?? 0;
+        idx += 1;
+        if (idx < 数据包.map_diff.length) {
+          const 插入数量 = 数据包.map_diff[idx] ?? 0;
           if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 插入数量) {
-            const 地块增量值 = 数据包.map_diff[i + 1 + (目标位置 - 输出位置)];
+            const 地块增量值 = 数据包.map_diff[idx + 1 + (目标位置 - 输出位置)];
             return Number.isInteger(地块增量值) ? 地块增量值 : null;
           }
           输出位置 += 插入数量;
-          i += 插入数量;
+          idx += 插入数量;
         }
 
-        i += 1;
+        idx += 1;
       }
 
       return null;
@@ -779,22 +779,22 @@
       if (!Array.isArray(旧数组)) 旧数组 = [];
 
       const 新数组 = [];
-      for (let i = 0; i < 增量.length; ) {
-        const 保留数量 = 增量[i] ?? 0;
+      for (let idx = 0; idx < 增量.length; ) {
+        const 保留数量 = 增量[idx] ?? 0;
         if (保留数量 > 0) {
           新数组.push(...旧数组.slice(新数组.length, 新数组.length + 保留数量));
         }
 
-        i += 1;
-        if (i < 增量.length) {
-          const 插入数量 = 增量[i] ?? 0;
+        idx += 1;
+        if (idx < 增量.length) {
+          const 插入数量 = 增量[idx] ?? 0;
           if (插入数量 > 0) {
-            新数组.push(...增量.slice(i + 1, i + 1 + 插入数量));
-            i += 插入数量;
+            新数组.push(...增量.slice(idx + 1, idx + 1 + 插入数量));
+            idx += 插入数量;
           }
         }
 
-        i += 1;
+        idx += 1;
       }
       return 新数组;
     }
@@ -857,35 +857,35 @@
 
     function 取得排行榜标识元素() {
       if (!document.body) return null;
-      const tables = document.body.querySelectorAll(
+      const 表格列表 = document.body.querySelectorAll(
         "table, .leaderboard, #leaderboard",
       );
 
-      for (const table of tables) {
-        const text = (table.textContent ?? "").trim();
+      for (const 表格 of 表格列表) {
+        const 表格文本 = (表格.textContent ?? "").trim();
         if (
-          text.indexOf("Player") < 0 &&
-          text.indexOf("Army") < 0 &&
-          text.indexOf("Land") < 0
+          表格文本.indexOf("Player") < 0 &&
+          表格文本.indexOf("Army") < 0 &&
+          表格文本.indexOf("Land") < 0
         )
           continue;
 
-        const rows = table.querySelectorAll("tr");
-        for (const row of rows) {
-          const cells = Array.from(row.children).filter((cell) => {
-            const tag = cell.tagName?.toLowerCase() ?? "";
-            return tag === "td" || tag === "th";
+        const 行列表 = 表格.querySelectorAll("tr");
+        for (const 行 of 行列表) {
+          const 单元格列表 = Array.from(行.children).filter((单元格) => {
+            const 标签名 = 单元格.tagName?.toLowerCase() ?? "";
+            return 标签名 === "td" || 标签名 === "th";
           });
-          if (cells.length >= 2) {
-            const 第一格文本 = (cells[0].textContent ?? "").trim();
-            const 第二格文本 = (cells[1].textContent ?? "").trim();
+          if (单元格列表.length >= 2) {
+            const 第一格文本 = (单元格列表[0].textContent ?? "").trim();
+            const 第二格文本 = (单元格列表[1].textContent ?? "").trim();
             if (
               第一格文本 === "★" ||
               第一格文本 === "*" ||
               第二格文本 === "Player" ||
-              cells[0].querySelector(".star, .icon, svg")
+              单元格列表[0].querySelector(".star, .icon, svg")
             ) {
-              return cells[0];
+              return 单元格列表[0];
             }
           }
         }
