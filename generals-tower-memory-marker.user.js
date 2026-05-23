@@ -195,7 +195,7 @@
     function 请求原始兵力文本重绘() {
       if (状态.原始兵力文本待渲染) return;
       状态.原始兵力文本待渲染 = true;
-      requestAnimationFrame(function () {
+      requestAnimationFrame(() => {
         状态.原始兵力文本待渲染 = false;
         安全执行("原始兵力文本重绘", 请求渲染);
       });
@@ -216,7 +216,7 @@
       socket.__塔记忆emit已挂钩 = true;
       socket.__塔记忆emit挂钩版本 = 脚本版本;
       socket.emit = function (事件名, ...参数) {
-        安全执行("emit出站操作记录", function () {
+        安全执行("emit出站操作记录", () => {
           if (事件名 === "attack") {
             记录移动操作(参数[0], 参数[1], 参数[2], 参数[3]);
           } else if (事件名 === "undo_move") {
@@ -237,7 +237,7 @@
       socket.__塔记忆onevent已挂钩 = true;
       socket.__塔记忆onevent挂钩版本 = 脚本版本;
       socket.onevent = function (包) {
-        安全执行("onevent入站预处理", function () {
+        安全执行("onevent入站预处理", () => {
           const 数据 = Array.isArray(包?.data) ? 包.data : null;
           if (数据) 预处理入站事件(数据[0], 数据[1]);
         });
@@ -253,35 +253,35 @@
       socket.__塔记忆emitEvent已挂钩 = true;
       socket.__塔记忆emitEvent挂钩版本 = 脚本版本;
       socket.emitEvent = function (参数列表) {
-        安全执行("emitEvent入站预处理", function () {
+        安全执行("emitEvent入站预处理", () => {
           if (Array.isArray(参数列表)) 预处理入站事件(参数列表[0], 参数列表[1]);
         });
         return 原emitEvent.call(this, 参数列表);
       };
     }
 
-    socket.on("game_start", function (数据包) {
-      安全执行("game_start回合倒计时", function () {
+    socket.on("game_start", (数据包) => {
+      安全执行("game_start回合倒计时", () => {
         记录回合(数据包 ?? {}, "game_start");
       });
-      安全执行("game_start颜色重构", function () {
+      安全执行("game_start颜色重构", () => {
         重构玩家颜色(数据包 ?? {}, "game_start");
       });
-      延后执行("game_start", function () {
+      延后执行("game_start", () => {
         重置本局(数据包 ?? {});
         处理塔位置(数据包 ?? {}, "game_start");
         处理基地位置(数据包 ?? {}, "game_start");
       });
     });
 
-    socket.on("game_update", function (数据包) {
-      安全执行("game_update回合倒计时", function () {
+    socket.on("game_update", (数据包) => {
+      安全执行("game_update回合倒计时", () => {
         记录回合(数据包 ?? {}, "game_update");
       });
-      安全执行("game_update颜色重构", function () {
+      安全执行("game_update颜色重构", () => {
         重构玩家颜色(数据包 ?? {}, "game_update");
       });
-      延后执行("game_update", function () {
+      延后执行("game_update", () => {
         按攻击序号清理移动队列(数据包?.attackIndex);
         尝试从地图读取尺寸(数据包 ?? {});
         处理塔位置(数据包 ?? {}, "game_update");
@@ -291,9 +291,7 @@
     });
 
     function 延后执行(事件, 函数体) {
-      setTimeout(function () {
-        安全执行(事件, 函数体);
-      }, 0);
+      setTimeout(() => 安全执行(事件, 函数体), 0);
     }
 
     function 预处理入站事件(事件名, 数据包) {
@@ -399,7 +397,7 @@
       const 原长度 = 状态.移动队列.length;
       if (!原长度) return;
 
-      状态.移动队列 = 状态.移动队列.filter(function (移动) {
+      状态.移动队列 = 状态.移动队列.filter((移动) => {
         return !Number.isInteger(移动.攻击序号) || 移动.攻击序号 > 攻击序号;
       });
 
@@ -455,7 +453,7 @@
       状态.兵力分布着色列表 = 取得兵力分布着色列表();
       if (状态.兵力分布着色列表.length) {
         const 签名 = 状态.兵力分布着色列表
-          .map(function (地块) {
+          .map((地块) => {
             return `${地块.索引}:${地块.兵力}:${地块.归属}`;
           })
           .join("|");
@@ -500,27 +498,27 @@
         const 当前塔信息 = 取得本次塔列表(数据包);
         const 当前塔集合 = new Set(状态.已知塔集合);
         if (当前塔信息 && Array.isArray(当前塔信息.塔列表)) {
-          当前塔信息.塔列表.forEach(function (塔索引) {
+          当前塔信息.塔列表.forEach((塔索引) => {
             if (Number.isInteger(塔索引) && 塔索引 >= 0) 当前塔集合.add(塔索引);
           });
         }
         const 基地集合 = new Set(
           Array.isArray(数据包?.generals)
-            ? 数据包.generals.filter(function (基地索引) {
-                return Number.isInteger(基地索引) && 基地索引 >= 0;
-              })
+            ? 数据包.generals.filter(
+                (基地索引) => Number.isInteger(基地索引) && 基地索引 >= 0,
+              )
             : [],
         );
-        状态.已知敌方基地集合.forEach(function (_基地, 基地索引) {
+        状态.已知敌方基地集合.forEach((_基地, 基地索引) => {
           if (Number.isInteger(基地索引) && 基地索引 >= 0)
             基地集合.add(基地索引);
         });
-        状态.已知基地集合.forEach(function (基地索引) {
+        状态.已知基地集合.forEach((基地索引) => {
           if (Number.isInteger(基地索引) && 基地索引 >= 0)
             基地集合.add(基地索引);
         });
         const 路径集合 = new Set();
-        状态.移动队列.forEach(function (移动) {
+        状态.移动队列.forEach((移动) => {
           if (Number.isInteger(移动.起点) && 移动.起点 >= 0)
             路径集合.add(移动.起点);
           if (Number.isInteger(移动.终点) && 移动.终点 >= 0)
@@ -545,7 +543,7 @@
           地块列表.push({ 索引: idx, 兵力, 归属: 地形 });
         }
 
-        地块列表.sort(function (左, 右) {
+        地块列表.sort((左, 右) => {
           if (右.兵力 !== 左.兵力) return 右.兵力 - 左.兵力;
           return 左.索引 - 右.索引;
         });
@@ -859,7 +857,7 @@
 
         const 行列表 = 表格.querySelectorAll("tr");
         for (const 行 of 行列表) {
-          const 单元格列表 = Array.from(行.children).filter(function (单元格) {
+          const 单元格列表 = Array.from(行.children).filter((单元格) => {
             const 标签名 = 单元格.tagName?.toLowerCase() ?? "";
             return 标签名 === "td" || 标签名 === "th";
           });
@@ -924,13 +922,13 @@
 
     画操作轨迹(ctx, 格宽, 格高, 大小);
 
-    状态.已知塔集合.forEach(function (塔索引) {
+    状态.已知塔集合.forEach((塔索引) => {
       const 行 = Math.floor(塔索引 / 状态.宽度);
       const 列 = 塔索引 % 状态.宽度;
       画塔标记(ctx, 列 * 格宽, 行 * 格高, 大小, 状态.已知塔类型.get(塔索引));
     });
 
-    状态.已知敌方基地集合.forEach(function (基地, 基地索引) {
+    状态.已知敌方基地集合.forEach((基地, 基地索引) => {
       const 行 = Math.floor(基地索引 / 状态.宽度);
       const 列 = 基地索引 % 状态.宽度;
       画敌方基地标记(ctx, 列 * 格宽, 行 * 格高, 大小);
@@ -938,17 +936,13 @@
 
     const 固定标记渲染签名 = [
       状态.已知塔集合.size,
-      Array.from(状态.已知塔类型.values()).filter(function (类型) {
+      Array.from(状态.已知塔类型.values()).filter((类型) => {
         return 类型 === "敌方塔";
       }).length,
       状态.已知敌方基地集合.size,
       状态.兵力分布着色列表.length,
       状态.移动队列.length,
-      状态.移动队列
-        .map(function (移动) {
-          return `${移动.起点}>${移动.终点}`;
-        })
-        .join(","),
+      状态.移动队列.map((移动) => `${移动.起点}>${移动.终点}`).join(","),
       `${状态.宽度}x${状态.高度}`,
       `${Math.round(尺寸.css宽)}x${Math.round(尺寸.css高)}`,
     ].join("|");
@@ -962,18 +956,12 @@
 
       const 同步着色列表 = 取得同步着色列表(可绘制着色列表);
       const 兵力级别 = Array.from(
-        new Set(
-          同步着色列表.map(function (地块) {
-            return 地块.兵力;
-          }),
-        ),
+        new Set(同步着色列表.map((地块) => 地块.兵力)),
       ).slice(0, 5);
       if (!兵力级别.length) return;
       const 级别覆盖比例 = [1, 0.7, 0.4, 0.2, 0.1];
       const 兵力级别覆盖比例 = new Map(
-        兵力级别.map(function (兵力, idx) {
-          return [兵力, 级别覆盖比例[idx]];
-        }),
+        兵力级别.map((兵力, idx) => [兵力, 级别覆盖比例[idx]]),
       );
       const 级别背景色 = [
         "rgba(0, 24, 170, 0.82)",
@@ -983,13 +971,11 @@
         "rgba(0, 54, 220, 0.72)",
       ];
       const 兵力级别背景色 = new Map(
-        兵力级别.map(function (兵力, idx) {
-          return [兵力, 级别背景色[idx]];
-        }),
+        兵力级别.map((兵力, idx) => [兵力, 级别背景色[idx]]),
       );
 
       ctx.save();
-      同步着色列表.forEach(function (地块) {
+      同步着色列表.forEach((地块) => {
         const 覆盖比例 = 兵力级别覆盖比例.get(地块.兵力);
         if (!覆盖比例) return;
         ctx.fillStyle = 兵力级别背景色.get(地块.兵力);
@@ -1015,7 +1001,7 @@
         ctx.lineWidth = Math.max(2, 大小 * 0.08);
         ctx.strokeStyle = "rgba(0, 0, 0, 0.82)";
         ctx.fillStyle = "#fff7d1";
-        同步着色列表.forEach(function (地块) {
+        同步着色列表.forEach((地块) => {
           if (!兵力级别覆盖比例.has(地块.兵力)) return;
           const 原始文本 = 状态.原始兵力文本.get(地块.索引);
           if (!原始文本 || 原始文本.兵力 !== 地块.兵力) return;
@@ -1043,7 +1029,7 @@
             同步列表.push(地块);
           }
         }
-        同步列表.sort(function (左, 右) {
+        同步列表.sort((左, 右) => {
           if (右.兵力 !== 左.兵力) return 右.兵力 - 左.兵力;
           return 左.索引 - 右.索引;
         });
@@ -1059,7 +1045,7 @@
 
         const 格子数 = 状态.宽度 * 状态.高度;
         const 路径集合 = new Set();
-        状态.移动队列.forEach(function (移动) {
+        状态.移动队列.forEach((移动) => {
           if (Number.isInteger(移动.起点) && 移动.起点 >= 0) {
             路径集合.add(移动.起点);
           }
@@ -1106,9 +1092,7 @@
         if (发生变化) {
           状态.兵力分布着色列表 = 有效列表;
           状态.上次兵力分布着色签名 = 有效列表
-            .map(function (地块) {
-              return `${地块.索引}:${地块.兵力}:${地块.归属}`;
-            })
+            .map((地块) => `${地块.索引}:${地块.兵力}:${地块.归属}`)
             .join("|");
         }
         return 有效列表;
@@ -1128,11 +1112,9 @@
       宿主.classList.add("gio-tower-memory-host");
       let 覆盖层 = 宿主.querySelector(`.${覆盖层类名}`);
       if (!覆盖层) {
-        document
-          .querySelectorAll(`.${覆盖层类名}`)
-          .forEach(function (旧覆盖层) {
-            if (旧覆盖层.parentElement !== 宿主) 旧覆盖层.remove();
-          });
+        document.querySelectorAll(`.${覆盖层类名}`).forEach((旧覆盖层) => {
+          if (旧覆盖层.parentElement !== 宿主) 旧覆盖层.remove();
+        });
         覆盖层 = document.createElement("canvas");
         覆盖层.className = 覆盖层类名;
         宿主.appendChild(覆盖层);
@@ -1295,7 +1277,7 @@
       if (!状态.移动队列.length) return;
 
       const 格子数 = 状态.宽度 * 状态.高度;
-      const 可绘制移动 = 状态.移动队列.filter(function (移动) {
+      const 可绘制移动 = 状态.移动队列.filter((移动) => {
         return (
           Number.isInteger(移动.起点) &&
           Number.isInteger(移动.终点) &&
@@ -1310,7 +1292,7 @@
       const 线宽 = Math.max(1.5, Math.min(3, 大小 * 0.07));
       ctx.save();
       ctx.globalAlpha = 0.78;
-      可绘制移动.forEach(function (移动, 下标) {
+      可绘制移动.forEach((移动, 下标) => {
         const 起点 = 取得格子中心(移动.起点, 格宽, 格高);
         const 终点 = 取得格子中心(移动.终点, 格宽, 格高);
         ctx.globalAlpha = 下标 === 可绘制移动.length - 1 ? 0.9 : 0.45;
@@ -1327,9 +1309,10 @@
       );
 
       const 签名 = `${可绘制移动.length}:${可绘制移动
-        .map(function (移动) {
-          return `${移动.起点}>${移动.终点}:${移动.是否半兵 ? "半" : "全"}:${移动.攻击序号}`;
-        })
+        .map(
+          (移动) =>
+            `${移动.起点}>${移动.终点}:${移动.是否半兵 ? "半" : "全"}:${移动.攻击序号}`,
+        )
         .join("|")}`;
       if (签名 !== 状态.上次操作轨迹渲染签名) {
         状态.上次操作轨迹渲染签名 = 签名;
@@ -1589,7 +1572,7 @@
   function 请求渲染() {
     if (状态.已请求渲染) return;
     状态.已请求渲染 = true;
-    requestAnimationFrame(function () {
+    requestAnimationFrame(() => {
       安全执行("渲染", 渲染);
     });
   }
@@ -1610,7 +1593,7 @@
         setTimeout(安装页面观察器, 100);
         return;
       }
-      状态.页面观察器 = new MutationObserver(function () {
+      状态.页面观察器 = new MutationObserver(() => {
         更新大回合倒计时();
         请求渲染();
       });
@@ -1648,11 +1631,9 @@
             塔列表长度: 状态.塔列表 ? 状态.塔列表.length : null,
             已知塔数量: 状态.已知塔集合.size,
             已知基地数量: 状态.已知基地集合.size,
-            敌方塔数量: Array.from(状态.已知塔类型.values()).filter(
-              function (类型) {
-                return 类型 === "敌方塔";
-              },
-            ).length,
+            敌方塔数量: Array.from(状态.已知塔类型.values()).filter((类型) => {
+              return 类型 === "敌方塔";
+            }).length,
             已知敌方基地数量: 状态.已知敌方基地集合.size,
             兵力分布着色数量: 状态.兵力分布着色列表.length,
             兵力分布调试: 状态.兵力分布调试,
@@ -1666,7 +1647,7 @@
           };
         },
         已知塔() {
-          return Array.from(状态.已知塔集合).map(function (塔索引) {
+          return Array.from(状态.已知塔集合).map((塔索引) => {
             return {
               索引: 塔索引,
               类型: 状态.已知塔类型.get(塔索引) ?? "中立塔",
@@ -1676,18 +1657,16 @@
           });
         },
         已知敌方基地() {
-          return Array.from(状态.已知敌方基地集合.values()).map(
-            function (基地) {
-              return {
-                ...基地,
-                行: 状态.宽度 ? Math.floor(基地.索引 / 状态.宽度) : null,
-                列: 状态.宽度 ? 基地.索引 % 状态.宽度 : null,
-              };
-            },
-          );
+          return Array.from(状态.已知敌方基地集合.values()).map((基地) => {
+            return {
+              ...基地,
+              行: 状态.宽度 ? Math.floor(基地.索引 / 状态.宽度) : null,
+              列: 状态.宽度 ? 基地.索引 % 状态.宽度 : null,
+            };
+          });
         },
         兵力分布着色() {
-          return 状态.兵力分布着色列表.map(function (地块) {
+          return 状态.兵力分布着色列表.map((地块) => {
             return {
               索引: 地块.索引,
               兵力: 地块.兵力,
