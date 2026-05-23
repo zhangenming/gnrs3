@@ -419,18 +419,23 @@ export function 渲染() {
   }
 
   function 画敌方基地标记(ctx, x, y, 大小) {
-    const 外线宽 = Math.max(5, 大小 * 0.24)
-    const 内线宽 = Math.max(3.5, 大小 * 0.14)
-    const 高光线宽 = Math.max(2, 大小 * 0.065)
+    const 外线宽 = Math.max(6, 大小 * 0.28)
+    const 内线宽 = Math.max(4, 大小 * 0.16)
+    const 十字线宽 = Math.max(2.5, 大小 * 0.1)
     const 外偏移 = 外线宽 / 2 + 1
     const 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2
-    const 高光偏移 = 内偏移 + 内线宽 / 2 + 高光线宽 / 2
-    const 角长 = Math.max(5, 大小 * 0.26)
-    const 角偏移 = Math.max(2, 大小 * 0.07)
+    const 中心x = x + 大小 / 2
+    const 中心y = y + 大小 / 2
+    const 十字长度 = Math.max(6, 大小 * 0.34)
 
     ctx.save()
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
+
+    ctx.globalAlpha = 0.5
+    ctx.fillStyle = 敌方红色
+    ctx.fillRect(x + 1, y + 1, Math.max(1, 大小 - 2), Math.max(1, 大小 - 2))
+    ctx.globalAlpha = 1
 
     ctx.lineWidth = 外线宽
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.96)'
@@ -450,33 +455,22 @@ export function 渲染() {
       Math.max(1, 大小 - 内偏移 * 2),
     )
 
-    ctx.lineWidth = 高光线宽
-    ctx.strokeStyle = '#fff2f2'
-    ctx.strokeRect(
-      x + 高光偏移,
-      y + 高光偏移,
-      Math.max(1, 大小 - 高光偏移 * 2),
-      Math.max(1, 大小 - 高光偏移 * 2),
-    )
-
-    ctx.lineWidth = Math.max(2.5, 大小 * 0.085)
-    ctx.strokeStyle = 敌方红色
+    ctx.lineWidth = 十字线宽 + Math.max(2, 大小 * 0.06)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)'
     ctx.beginPath()
-    ctx.moveTo(x + 角偏移, y + 角偏移 + 角长)
-    ctx.lineTo(x + 角偏移, y + 角偏移)
-    ctx.lineTo(x + 角偏移 + 角长, y + 角偏移)
+    ctx.moveTo(中心x - 十字长度, 中心y)
+    ctx.lineTo(中心x + 十字长度, 中心y)
+    ctx.moveTo(中心x, 中心y - 十字长度)
+    ctx.lineTo(中心x, 中心y + 十字长度)
+    ctx.stroke()
 
-    ctx.moveTo(x + 大小 - 角偏移 - 角长, y + 角偏移)
-    ctx.lineTo(x + 大小 - 角偏移, y + 角偏移)
-    ctx.lineTo(x + 大小 - 角偏移, y + 角偏移 + 角长)
-
-    ctx.moveTo(x + 大小 - 角偏移, y + 大小 - 角偏移 - 角长)
-    ctx.lineTo(x + 大小 - 角偏移, y + 大小 - 角偏移)
-    ctx.lineTo(x + 大小 - 角偏移 - 角长, y + 大小 - 角偏移)
-
-    ctx.moveTo(x + 角偏移 + 角长, y + 大小 - 角偏移)
-    ctx.lineTo(x + 角偏移, y + 大小 - 角偏移)
-    ctx.lineTo(x + 角偏移, y + 大小 - 角偏移 - 角长)
+    ctx.lineWidth = 十字线宽
+    ctx.strokeStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.moveTo(中心x - 十字长度, 中心y)
+    ctx.lineTo(中心x + 十字长度, 中心y)
+    ctx.moveTo(中心x, 中心y - 十字长度)
+    ctx.lineTo(中心x, 中心y + 十字长度)
     ctx.stroke()
 
     ctx.restore()
