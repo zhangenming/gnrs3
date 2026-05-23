@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         generals.io 塔记忆标记
 // @namespace    https://generals.io/
-// @version      0.8.23
+// @version      0.8.24
 // @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
 // @author       Codex
 // @match        https://generals.io/*
@@ -14,7 +14,7 @@
 (function () {
   "use strict";
 
-  const 脚本版本 = "0.8.23";
+  const 脚本版本 = "0.8.24";
   const 覆盖层类名 = "gio-tower-memory-overlay";
   const 样式编号 = "gio-tower-memory-style";
   const 我方蓝色 = "#2792ff";
@@ -1261,13 +1261,13 @@
 
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.font = `900 ${Math.max(14, Math.min(26, 大小 * 0.68))}px Arial, sans-serif`;
+        ctx.font = `900 ${Math.max(13, Math.min(24, 大小 * 0.62))}px Arial, sans-serif`;
         ctx.lineJoin = "round";
-        ctx.lineWidth = Math.max(3, 大小 * 0.14);
-        ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
-        ctx.fillStyle = "#ffffff";
-        ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-        ctx.shadowBlur = Math.max(2, 大小 * 0.06);
+        ctx.lineWidth = Math.max(1.5, Math.min(2.6, 大小 * 0.055));
+        ctx.strokeStyle = "rgba(0, 7, 26, 0.98)";
+        ctx.fillStyle = "#ffe95c";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+        ctx.shadowBlur = Math.max(1, 大小 * 0.025);
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = Math.max(1, 大小 * 0.03);
         同步着色列表.forEach((地块) => {
