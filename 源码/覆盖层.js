@@ -367,6 +367,13 @@ export function 渲染() {
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
 
+    if (是敌方塔) {
+      ctx.globalAlpha = 0.42
+      ctx.fillStyle = 敌方红色
+      ctx.fillRect(x + 外偏移, y + 外偏移, 大小 - 外偏移 * 2, 大小 - 外偏移 * 2)
+      ctx.globalAlpha = 1
+    }
+
     ctx.lineWidth = 外线宽
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.88)'
     ctx.strokeRect(
@@ -421,9 +428,9 @@ export function 渲染() {
   }
 
   function 画敌方基地标记(ctx, x, y, 大小) {
-    const 外线宽 = Math.max(4, 大小 * 0.17)
-    const 内线宽 = Math.max(2.5, 大小 * 0.09)
-    const 高光线宽 = Math.max(1.5, 大小 * 0.045)
+    const 外线宽 = Math.max(5, 大小 * 0.24)
+    const 内线宽 = Math.max(3.5, 大小 * 0.14)
+    const 高光线宽 = Math.max(2, 大小 * 0.065)
     const 外偏移 = 外线宽 / 2 + 1
     const 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2
     const 高光偏移 = 内偏移 + 内线宽 / 2 + 高光线宽 / 2
