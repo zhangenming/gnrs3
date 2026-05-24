@@ -12,7 +12,6 @@ export const 战场数据差类名 = 'gio-battle-data-diff-cell'
 export const 战场塔信息类名 = 'gio-battle-tower-summary-cell'
 export const 基地危险类名 = 'gio-general-danger'
 export const 兵力着色最小兵力 = 3
-export const 兵力着色最多级别 = 5
 export const 敌方移动高亮持续turn数 = 2
 export const 玩家最小距离 = 15
 export const 未到达视野背景色 = 'rgba(255, 0, 0, 0.28)'

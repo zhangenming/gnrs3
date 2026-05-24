@@ -117,51 +117,18 @@ export function 渲染() {
     if (!可绘制着色列表.length) return
 
     const 同步着色列表 = 取得同步着色列表(可绘制着色列表)
-    const 兵力级别 = Array.from(
-      new Set(同步着色列表.map((地块) => 地块.兵力)),
-    ).slice(0, 5)
-    if (!兵力级别.length) return
-    const 级别覆盖比例 = [1, 0.7, 0.4, 0.2, 0.1]
-    const 兵力级别覆盖比例 = new Map(
-      兵力级别.map((兵力, idx) => [兵力, 级别覆盖比例[idx]]),
-    )
-    const 级别样式 = [
-      {
-        背景色: 'rgba(255, 118, 0, 0.84)',
-        提示色: 'rgba(255, 244, 92, 0.32)',
-      },
-      {
-        背景色: 'rgba(0, 222, 214, 0.78)',
-        提示色: 'rgba(180, 255, 250, 0.28)',
-      },
-      {
-        背景色: 'rgba(68, 107, 255, 0.72)',
-        提示色: 'rgba(166, 188, 255, 0.24)',
-      },
-      {
-        背景色: 'rgba(45, 76, 214, 0.62)',
-        提示色: 'rgba(128, 158, 255, 0.2)',
-      },
-      {
-        背景色: 'rgba(30, 52, 170, 0.54)',
-        提示色: 'rgba(98, 130, 255, 0.16)',
-      },
-    ]
-    const 兵力级别样式 = new Map(
-      兵力级别.map((兵力, idx) => [兵力, 级别样式[idx]]),
-    )
+    if (!同步着色列表.length) return
 
     ctx.save()
     同步着色列表.forEach((地块) => {
-      const 覆盖比例 = 兵力级别覆盖比例.get(地块.兵力)
-      if (!覆盖比例) return
-      const 样式 = 兵力级别样式.get(地块.兵力)
+      const 样式 = 取得兵力大组样式(地块.大组)
+      if (!样式) return
       const 行 = Math.floor(地块.索引 / 状态.宽度)
       const 列 = 地块.索引 % 状态.宽度
       const x = 列 * 格宽
       const y = 行 * 格高
-      const 宽 = Math.max(1, 格宽 * 覆盖比例)
-      const 高 = Math.max(1, 格高 * 覆盖比例)
+      const 宽 = Math.max(1, 格宽 * 样式.覆盖比例)
+      const 高 = Math.max(1, 格高 * 样式.覆盖比例)
 
       画兵力信号块(x, y, 宽, 高, 样式)
     })
@@ -173,7 +140,8 @@ export function 渲染() {
       ctx.textBaseline = 'middle'
       ctx.lineJoin = 'round'
       同步着色列表.forEach((地块) => {
-        if (!兵力级别覆盖比例.has(地块.兵力)) return
+        const 样式 = 取得兵力大组样式(地块.大组)
+        if (!样式) return
         const 行 = Math.floor(地块.索引 / 状态.宽度)
         const 列 = 地块.索引 % 状态.宽度
         const x = 列 * 格宽 + 格宽 / 2
@@ -181,7 +149,7 @@ export function 渲染() {
         const 文本 = 取得兵力读数文本(地块)
         const 字号比例 =
           文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
-        const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
+        const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例 * 样式.字号比例))
 
         ctx.font = `900 ${字号}px Arial, sans-serif`
         画读数底片(x, y, 文本, 字号)
@@ -237,7 +205,10 @@ export function 渲染() {
         const 原始文本 = 状态.原始兵力文本.get(地块.索引)
         if (原始文本) {
           if (原始文本.兵力 < 兵力着色最小兵力) continue
-          同步列表.push({ ...地块, 兵力: 原始文本.兵力 })
+          同步列表.push({
+            ...地块,
+            兵力: 原始文本.兵力,
+          })
         } else {
           同步列表.push(地块)
         }
@@ -299,13 +270,38 @@ export function 渲染() {
         if (兵力 !== 地块.兵力 || 归属 !== 地块.归属) {
           发生变化 = true
         }
-        有效列表.push({ 索引: 地块.索引, 兵力, 归属 })
+        有效列表.push({
+          索引: 地块.索引,
+          兵力,
+          归属,
+          大组: 地块.大组,
+        })
       }
 
       if (发生变化) {
         状态.兵力分布着色列表 = 有效列表
       }
       return 有效列表
+    }
+
+    function 取得兵力大组样式(大组) {
+      if (大组 === 1) {
+        return {
+          覆盖比例: 1,
+          字号比例: 1,
+          背景色: 'rgba(255, 118, 0, 0.84)',
+          提示色: 'rgba(255, 244, 92, 0.32)',
+        }
+      }
+      if (大组 === 2) {
+        return {
+          覆盖比例: 0.82,
+          字号比例: 0.94,
+          背景色: 'rgba(0, 222, 214, 0.74)',
+          提示色: 'rgba(180, 255, 250, 0.24)',
+        }
+      }
+      return null
     }
   }
 
