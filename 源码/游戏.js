@@ -12,25 +12,36 @@ export function 是我方或队友(玩家索引) {
 
 export function 读取玩家信息(数据包) {
   if (!数据包) return
-  if (Number.isInteger(数据包.playerIndex)) {
-    状态.我方索引 = 数据包.playerIndex
-  }
   if (Array.isArray(数据包.usernames)) {
     状态.玩家名列表 = 数据包.usernames.slice()
   }
+
+  const 本地玩家索引 = 取得本地玩家索引()
+  if (Number.isInteger(本地玩家索引)) {
+    状态.我方索引 = 本地玩家索引
+  } else if (Number.isInteger(数据包.playerIndex)) {
+    状态.我方索引 = 数据包.playerIndex
+  }
+
   if (Array.isArray(数据包.teams)) {
     状态.队伍 = 数据包.teams.slice()
   }
 }
 
-export function 同步回放视角玩家索引() {
-  const 回放视角玩家索引 = 读取回放视角玩家索引()
-  if (Number.isInteger(回放视角玩家索引)) {
-    状态.我方索引 = 回放视角玩家索引
+export function 同步我方玩家索引() {
+  const 本地玩家索引 = 取得本地玩家索引()
+  if (Number.isInteger(本地玩家索引)) {
+    状态.我方索引 = 本地玩家索引
+    return 状态.我方索引
+  }
+
+  const 回放POV玩家索引 = 读取回放POV玩家索引()
+  if (Number.isInteger(回放POV玩家索引)) {
+    状态.我方索引 = 回放POV玩家索引
   }
   return 状态.我方索引
 
-  function 读取回放视角玩家索引() {
+  function 读取回放POV玩家索引() {
     if (!document.body || !Array.isArray(状态.玩家名列表)) return null
 
     const 表格列表 = document.body.querySelectorAll(
@@ -58,7 +69,7 @@ export function 同步回放视角玩家索引() {
       for (const 行 of 数据行列表) {
         const 单元格列表 = 取得单元格列表(行)
         const 视角格 = 单元格列表[视角列]
-        const 勾选框 = 视角格?.querySelector('input[type="checkbox"]')
+        const 勾选框 = 读取POV勾选框(视角格)
         if (!勾选框?.checked) continue
 
         const 玩家名 = (单元格列表[玩家列]?.textContent ?? '').trim()
@@ -70,6 +81,17 @@ export function 同步回放视角玩家索引() {
     }
 
     return null
+  }
+
+  function 读取POV勾选框(单元格) {
+    const 勾选框列表 = Array.from(
+      单元格?.querySelectorAll('input[type="checkbox"]') ?? [],
+    )
+    return (
+      勾选框列表.find((勾选框) => {
+        return !勾选框.closest('.perspective-select')
+      }) ?? null
+    )
   }
 
   function 取得表头行(表格) {
@@ -89,6 +111,28 @@ export function 同步回放视角玩家索引() {
       return 标签名 === 'td' || 标签名 === 'th'
     })
   }
+}
+
+function 取得本地玩家索引(玩家名列表 = 状态.玩家名列表) {
+  const 本地玩家名 = 读取本地玩家名()
+  if (!本地玩家名 || !Array.isArray(玩家名列表)) return null
+
+  const 精确索引 = 玩家名列表.indexOf(本地玩家名)
+  if (精确索引 >= 0) return 精确索引
+
+  const 本地玩家名小写 = 本地玩家名.toLowerCase()
+  const 忽略大小写索引 = 玩家名列表.findIndex((玩家名) => {
+    return (
+      typeof 玩家名 === 'string' &&
+      玩家名.trim().toLowerCase() === 本地玩家名小写
+    )
+  })
+  return 忽略大小写索引 >= 0 ? 忽略大小写索引 : null
+}
+
+function 读取本地玩家名() {
+  const 玩家名 = globalThis.localStorage?.GIO_CACHED_USERNAME
+  return typeof 玩家名 === 'string' ? 玩家名.trim() : ''
 }
 
 export function 尝试从地图读取尺寸(数据包) {

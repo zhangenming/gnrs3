@@ -9,13 +9,13 @@
 // 作用范围:
 // 只改写排行榜/战场数据表的 Player 表头格内容和样式，不参与地图状态计算。
 import { 战场塔信息类名 } from '../配置.js'
-import { 同步回放视角玩家索引, 是我方或队友 } from '../游戏.js'
+import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 读取冻结战场塔信息, 记录战场塔信息快照 } from './战场数据冻结.js'
 
 export function 更新战场塔信息() {
   if (!document.body) return
-  同步回放视角玩家索引()
+  同步我方玩家索引()
 
   const 表格 = 取得战场数据表格()
   if (!表格) return
