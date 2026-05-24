@@ -14,7 +14,7 @@
 <!--  -->
 <!--  -->
 
-每次prompt过后 提交一次git, commit为prompt; 提交前执行prettier
+每次prompt过后 提交一次git, commit为本次的prompt; 提交前执行prettier
 
 <!--  -->
 
