@@ -85,6 +85,7 @@ export function 渲染() {
     !状态.已知障碍物集合.size &&
     !状态.移动队列.length &&
     !状态.敌方移动高亮列表.length &&
+    !状态.敌方基地候选列表.length &&
     !状态.抢塔提示列表.length &&
     !状态.兵力分布着色列表.length &&
     !Number.isInteger(取得选中棋子索引()) &&
@@ -114,6 +115,7 @@ export function 渲染() {
   const 动画时间 = performance.now()
 
   画未到达视野背景()
+  画敌方基地候选()
   画障碍物()
   画兵力分布着色()
   画操作轨迹(ctx, 格宽, 格高, 大小)
@@ -242,6 +244,58 @@ export function 渲染() {
       ctx.strokeText(文本, x + 格宽 / 2, y + 格高 / 2)
       ctx.fillText(文本, x + 格宽 / 2, y + 格高 / 2)
       ctx.restore()
+    }
+  }
+
+  function 画敌方基地候选() {
+    if (!状态.敌方基地候选列表.length) return
+
+    const 格子数 = 状态.宽度 * 状态.高度
+    const 可绘制候选列表 = 状态.敌方基地候选列表.filter((候选) => {
+      return (
+        Number.isInteger(候选?.索引) && 候选.索引 >= 0 && 候选.索引 < 格子数
+      )
+    })
+    if (!可绘制候选列表.length) return
+
+    ctx.save()
+    ctx.lineJoin = 'round'
+    可绘制候选列表.forEach((候选) => {
+      const 行 = Math.floor(候选.索引 / 状态.宽度)
+      const 列 = 候选.索引 % 状态.宽度
+      const x = 列 * 格宽
+      const y = 行 * 格高
+      const 留白 = Math.max(2, 大小 * 0.18)
+      const 宽 = Math.max(2, 格宽 - 留白 * 2)
+      const 高 = Math.max(2, 格高 - 留白 * 2)
+      const 中心x = x + 格宽 / 2
+      const 中心y = y + 格高 / 2
+      const 半径 = Math.max(2.5, Math.min(7, 大小 * 0.2))
+
+      ctx.globalAlpha = 0.34
+      ctx.fillStyle = 'rgba(255, 222, 82, 0.34)'
+      ctx.fillRect(x + 留白, y + 留白, 宽, 高)
+
+      ctx.globalAlpha = 0.82
+      ctx.lineWidth = Math.max(1.5, 大小 * 0.045)
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.78)'
+      画候选菱形(中心x, 中心y, 半径 + Math.max(1.5, 大小 * 0.04))
+
+      ctx.globalAlpha = 0.95
+      ctx.lineWidth = Math.max(1, 大小 * 0.025)
+      ctx.strokeStyle = '#ffe25a'
+      画候选菱形(中心x, 中心y, 半径)
+    })
+    ctx.restore()
+
+    function 画候选菱形(中心x, 中心y, 半径) {
+      ctx.beginPath()
+      ctx.moveTo(中心x, 中心y - 半径)
+      ctx.lineTo(中心x + 半径, 中心y)
+      ctx.lineTo(中心x, 中心y + 半径)
+      ctx.lineTo(中心x - 半径, 中心y)
+      ctx.closePath()
+      ctx.stroke()
     }
   }
 
