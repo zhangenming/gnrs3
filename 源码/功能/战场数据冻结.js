@@ -73,12 +73,20 @@ export function 读取冻结战场塔信息(单元格) {
   const 快照 = 状态.战场塔信息快照
   if (!快照 || !单元格) return null
 
-  单元格.classList.add(...快照.类名列表)
-  单元格.dataset.gioBattlePlayerColumn = 快照.玩家列
-  单元格.dataset.gioTowerSummary = 快照.文本
-  单元格.dataset.gioTowerDiff = 快照.差值状态
-  单元格.title = 快照.title
-  单元格.innerHTML = 快照.html
+  for (const 类名 of 快照.类名列表) {
+    if (!单元格.classList.contains(类名)) 单元格.classList.add(类名)
+  }
+  if (单元格.dataset.gioBattlePlayerColumn !== 快照.玩家列) {
+    单元格.dataset.gioBattlePlayerColumn = 快照.玩家列
+  }
+  if (单元格.dataset.gioTowerSummary !== 快照.文本) {
+    单元格.dataset.gioTowerSummary = 快照.文本
+  }
+  if (单元格.dataset.gioTowerDiff !== 快照.差值状态) {
+    单元格.dataset.gioTowerDiff = 快照.差值状态
+  }
+  if (单元格.title !== 快照.title) 单元格.title = 快照.title
+  if (单元格.innerHTML !== 快照.html) 单元格.innerHTML = 快照.html
   return 快照
 }
 
