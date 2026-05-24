@@ -26,6 +26,36 @@ import { 清理敌方移动高亮 } from './功能/敌方移动高亮.js'
 import { 清理抢塔提示 } from './功能/抢塔提示.js'
 import { 有未到达视野标记 } from './功能/视野.js'
 
+const 自适应样式编号 = `${样式编号}-adaptive-ui`
+
+export function 同步自适应棋盘() {
+  安装自适应样式()
+
+  const 画布 = 取游戏画布()
+  if (!画布) return
+
+  const 地图元素 = 画布.closest('#gameMap')
+  if (!地图元素?.closest('#game-page')) return
+
+  const 宿主 = 地图元素.parentElement
+  if (!宿主) return
+
+  标记当前棋盘(地图元素, 宿主)
+
+  const 尺寸 = 取得地图原始尺寸(地图元素, 画布)
+  if (!尺寸) return
+
+  const 可用宽 = Math.max(1, window.innerWidth)
+  const 可用高 = Math.max(1, window.innerHeight)
+  const 缩放 = Math.max(0.1, Math.min(可用宽 / 尺寸.宽, 可用高 / 尺寸.高))
+
+  地图元素.style.setProperty('--gio-adaptive-map-scale', String(缩放))
+  地图元素.style.setProperty('--gio-adaptive-map-width', `${尺寸.宽}px`)
+  地图元素.style.setProperty('--gio-adaptive-map-height', `${尺寸.高}px`)
+  宿主.style.setProperty('--gio-adaptive-map-width', `${尺寸.宽}px`)
+  宿主.style.setProperty('--gio-adaptive-map-height', `${尺寸.高}px`)
+}
+
 export function 清空覆盖层() {
   const 覆盖层 = document.querySelector(`.${覆盖层类名}`)
   if (!覆盖层) return
@@ -37,6 +67,7 @@ export function 渲染() {
   状态.已请求渲染 = false
   清理敌方移动高亮()
   清理抢塔提示()
+  同步自适应棋盘()
 
   if (
     !状态.已知塔集合.size &&
@@ -387,17 +418,25 @@ export function 渲染() {
     const 画布矩形 = 部件.画布.getBoundingClientRect()
     const 宿主矩形 = 部件.宿主.getBoundingClientRect()
     const dpr = window.devicePixelRatio ?? 1
-    const css宽 = Math.max(1, 画布矩形.width)
-    const css高 = Math.max(1, 画布矩形.height)
+    const css宽 = Math.max(1, 部件.画布.offsetWidth || 画布矩形.width)
+    const css高 = Math.max(1, 部件.画布.offsetHeight || 画布矩形.height)
     const 像素宽 = Math.round(css宽 * dpr)
     const 像素高 = Math.round(css高 * dpr)
+    const 左 =
+      部件.画布.parentElement === 部件.宿主
+        ? 部件.画布.offsetLeft
+        : 画布矩形.left - 宿主矩形.left
+    const 上 =
+      部件.画布.parentElement === 部件.宿主
+        ? 部件.画布.offsetTop
+        : 画布矩形.top - 宿主矩形.top
 
     if (部件.覆盖层.width !== 像素宽) 部件.覆盖层.width = 像素宽
     if (部件.覆盖层.height !== 像素高) 部件.覆盖层.height = 像素高
     部件.覆盖层.style.width = `${css宽}px`
     部件.覆盖层.style.height = `${css高}px`
-    部件.覆盖层.style.left = `${画布矩形.left - 宿主矩形.left}px`
-    部件.覆盖层.style.top = `${画布矩形.top - 宿主矩形.top}px`
+    部件.覆盖层.style.left = `${左}px`
+    部件.覆盖层.style.top = `${上}px`
 
     return { dpr, css宽, css高 }
   }
@@ -863,7 +902,7 @@ html.${基地危险类名}, body.${基地危险类名} {
   }
 
   function 取画布() {
-    return document.querySelector('.game-map-canvas')
+    return 取游戏画布()
   }
 
   function 取宿主(画布) {
@@ -1143,4 +1182,87 @@ html.${基地危险类名}, body.${基地危险类名} {
 
     ctx.restore()
   }
+}
+
+function 安装自适应样式() {
+  if (!document.documentElement || document.getElementById(自适应样式编号))
+    return
+
+  const 样式 = document.createElement('style')
+  样式.id = 自适应样式编号
+  样式.textContent = `
+body:has(#game-page #gameMap.gio-adaptive-map) {
+    overflow: hidden !important;
+}
+#game-page #gameMap.gio-adaptive-map {
+    transform: scale(var(--gio-adaptive-map-scale, 1)) !important;
+    transform-origin: left top !important;
+}
+#game-page #gameMap.gio-adaptive-map-host,
+#game-page .gio-adaptive-map-host {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: var(--gio-adaptive-map-width, auto) !important;
+    height: var(--gio-adaptive-map-height, auto) !important;
+    transform: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 20 !important;
+}
+`.trim()
+  document.documentElement.appendChild(样式)
+}
+
+function 取游戏画布() {
+  return document.querySelector('#game-page #gameMap .game-map-canvas')
+}
+
+function 标记当前棋盘(地图元素, 宿主) {
+  document.querySelectorAll('.gio-adaptive-map').forEach((元素) => {
+    if (元素 !== 地图元素) 元素.classList.remove('gio-adaptive-map')
+  })
+  document.querySelectorAll('.gio-adaptive-map-host').forEach((元素) => {
+    if (元素 !== 地图元素 && 元素 !== 宿主) {
+      元素.classList.remove('gio-adaptive-map-host')
+    }
+  })
+
+  地图元素.classList.add('gio-adaptive-map')
+  宿主.classList.add('gio-adaptive-map-host')
+}
+
+function 取得地图原始尺寸(地图元素, 画布) {
+  const 宽 = 读取像素尺寸(
+    画布.offsetWidth,
+    地图元素.offsetWidth,
+    地图元素.style.getPropertyValue('--gio-adaptive-map-width'),
+    画布.getBoundingClientRect().width /
+      读取数字(地图元素.style.getPropertyValue('--gio-adaptive-map-scale'), 1),
+  )
+  const 高 = 读取像素尺寸(
+    画布.offsetHeight,
+    地图元素.offsetHeight,
+    地图元素.style.getPropertyValue('--gio-adaptive-map-height'),
+    画布.getBoundingClientRect().height /
+      读取数字(地图元素.style.getPropertyValue('--gio-adaptive-map-scale'), 1),
+  )
+
+  if (宽 <= 0 || 高 <= 0) return null
+  return { 宽, 高 }
+}
+
+function 读取像素尺寸(...候选值列表) {
+  for (const 候选值 of 候选值列表) {
+    const 数值 = 读取数字(候选值, 0)
+    if (数值 > 0) return 数值
+  }
+  return 0
+}
+
+function 读取数字(值, 默认值) {
+  const 数值 = Number.parseFloat(值)
+  return Number.isFinite(数值) ? 数值 : 默认值
 }
