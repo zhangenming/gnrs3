@@ -129,6 +129,7 @@ export function 渲染() {
     if (类型 === '中立塔') {
       画中立塔兵力(ctx, 塔索引, 列 * 格宽, 行 * 格高, 大小)
     } else if (类型 === '我方塔') {
+      画我方塔兵力(ctx, 塔索引, 列 * 格宽, 行 * 格高, 大小)
       画我方开塔增长(ctx, 塔索引, 列 * 格宽, 行 * 格高, 大小)
     }
   })
@@ -522,6 +523,10 @@ export function 渲染() {
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
 
+    if (是我方塔) {
+      画我方塔背景()
+    }
+
     if (是已占领塔) {
       画占领塔旋转框()
     }
@@ -605,6 +610,17 @@ export function 渲染() {
       ctx.stroke()
       ctx.restore()
     }
+
+    function 画我方塔背景() {
+      const 边距 = Math.max(1, 大小 * 0.025)
+      ctx.fillStyle = 'rgba(0, 42, 112, 0.58)'
+      ctx.fillRect(
+        x + 边距,
+        y + 边距,
+        Math.max(1, 大小 - 边距 * 2),
+        Math.max(1, 大小 - 边距 * 2),
+      )
+    }
   }
 
   function 画基地标记(ctx, x, y, 大小) {
@@ -687,6 +703,29 @@ export function 渲染() {
     ctx.restore()
   }
 
+  function 画我方塔兵力(ctx, 塔索引, x, y, 大小) {
+    const 兵力 = 取得可见地块兵力(塔索引)
+    if (!Number.isInteger(兵力) || 兵力 < 0) return
+
+    const 文本 = String(兵力)
+    const 字号比例 = 文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
+    const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
+    const 中心x = x + 大小 / 2
+    const 中心y = y + 大小 / 2
+
+    ctx.save()
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.lineJoin = 'round'
+    ctx.font = `900 ${字号}px Arial, sans-serif`
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)'
+    ctx.lineWidth = Math.max(2, 大小 * 0.12)
+    ctx.fillStyle = '#ffffff'
+    ctx.strokeText(文本, 中心x, 中心y)
+    ctx.fillText(文本, 中心x, 中心y)
+    ctx.restore()
+  }
+
   function 画我方开塔增长(ctx, 塔索引, x, y, 大小) {
     const 增长 = 取得我方开塔增长(塔索引)
     if (!Number.isInteger(增长)) return
@@ -708,6 +747,17 @@ export function 渲染() {
     ctx.strokeText(文本, 文本x, 文本y)
     ctx.fillText(文本, 文本x, 文本y)
     ctx.restore()
+  }
+
+  function 取得可见地块兵力(索引) {
+    if (!Array.isArray(状态.地图数组) || !状态.宽度 || !状态.高度) return null
+    if (!Number.isInteger(索引)) return null
+
+    const 格子数 = 状态.宽度 * 状态.高度
+    if (索引 < 0 || 索引 >= 格子数) return null
+
+    const 兵力 = 状态.地图数组[2 + 索引]
+    return Number.isInteger(兵力) ? 兵力 : null
   }
 
   function 取得模拟基地兵力(基地索引) {
