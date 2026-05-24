@@ -80,13 +80,15 @@ export function 渲染() {
   状态.已知敌方基地集合.forEach((基地, 基地索引) => {
     const 行 = Math.floor(基地索引 / 状态.宽度)
     const 列 = 基地索引 % 状态.宽度
-    画敌方基地标记(ctx, 列 * 格宽, 行 * 格高, 大小)
+    画基地标记(ctx, 列 * 格宽, 行 * 格高, 大小)
+    画基地模拟兵力(ctx, 基地索引, 列 * 格宽, 行 * 格高, 大小)
   })
 
   if (Number.isInteger(状态.我方基地索引) && 状态.我方基地索引 >= 0) {
     const 行 = Math.floor(状态.我方基地索引 / 状态.宽度)
     const 列 = 状态.我方基地索引 % 状态.宽度
-    画我方基地标记(ctx, 列 * 格宽, 行 * 格高, 大小)
+    画基地标记(ctx, 列 * 格宽, 行 * 格高, 大小)
+    画基地模拟兵力(ctx, 状态.我方基地索引, 列 * 格宽, 行 * 格高, 大小)
   }
 
   if (状态.敌方移动高亮列表.length) {
@@ -404,44 +406,7 @@ export function 渲染() {
     ctx.restore()
   }
 
-  function 画敌方基地标记(ctx, x, y, 大小) {
-    const 外扩 = Math.max(3, 大小 * 0.12)
-    const 黑框线宽 = Math.max(5, 大小 * 0.18)
-    const 红框线宽 = Math.max(3, 大小 * 0.1)
-    const 黑框偏移 = -外扩 + 黑框线宽 / 2
-    const 红框偏移 = -外扩 + 黑框线宽 + 红框线宽 / 2
-
-    ctx.save()
-    ctx.lineJoin = 'round'
-    ctx.lineCap = 'round'
-
-    ctx.globalAlpha = 0.24
-    ctx.fillStyle = 敌方红色
-    ctx.fillRect(x + 1, y + 1, Math.max(1, 大小 - 2), Math.max(1, 大小 - 2))
-    ctx.globalAlpha = 1
-
-    ctx.lineWidth = 黑框线宽
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.96)'
-    ctx.strokeRect(
-      x + 黑框偏移,
-      y + 黑框偏移,
-      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽),
-      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽),
-    )
-
-    ctx.lineWidth = 红框线宽
-    ctx.strokeStyle = 敌方红色
-    ctx.strokeRect(
-      x + 红框偏移,
-      y + 红框偏移,
-      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽 * 2 - 红框线宽),
-      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽 * 2 - 红框线宽),
-    )
-
-    ctx.restore()
-  }
-
-  function 画我方基地标记(ctx, x, y, 大小) {
+  function 画基地标记(ctx, x, y, 大小) {
     const 外扩 = Math.max(6, 大小 * 0.18)
     const 外框左 = x - 外扩
     const 外框上 = y - 外扩
@@ -462,7 +427,6 @@ export function 渲染() {
 
     ctx.fillStyle = '#d9b43b'
     ctx.fillRect(外框左, 外框上, 外框大小, 外框大小)
-    ctx.clearRect(x, y, 大小, 大小)
 
     ctx.shadowColor = 'transparent'
     ctx.strokeStyle = '#9a7720'
@@ -474,6 +438,48 @@ export function 渲染() {
     ctx.strokeRect(高光左, 高光上, 高光大小, 高光大小)
 
     ctx.restore()
+  }
+
+  function 画基地模拟兵力(ctx, 基地索引, x, y, 大小) {
+    const 兵力 = 取得模拟基地兵力(基地索引)
+    if (!Number.isInteger(兵力) || 兵力 < 0) return
+
+    const 文本 = String(兵力)
+    const 字号比例 = 文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
+    const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
+    const 中心x = x + 大小 / 2
+    const 中心y = y + 大小 / 2
+
+    ctx.save()
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.lineJoin = 'round'
+    ctx.font = `900 ${字号}px Arial, sans-serif`
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)'
+    ctx.lineWidth = Math.max(2, 大小 * 0.12)
+    ctx.fillStyle = '#ffffff'
+    ctx.strokeText(文本, 中心x, 中心y)
+    ctx.fillText(文本, 中心x, 中心y)
+    ctx.restore()
+  }
+
+  function 取得模拟基地兵力(基地索引) {
+    const 记忆 = 状态.基地兵力表.get(基地索引)
+    if (!记忆 || !Number.isInteger(记忆.兵力) || 记忆.兵力 < 0) return null
+
+    const 当前回合 = 状态.当前回合
+    const 记录回合 = Number.isInteger(记忆.回合) ? 记忆.回合 : 当前回合
+    if (!Number.isInteger(当前回合) || !Number.isInteger(记录回合)) {
+      return 记忆.兵力
+    }
+
+    const 回合差 = 当前回合 - 记录回合
+    if (回合差 <= 0) return 记忆.兵力
+
+    const 基地自然增长 = Math.floor(回合差 / 2)
+    const 大回合额外增长 = Math.floor(当前回合 / 50) - Math.floor(记录回合 / 50)
+
+    return 记忆.兵力 + 基地自然增长 + 大回合额外增长
   }
 
   function 画操作轨迹(ctx, 格宽, 格高, 大小) {

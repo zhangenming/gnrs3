@@ -27,6 +27,7 @@ export function 处理基地位置(数据包, 请求渲染) {
     const 基地索引 = 基地列表[玩家索引]
     if (!Number.isInteger(基地索引) || 基地索引 < 0) continue
     状态.已知基地集合.add(基地索引)
+    更新基地兵力记忆(基地索引, 数据包)
     if (是我方或队友(玩家索引)) {
       if (玩家索引 === 状态.我方索引) 状态.我方基地索引 = 基地索引
       continue
@@ -41,4 +42,26 @@ export function 处理基地位置(数据包, 请求渲染) {
   }
 
   请求渲染()
+
+  function 更新基地兵力记忆(基地索引, 数据包) {
+    if (
+      !Array.isArray(状态.地图数组) ||
+      !状态.宽度 ||
+      !状态.高度 ||
+      !Number.isInteger(基地索引)
+    ) {
+      return
+    }
+
+    const 格子数 = 状态.宽度 * 状态.高度
+    if (基地索引 < 0 || 基地索引 >= 格子数) return
+
+    const 兵力 = 状态.地图数组[2 + 基地索引]
+    if (!Number.isInteger(兵力) || 兵力 < 0) return
+
+    状态.基地兵力表.set(基地索引, {
+      兵力,
+      回合: Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合,
+    })
+  }
 }
