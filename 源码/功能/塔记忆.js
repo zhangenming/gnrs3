@@ -9,6 +9,7 @@
 // 从 game_start/game_update 数据包中读取 cities/towers 信息，写入全局塔集合和塔类型表。
 // 覆盖层会根据这些记忆继续标出离开视野后的塔，帮助 1v1 中判断据点和威胁位置。
 import {
+  取得完整地图数组,
   读取可见地块归属,
   读取玩家信息,
   取得本次塔列表,
@@ -54,13 +55,70 @@ export function 更新塔类型(数据包, 塔索引) {
   }
 
   const 地块归属 = 读取可见地块归属(数据包, 塔索引)
-  if (地块归属 == null) return
-  if (地块归属 < -1) return
+  let 可见类型 = null
+  if (地块归属 != null && 地块归属 >= -1) {
+    可见类型 =
+      地块归属 < 0 ? '中立塔' : 是我方或队友(地块归属) ? '我方塔' : '敌方塔'
+    const 旧类型 = 状态.已知塔类型.get(塔索引)
+    if (旧类型 !== 可见类型) {
+      状态.已知塔类型.set(塔索引, 可见类型)
+    }
+  }
 
-  const 新类型 =
-    地块归属 < 0 ? '中立塔' : 是我方或队友(地块归属) ? '我方塔' : '敌方塔'
-  const 旧类型 = 状态.已知塔类型.get(塔索引)
-  if (旧类型 !== 新类型) {
-    状态.已知塔类型.set(塔索引, 新类型)
+  更新中立塔兵力()
+
+  function 更新中立塔兵力() {
+    if (可见类型 === '我方塔' || 可见类型 === '敌方塔') {
+      状态.中立塔兵力表.delete(塔索引)
+      return
+    }
+
+    const 是中立兵力更新 =
+      地块归属 == null && 状态.已知塔类型.get(塔索引) === '中立塔'
+    if (可见类型 !== '中立塔' && !是中立兵力更新) return
+
+    const 兵力 = 读取可见地块兵力(数据包, 塔索引)
+    if (!Number.isInteger(兵力) || 兵力 < 0) return
+
+    状态.中立塔兵力表.set(塔索引, 兵力)
+  }
+
+  function 读取可见地块兵力(数据包, 格子索引) {
+    const 地图数组 = 取得完整地图数组(数据包)
+    if (地图数组 && Number.isInteger(格子索引)) {
+      const 宽度 = 地图数组[0]
+      const 高度 = 地图数组[1]
+      const 格子数 = 宽度 * 高度
+      if (格子索引 >= 0 && 格子索引 < 格子数) {
+        const 地块值 = 地图数组[2 + 格子索引]
+        return Number.isInteger(地块值) ? 地块值 : null
+      }
+    }
+
+    if (!Array.isArray(数据包?.map_diff)) return null
+    if (!状态.宽度 || !状态.高度 || !Number.isInteger(格子索引)) return null
+
+    const 目标位置 = 2 + 格子索引
+    let 输出位置 = 0
+    for (let idx = 0; idx < 数据包.map_diff.length; ) {
+      const 保留数量 = 数据包.map_diff[idx] ?? 0
+      if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 保留数量) return null
+      输出位置 += 保留数量
+
+      idx += 1
+      if (idx < 数据包.map_diff.length) {
+        const 插入数量 = 数据包.map_diff[idx] ?? 0
+        if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 插入数量) {
+          const 地块增量值 = 数据包.map_diff[idx + 1 + (目标位置 - 输出位置)]
+          return Number.isInteger(地块增量值) ? 地块增量值 : null
+        }
+        输出位置 += 插入数量
+        idx += 插入数量
+      }
+
+      idx += 1
+    }
+
+    return null
   }
 }

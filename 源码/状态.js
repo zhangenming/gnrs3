@@ -4,6 +4,7 @@ export const 状态 = {
   塔列表: null,
   已知塔集合: new Set(),
   已知塔类型: new Map(),
+  中立塔兵力表: new Map(),
   已知基地集合: new Set(),
   已知敌方基地集合: new Map(),
   基地兵力表: new Map(),

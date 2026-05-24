@@ -79,6 +79,9 @@ export function 渲染() {
     const 类型 = 状态.已知塔类型.get(塔索引)
     if (类型 === '敌方塔' || 类型 === '我方塔') 有已占领塔 = true
     画塔标记(ctx, 列 * 格宽, 行 * 格高, 大小, 类型)
+    if (类型 === '中立塔') {
+      画中立塔兵力(ctx, 塔索引, 列 * 格宽, 行 * 格高, 大小)
+    }
   })
 
   状态.已知敌方基地集合.forEach((基地, 基地索引) => {
@@ -494,6 +497,29 @@ export function 渲染() {
 
   function 画基地模拟兵力(ctx, 基地索引, x, y, 大小) {
     const 兵力 = 取得模拟基地兵力(基地索引)
+    if (!Number.isInteger(兵力) || 兵力 < 0) return
+
+    const 文本 = String(兵力)
+    const 字号比例 = 文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
+    const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
+    const 中心x = x + 大小 / 2
+    const 中心y = y + 大小 / 2
+
+    ctx.save()
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.lineJoin = 'round'
+    ctx.font = `900 ${字号}px Arial, sans-serif`
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)'
+    ctx.lineWidth = Math.max(2, 大小 * 0.12)
+    ctx.fillStyle = '#ffffff'
+    ctx.strokeText(文本, 中心x, 中心y)
+    ctx.fillText(文本, 中心x, 中心y)
+    ctx.restore()
+  }
+
+  function 画中立塔兵力(ctx, 塔索引, x, y, 大小) {
+    const 兵力 = 状态.中立塔兵力表.get(塔索引)
     if (!Number.isInteger(兵力) || 兵力 < 0) return
 
     const 文本 = String(兵力)
