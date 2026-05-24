@@ -10,7 +10,7 @@ import { 安全执行 } from './工具.js'
 import { 更新战场塔信息 } from './功能/战场塔信息.js'
 import { 更新战场数据差 } from './功能/战场数据差.js'
 import { 处理基地位置 } from './功能/基地记忆.js'
-import { 更新基地危险状态 } from './功能/基地危险.js'
+import { 处理死亡时基地危险状态, 更新基地危险状态 } from './功能/基地危险.js'
 import { 更新地图缓存和兵力分布 } from './地图状态.js'
 import {
   按攻击序号清理移动队列,
@@ -124,6 +124,9 @@ export function 挂钩socket(socket, 请求渲染) {
       处理基地位置(数据包 ?? {}, 请求渲染)
       更新敌方基地推测(数据包 ?? {}, 请求渲染)
       更新基地危险状态()
+      if (是我方死亡事件('game_update', 数据包 ?? {})) {
+        处理死亡时基地危险状态()
+      }
       更新战场塔信息()
       更新战场数据差()
       记录游戏数据进展(数据包 ?? {})
@@ -139,6 +142,9 @@ export function 挂钩socket(socket, 请求渲染) {
   function 预处理入站事件(事件名, 数据包) {
     记录结算回放快照(事件名, 数据包)
     处理战场数据冻结事件(事件名, 数据包)
+    if (是我方死亡事件(事件名, 数据包)) {
+      处理死亡时基地危险状态()
+    }
     if (事件名 === 'game_start' || 事件名 === 'game_update') {
       记录回合(数据包 ?? {})
       重构玩家颜色(数据包 ?? {})
@@ -161,6 +167,8 @@ export function 挂钩socket(socket, 请求渲染) {
     状态.基地兵力表.clear()
     状态.我方基地索引 = null
     状态.基地被敌发现 = false
+    状态.基地被敌发现回合 = null
+    状态.基地危险背景豁免 = false
     清除抢塔提示()
     清除敌方开塔提示()
     状态.已到达视野集合.clear()
@@ -197,5 +205,13 @@ export function 挂钩socket(socket, 请求渲染) {
     更新战场塔信息()
     更新战场数据差()
     清空覆盖层()
+  }
+
+  function 是我方死亡事件(事件名, 数据包) {
+    if (事件名 === 'game_lost') return true
+    if (!Array.isArray(数据包?.scores) || !Number.isInteger(状态.我方索引)) {
+      return false
+    }
+    return 数据包.scores[状态.我方索引]?.dead === true
   }
 }

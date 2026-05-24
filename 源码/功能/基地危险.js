@@ -8,6 +8,8 @@ import { 基地危险类名 } from '../配置.js'
 import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 
+const 死亡前基地刚暴露turn数 = 6
+
 export function 更新基地危险状态() {
   if (状态.基地被敌发现) {
     更新基地危险背景()
@@ -41,6 +43,7 @@ export function 更新基地危险状态() {
       const 归属 = 状态.地图数组[2 + 格子数 + idx]
       if (Number.isInteger(归属) && 归属 >= 0 && !是我方或队友(归属)) {
         状态.基地被敌发现 = true
+        状态.基地被敌发现回合 = 取得当前回合()
         更新基地危险背景()
         return
       }
@@ -50,7 +53,25 @@ export function 更新基地危险状态() {
   更新基地危险背景()
 }
 
+export function 处理死亡时基地危险状态() {
+  if (!状态.基地被敌发现) return
+  const 当前回合 = 取得当前回合()
+  if (!Number.isInteger(当前回合) || !Number.isInteger(状态.基地被敌发现回合)) {
+    更新基地危险背景()
+    return
+  }
+  if (当前回合 - 状态.基地被敌发现回合 <= 死亡前基地刚暴露turn数) {
+    状态.基地危险背景豁免 = true
+  }
+  更新基地危险背景()
+}
+
 export function 更新基地危险背景() {
-  document.documentElement?.classList.toggle(基地危险类名, 状态.基地被敌发现)
-  document.body?.classList.toggle(基地危险类名, 状态.基地被敌发现)
+  const 显示危险背景 = 状态.基地被敌发现 && !状态.基地危险背景豁免
+  document.documentElement?.classList.toggle(基地危险类名, 显示危险背景)
+  document.body?.classList.toggle(基地危险类名, 显示危险背景)
+}
+
+function 取得当前回合() {
+  return Number.isInteger(状态.当前回合) ? 状态.当前回合 : null
 }
