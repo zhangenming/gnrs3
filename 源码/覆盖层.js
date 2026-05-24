@@ -74,8 +74,10 @@ export function 清空覆盖层() {
 
 export function 渲染() {
   状态.已请求渲染 = false
-  清理敌方移动高亮()
-  清理抢塔提示()
+  if (!状态.回放正在显示) {
+    清理敌方移动高亮()
+    清理抢塔提示()
+  }
   同步自适应棋盘()
 
   if (
@@ -111,7 +113,9 @@ export function 渲染() {
   const 格宽 = 尺寸.css宽 / 状态.宽度
   const 格高 = 尺寸.css高 / 状态.高度
   const 大小 = Math.min(格宽, 格高)
-  const 动画时间 = performance.now()
+  const 当前动画时间 = 状态.回放正在显示
+    ? (状态.回放动画时间 ?? 0)
+    : performance.now()
 
   画未到达视野背景()
   画障碍物()
@@ -149,13 +153,14 @@ export function 渲染() {
     画基地模拟兵力(ctx, 状态.我方基地索引, 列 * 格宽, 行 * 格高, 大小)
   }
 
-  画选中棋子(ctx, 格宽, 格高, 大小, 动画时间)
+  画选中棋子(ctx, 格宽, 格高, 大小, 当前动画时间)
 
   if (
-    状态.敌方移动高亮列表.length ||
-    状态.抢塔提示列表.length ||
-    有已占领塔 ||
-    Number.isInteger(取得选中棋子索引())
+    !状态.回放正在显示 &&
+    (状态.敌方移动高亮列表.length ||
+      状态.抢塔提示列表.length ||
+      有已占领塔 ||
+      Number.isInteger(取得选中棋子索引()))
   ) {
     requestAnimationFrame(() => {
       const 仍有已占领塔 = Array.from(状态.已知塔类型.values()).some((类型) => {
@@ -584,7 +589,7 @@ export function 渲染() {
       const 上 = 中心Y - 框大小 / 2
       const 右 = 左 + 框大小
       const 下 = 上 + 框大小
-      const 角度 = (动画时间 / 1400) * Math.PI * 2
+      const 角度 = (当前动画时间 / 1400) * Math.PI * 2
 
       ctx.save()
       ctx.translate(中心X, 中心Y)
@@ -851,7 +856,7 @@ export function 渲染() {
     })
     if (!可绘制移动.length) return
 
-    const 动画相位 = (performance.now() % 900) / 900
+    const 动画相位 = (当前动画时间 % 900) / 900
     const 脉冲 = 0.5 - Math.cos(动画相位 * Math.PI * 2) / 2
     const 线宽 = Math.max(2, Math.min(5, 大小 * (0.08 + 脉冲 * 0.05)))
 
@@ -869,7 +874,7 @@ export function 渲染() {
     if (!状态.抢塔提示列表.length) return
 
     const 格子数 = 状态.宽度 * 状态.高度
-    const 当前时间 = performance.now()
+    const 当前时间 = 状态.回放正在显示 ? 当前动画时间 : performance.now()
     const 可绘制提示列表 = 状态.抢塔提示列表.filter((提示) => {
       return (
         Number.isInteger(提示.索引) &&
