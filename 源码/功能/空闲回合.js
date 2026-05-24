@@ -8,7 +8,6 @@ import { 状态 } from '../状态.js'
 
 const 面板类名 = 'gio-idle-turn-panel'
 const 样式编号 = 'gio-idle-turn-style'
-const 位置存储键 = 'gio-idle-turn-panel-position'
 const 空闲记录起始回合 = 50
 
 export function 记录空闲回合操作() {
@@ -46,32 +45,35 @@ export function 更新空闲回合UI() {
   const 面板 = 确保面板()
   if (!面板) return
 
-  const 回合列表 = Array.from(状态.空闲回合集合)
-    .filter((回合) => 回合 >= 空闲记录起始回合)
-    .sort((左, 右) => 左 - 右)
+  const 回合状态列表 = 取得回合状态列表()
+  const 空闲回合列表 = 回合状态列表
+    .filter((回合状态) => 回合状态.是空闲)
+    .map((回合状态) => 回合状态.回合)
   const 计数元素 = 面板.querySelector('.gio-idle-turn-count')
   const 列表元素 = 面板.querySelector('.gio-idle-turn-list')
-  const 回合文本 = 回合列表.join(',')
+  const 回合文本 = 回合状态列表
+    .map((回合状态) => `${回合状态.回合}:${回合状态.是空闲 ? 1 : 0}`)
+    .join(',')
 
   if (面板.dataset.gioIdleTurns === 回合文本) return
   面板.dataset.gioIdleTurns = 回合文本
 
-  if (计数元素) 计数元素.textContent = String(回合列表.length)
+  if (计数元素) 计数元素.textContent = String(空闲回合列表.length)
   if (!列表元素) return
 
   列表元素.replaceChildren()
-  面板.dataset.gioIdleEmpty = 回合列表.length ? 'false' : 'true'
+  面板.dataset.gioIdleEmpty = 回合状态列表.length ? 'false' : 'true'
 
-  if (!回合列表.length) {
+  if (!回合状态列表.length) {
     const 空状态 = document.createElement('span')
     空状态.className = 'gio-idle-turn-empty'
-    空状态.textContent = '暂无'
+    空状态.textContent = '等待回合'
     列表元素.appendChild(空状态)
-    面板.title = '暂无空闲回合'
+    面板.title = '等待空闲回合记录'
     return
   }
 
-  for (const [大回合序号, 分组回合列表] of 取得大回合分组(回合列表)) {
+  for (const [大回合序号, 分组回合列表] of 取得大回合分组(回合状态列表)) {
     const 行 = document.createElement('div')
     行.className = 'gio-idle-turn-row'
 
@@ -82,26 +84,60 @@ export function 更新空闲回合UI() {
 
     const 回合组 = document.createElement('span')
     回合组.className = 'gio-idle-turn-row-list'
-    for (const 回合 of 分组回合列表) {
+    for (const 回合状态 of 分组回合列表) {
       const 标签 = document.createElement('span')
-      标签.className = 'gio-idle-turn-chip'
-      标签.textContent = String(回合)
+      标签.className = 回合状态.是空闲
+        ? 'gio-idle-turn-chip gio-idle-turn-chip-idle'
+        : 'gio-idle-turn-chip gio-idle-turn-chip-active'
+      标签.textContent = String(回合状态.回合)
+      标签.title = 回合状态.是空闲 ? '空闲回合' : '已操作回合'
       回合组.appendChild(标签)
     }
     行.appendChild(回合组)
     列表元素.appendChild(行)
   }
-  面板.title = `空闲回合：${回合列表.join(', ')}`
+  面板.title = 空闲回合列表.length
+    ? `空闲回合：${空闲回合列表.join(', ')}`
+    : '暂无空闲回合'
+
+  function 取得回合状态列表() {
+    const 最大回合 = 取得最大已确认回合()
+    if (!Number.isInteger(最大回合) || 最大回合 < 空闲记录起始回合) return []
+
+    const 列表 = []
+    for (let 回合 = 空闲记录起始回合; 回合 <= 最大回合; 回合 += 1) {
+      列表.push({
+        回合,
+        是空闲: 状态.空闲回合集合.has(回合),
+      })
+    }
+    return 列表
+  }
+
+  function 取得最大已确认回合() {
+    const 当前已确认回合 = Number.isInteger(状态.当前回合)
+      ? 状态.当前回合 - 1
+      : null
+    let 最大回合 = 当前已确认回合
+
+    for (const 回合集合 of [状态.空闲回合集合, 状态.空闲回合操作集合]) {
+      回合集合.forEach((回合) => {
+        if (!Number.isInteger(回合) || 回合 < 空闲记录起始回合) return
+        if (!Number.isInteger(最大回合) || 回合 > 最大回合) 最大回合 = 回合
+      })
+    }
+    return 最大回合
+  }
 
   function 取得大回合分组(回合列表) {
     const 分组表 = new Map()
-    for (const 回合 of 回合列表) {
-      const 大回合序号 = Math.floor(回合 / 大回合turn数) + 1
+    for (const 回合状态 of 回合列表) {
+      const 大回合序号 = Math.floor(回合状态.回合 / 大回合turn数) + 1
       const 分组 = 分组表.get(大回合序号)
       if (分组) {
-        分组.push(回合)
+        分组.push(回合状态)
       } else {
-        分组表.set(大回合序号, [回合])
+        分组表.set(大回合序号, [回合状态])
       }
     }
     return 分组表
@@ -122,39 +158,27 @@ export function 更新空闲回合UI() {
         '</div>' +
         '<div class="gio-idle-turn-list"></div>'
     }
-    安装拖动(面板)
 
-    const 记忆位置 = 读取记忆位置()
-    if (记忆位置 || 面板.dataset.gioIdlePositioned === 'true') {
-      应用固定位置(
-        面板,
-        记忆位置 ?? {
-          left: Number.parseFloat(面板.style.left),
-          top: Number.parseFloat(面板.style.top),
-        },
-      )
-    } else {
-      const 宿主 = 取得右侧宿主()
-      if (!宿主) {
-        面板.classList.add('gio-idle-turn-floating')
-        面板.style.left = ''
-        面板.style.top = ''
-        面板.style.right = '12px'
-        面板.style.bottom = '12px'
-        if (面板.parentElement !== document.body)
-          document.body.appendChild(面板)
-        状态.空闲回合面板 = 面板
-        return 面板
-      }
-
-      面板.classList.remove('gio-idle-turn-floating')
-      delete 面板.dataset.gioIdlePositioned
+    const 宿主 = 取得右侧宿主()
+    if (!宿主) {
+      面板.classList.add('gio-idle-turn-floating')
       面板.style.left = ''
       面板.style.top = ''
-      面板.style.right = ''
-      面板.style.bottom = ''
-      if (面板.parentElement !== 宿主) 宿主.appendChild(面板)
+      面板.style.right = '12px'
+      面板.style.bottom = '12px'
+      if (面板.parentElement !== document.body) document.body.appendChild(面板)
+      状态.空闲回合面板 = 面板
+      return 面板
     }
+
+    面板.classList.remove('gio-idle-turn-floating')
+    delete 面板.dataset.gioIdlePositioned
+    面板.style.left = ''
+    面板.style.top = ''
+    面板.style.right = ''
+    面板.style.bottom = ''
+    面板.style.width = ''
+    if (面板.parentElement !== 宿主) 宿主.appendChild(面板)
 
     状态.空闲回合面板 = 面板
     return 面板
@@ -179,10 +203,9 @@ export function 更新空闲回合UI() {
     for (const 表格 of 表格列表) {
       const 文本 = 表格.textContent ?? ''
       if (
-        文本.includes('Army') &&
-        文本.includes('Land') &&
         (文本.includes('Player') ||
-          表格.querySelector('[data-gio-battle-player-column="true"]'))
+          表格.querySelector('[data-gio-battle-player-column="true"]')) &&
+        是战场数据表格(表格)
       ) {
         return 表格
       }
@@ -190,98 +213,14 @@ export function 更新空闲回合UI() {
     return null
   }
 
-  function 安装拖动(面板) {
-    if (面板.dataset.gioIdleDragReady === 'true') return
-    面板.dataset.gioIdleDragReady = 'true'
-
-    面板.addEventListener('pointerdown', (事件) => {
-      const 头部 = 事件.target?.closest?.('.gio-idle-turn-head')
-      if (!头部 || 事件.button !== 0) return
-
-      const 起始矩形 = 面板.getBoundingClientRect()
-      const 起始x = 事件.clientX
-      const 起始y = 事件.clientY
-      const 起始左 = 起始矩形.left
-      const 起始上 = 起始矩形.top
-
-      面板.setPointerCapture?.(事件.pointerId)
-      面板.classList.add('gio-idle-turn-dragging')
-      面板.style.width = `${起始矩形.width}px`
-      应用固定位置(面板, { left: 起始左, top: 起始上 })
-      事件.preventDefault()
-
-      function 拖动(移动事件) {
-        const 位置 = 限制位置({
-          left: 起始左 + 移动事件.clientX - 起始x,
-          top: 起始上 + 移动事件.clientY - 起始y,
-        })
-        应用固定位置(面板, 位置)
-      }
-
-      function 结束拖动() {
-        面板.releasePointerCapture?.(事件.pointerId)
-        面板.classList.remove('gio-idle-turn-dragging')
-        保存位置({
-          left: Number.parseFloat(面板.style.left),
-          top: Number.parseFloat(面板.style.top),
-        })
-        window.removeEventListener('pointermove', 拖动, true)
-        window.removeEventListener('pointerup', 结束拖动, true)
-        window.removeEventListener('pointercancel', 结束拖动, true)
-      }
-
-      window.addEventListener('pointermove', 拖动, true)
-      window.addEventListener('pointerup', 结束拖动, true)
-      window.addEventListener('pointercancel', 结束拖动, true)
-    })
-  }
-
-  function 应用固定位置(面板, 位置) {
-    if (面板.parentElement !== document.body) document.body.appendChild(面板)
-
-    const 限制后位置 = 限制位置(位置)
-    面板.classList.add('gio-idle-turn-floating')
-    面板.dataset.gioIdlePositioned = 'true'
-    面板.style.left = `${限制后位置.left}px`
-    面板.style.top = `${限制后位置.top}px`
-    面板.style.right = 'auto'
-    面板.style.bottom = 'auto'
-  }
-
-  function 读取记忆位置() {
-    try {
-      const 文本 = localStorage.getItem(位置存储键)
-      if (!文本) return null
-
-      const 位置 = JSON.parse(文本)
-      if (!Number.isFinite(位置?.left) || !Number.isFinite(位置?.top))
-        return null
-      return 限制位置(位置)
-    } catch {
-      return null
-    }
-  }
-
-  function 保存位置(位置) {
-    if (!Number.isFinite(位置.left) || !Number.isFinite(位置.top)) return
-
-    try {
-      localStorage.setItem(位置存储键, JSON.stringify(限制位置(位置)))
-    } catch {
-      return
-    }
-  }
-
-  function 限制位置(位置) {
-    const 左 = Number.isFinite(位置?.left) ? 位置.left : window.innerWidth - 252
-    const 上 = Number.isFinite(位置?.top) ? 位置.top : window.innerHeight - 120
-    const 最大左 = Math.max(0, window.innerWidth - 48)
-    const 最大上 = Math.max(0, window.innerHeight - 36)
-
-    return {
-      left: Math.min(Math.max(0, 左), 最大左),
-      top: Math.min(Math.max(0, 上), 最大上),
-    }
+  function 是战场数据表格(表格) {
+    const 文本 = 表格.textContent ?? ''
+    if (文本.includes('Army') && 文本.includes('Land')) return true
+    return Boolean(
+      表格.querySelector(
+        '[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]',
+      ),
+    )
   }
 }
 
@@ -293,8 +232,8 @@ function 安装样式() {
   样式.textContent = `
 .${面板类名} {
     box-sizing: border-box;
-    width: min(240px, 100%);
-    margin-top: 8px;
+    width: 100%;
+    margin-top: 6px;
     padding: 8px;
     border: 1px solid rgba(124, 148, 176, 0.42);
     border-radius: 6px;
@@ -306,10 +245,8 @@ function 安装样式() {
 }
 .${面板类名}.gio-idle-turn-floating {
     position: fixed;
+    width: min(420px, calc(100vw - 24px));
     z-index: 2147482999;
-}
-.${面板类名}.gio-idle-turn-dragging {
-    user-select: none;
 }
 .gio-idle-turn-head {
     display: flex;
@@ -317,11 +254,6 @@ function 安装样式() {
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 6px;
-    cursor: grab;
-    touch-action: none;
-}
-.gio-idle-turn-dragging .gio-idle-turn-head {
-    cursor: grabbing;
 }
 .gio-idle-turn-title {
     color: #f7fbff;
@@ -339,21 +271,21 @@ function 安装样式() {
 .gio-idle-turn-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    max-height: 144px;
+    gap: 6px;
+    max-height: 220px;
     overflow-y: auto;
     scrollbar-width: thin;
 }
 .gio-idle-turn-row {
     display: grid;
-    grid-template-columns: 34px 1fr;
+    grid-template-columns: 38px 1fr;
     align-items: start;
-    gap: 5px;
+    gap: 6px;
 }
 .gio-idle-turn-round {
     box-sizing: border-box;
-    min-width: 34px;
-    padding: 3px 4px;
+    min-width: 38px;
+    padding: 4px 5px;
     border-radius: 5px;
     background: rgba(255, 191, 63, 0.16);
     color: #ffcf66;
@@ -364,20 +296,24 @@ function 安装样式() {
 .gio-idle-turn-row-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 3px;
 }
 .gio-idle-turn-chip,
 .gio-idle-turn-empty {
     box-sizing: border-box;
-    min-width: 28px;
-    padding: 3px 6px;
-    border-radius: 5px;
+    min-width: 30px;
+    padding: 4px 6px;
+    border-radius: 4px;
     text-align: center;
     white-space: nowrap;
     font: 800 11px/1 Arial, sans-serif;
 }
-.gio-idle-turn-chip {
-    background: #253044;
+.gio-idle-turn-chip-active {
+    background: rgba(124, 148, 176, 0.24);
+    color: rgba(247, 251, 255, 0.82);
+}
+.gio-idle-turn-chip-idle {
+    background: #b4232a;
     color: #ffffff;
 }
 .gio-idle-turn-empty {
