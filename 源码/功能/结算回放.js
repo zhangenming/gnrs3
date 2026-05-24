@@ -19,9 +19,6 @@ export function 记录结算回放快照(事件名, 数据包) {
   try {
     状态.结算回放快照 = {
       图片: 画布.toDataURL('image/png'),
-      宽度: 状态.宽度,
-      高度: 状态.高度,
-      地图数组: Array.isArray(状态.地图数组) ? 状态.地图数组.slice() : null,
     }
   } catch {
     状态.结算回放快照 = null
@@ -66,7 +63,6 @@ export function 同步结算回放元素() {
   元素.style.top = `${画布矩形.top - 宿主矩形.top}px`
   元素.style.width = `${画布矩形.width}px`
   元素.style.height = `${画布矩形.height}px`
-  绘制结算回放兵力(元素, 画布矩形.width, 画布矩形.height)
 }
 
 function 显示结算回放() {
@@ -91,17 +87,16 @@ function 确保结算回放元素() {
 
   宿主.classList.add('gio-tower-memory-host')
   let 元素 = 宿主.querySelector(`.${元素类名}`)
-  if (元素?.tagName?.toLowerCase() !== 'div') {
+  if (元素?.tagName?.toLowerCase() !== 'img') {
     元素?.remove()
-    元素 = document.createElement('div')
+    元素 = document.createElement('img')
     元素.className = 元素类名
-    元素.innerHTML = '<img alt=""><canvas></canvas>'
+    元素.alt = ''
     宿主.appendChild(元素)
   }
 
-  const 图片 = 元素.querySelector('img')
-  if (图片 && 图片.src !== 状态.结算回放快照.图片) {
-    图片.src = 状态.结算回放快照.图片
+  if (元素.src !== 状态.结算回放快照.图片) {
+    元素.src = 状态.结算回放快照.图片
   }
   return 元素
 }
@@ -120,16 +115,10 @@ function 安装结算回放样式() {
     position: absolute;
     left: 0;
     top: 0;
+    display: block;
+    object-fit: fill;
     pointer-events: none;
     z-index: 2147483001;
-}
-.${元素类名} img,
-.${元素类名} canvas {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
 }
 .gio-tower-memory-host {
     position: relative !important;
@@ -137,58 +126,6 @@ function 安装结算回放样式() {
 }
 `.trim()
   document.documentElement.appendChild(样式)
-}
-
-function 绘制结算回放兵力(元素, css宽, css高) {
-  const 快照 = 状态.结算回放快照
-  const 画布 = 元素.querySelector('canvas')
-  if (!画布 || !快照) return
-
-  const { 地图数组, 宽度, 高度 } = 快照
-  const dpr = window.devicePixelRatio ?? 1
-  const 像素宽 = Math.round(css宽 * dpr)
-  const 像素高 = Math.round(css高 * dpr)
-  if (画布.width !== 像素宽) 画布.width = 像素宽
-  if (画布.height !== 像素高) 画布.height = 像素高
-
-  const ctx = 画布.getContext('2d')
-  if (!ctx) return
-
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  ctx.clearRect(0, 0, css宽, css高)
-  if (!Array.isArray(地图数组) || !宽度 || !高度) return
-
-  const 格子数 = 宽度 * 高度
-  if (地图数组.length < 2 + 格子数 * 2) return
-
-  const 格宽 = css宽 / 宽度
-  const 格高 = css高 / 高度
-  const 格大小 = Math.min(格宽, 格高)
-
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.lineJoin = 'round'
-  for (let idx = 0; idx < 格子数; idx += 1) {
-    const 兵力 = 地图数组[2 + idx]
-    const 地形 = 地图数组[2 + 格子数 + idx]
-    if (!Number.isInteger(兵力) || 兵力 <= 0) continue
-    if (!Number.isInteger(地形) || 地形 < -1) continue
-
-    const 文本 = String(兵力)
-    const 行 = Math.floor(idx / 宽度)
-    const 列 = idx % 宽度
-    const x = 列 * 格宽 + 格宽 / 2
-    const y = 行 * 格高 + 格高 / 2
-    const 字号比例 = 文本.length >= 3 ? 0.38 : 文本.length >= 2 ? 0.46 : 0.54
-    const 字号 = Math.max(10, Math.min(24, 格大小 * 字号比例))
-
-    ctx.font = `700 ${字号}px Arial, sans-serif`
-    ctx.lineWidth = Math.max(2, 字号 * 0.16)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
-    ctx.fillStyle = '#000000'
-    ctx.strokeText(文本, x, y)
-    ctx.fillText(文本, x, y)
-  }
 }
 
 function 取地图画布() {
