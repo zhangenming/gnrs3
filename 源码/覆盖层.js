@@ -30,6 +30,7 @@ const 自适应样式编号 = `${样式编号}-adaptive-ui`
 const 地图大小元素编号 = `${样式编号}-map-size`
 const 战场面板间距 = 10
 const 战场面板右侧间距 = 8
+const 战场面板预留宽 = 440
 let 选中格子索引 = null
 let 已同步移动队列长度 = 0
 let 已安装选中监听 = false
@@ -52,7 +53,7 @@ export function 同步自适应棋盘() {
   const 尺寸 = 取得地图原始尺寸(地图元素, 画布)
   if (!尺寸) return
 
-  const 可用宽 = Math.max(1, window.innerWidth)
+  const 可用宽 = 取得地图可用宽()
   const 可用高 = Math.max(1, window.innerHeight)
   const 缩放 = Math.max(0.1, Math.min(可用宽 / 尺寸.宽, 可用高 / 尺寸.高))
 
@@ -63,6 +64,12 @@ export function 同步自适应棋盘() {
   宿主.style.setProperty('--gio-adaptive-map-height', `${尺寸.高}px`)
   同步战场面板位置(尺寸, 缩放)
   同步地图大小标签(地图元素)
+
+  function 取得地图可用宽() {
+    const 视口宽 = Math.max(1, window.innerWidth)
+    const 右侧预留宽 = 战场面板预留宽 + 战场面板间距 + 战场面板右侧间距
+    return Math.max(1, 视口宽 - 右侧预留宽)
+  }
 }
 
 export function 清空覆盖层() {
