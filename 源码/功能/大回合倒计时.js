@@ -11,11 +11,18 @@ import {
 } from '../配置.js'
 import { 状态 } from '../状态.js'
 import { 取得大回合倒计时 } from '../工具.js'
+import { 更新空闲回合UI, 结算空闲回合 } from './空闲回合.js'
 
 export function 记录回合(数据包) {
   if (!Number.isInteger(数据包?.turn)) return
-  状态.当前回合 = 数据包.turn
+  const 旧回合 = 状态.当前回合
+  const 新回合 = 数据包.turn
+  if (Number.isInteger(旧回合) && 新回合 !== 旧回合) {
+    结算空闲回合(旧回合)
+  }
+  状态.当前回合 = 新回合
   更新大回合倒计时()
+  更新空闲回合UI()
 }
 
 export function 更新大回合倒计时() {

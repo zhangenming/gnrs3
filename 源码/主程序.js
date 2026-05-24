@@ -8,6 +8,7 @@ import { 清空覆盖层, 同步自适应棋盘, 渲染 } from './覆盖层.js'
 import { 更新大回合倒计时 } from './功能/大回合倒计时.js'
 import { 挂钩socket } from './socket挂钩.js'
 import { 安装结算回放快捷键, 同步结算回放元素 } from './功能/结算回放.js'
+import { 更新空闲回合UI } from './功能/空闲回合.js'
 
 function 请求渲染() {
   if (状态.已请求渲染) return
@@ -36,6 +37,7 @@ function 启动() {
     }
     状态.页面观察器 = new MutationObserver(() => {
       更新大回合倒计时()
+      更新空闲回合UI()
       更新战场塔信息()
       更新战场数据差()
       同步结算回放元素()

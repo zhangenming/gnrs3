@@ -22,10 +22,20 @@ import { 清空覆盖层 } from './覆盖层.js'
 import { 重构玩家颜色 } from './功能/玩家颜色.js'
 import { 记录回合, 更新大回合倒计时 } from './功能/大回合倒计时.js'
 import { 处理塔位置 } from './功能/塔记忆.js'
-import { 处理战场数据冻结事件, 重置战场数据冻结 } from './功能/战场数据冻结.js'
+import {
+  处理战场数据冻结事件,
+  是战场数据冻结事件,
+  重置战场数据冻结,
+} from './功能/战场数据冻结.js'
 import { 记录结算回放快照, 重置结算回放 } from './功能/结算回放.js'
 import { 尝试自动吃敌方基地, 重置自动吃基地 } from './功能/自动吃基地.js'
 import { 清除抢塔提示 } from './功能/抢塔提示.js'
+import {
+  记录空闲回合操作,
+  结算当前空闲回合,
+  重置空闲回合,
+  更新空闲回合UI,
+} from './功能/空闲回合.js'
 
 export function 挂钩socket(socket, 请求渲染) {
   if (!socket || socket.__塔记忆已挂钩) return
@@ -38,10 +48,13 @@ export function 挂钩socket(socket, 请求渲染) {
     socket.emit = function (事件名, ...参数) {
       安全执行('emit出站操作记录', () => {
         if (事件名 === 'attack') {
+          记录空闲回合操作()
           记录移动操作(参数[0], 参数[1], 参数[2], 参数[3], 请求渲染)
         } else if (事件名 === 'undo_move') {
+          记录空闲回合操作()
           撤销移动操作(请求渲染)
         } else if (事件名 === 'clear_moves') {
+          记录空闲回合操作()
           清空移动队列('clear_moves', 请求渲染)
         }
       })
@@ -116,9 +129,13 @@ export function 挂钩socket(socket, 请求渲染) {
   function 预处理入站事件(事件名, 数据包) {
     记录结算回放快照(事件名, 数据包)
     处理战场数据冻结事件(事件名, 数据包)
-    if (事件名 !== 'game_start' && 事件名 !== 'game_update') return
-    记录回合(数据包 ?? {})
-    重构玩家颜色(数据包 ?? {})
+    if (事件名 === 'game_start' || 事件名 === 'game_update') {
+      记录回合(数据包 ?? {})
+      重构玩家颜色(数据包 ?? {})
+    }
+    if (是战场数据冻结事件(事件名, 数据包)) {
+      结算当前空闲回合()
+    }
   }
 
   function 重置本局(数据包) {
@@ -143,6 +160,7 @@ export function 挂钩socket(socket, 请求渲染) {
     状态.敌方移动高亮列表 = []
     状态.抢塔提示列表 = []
     重置自动吃基地()
+    重置空闲回合()
     清空移动队列('新局重置', 请求渲染)
     状态.当前回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 0
     重置战场数据冻结()
@@ -159,6 +177,7 @@ export function 挂钩socket(socket, 请求渲染) {
     更新地图缓存和兵力分布(数据包 ?? {}, '新局重置')
     更新基地危险状态()
     更新大回合倒计时()
+    更新空闲回合UI()
     更新战场塔信息()
     更新战场数据差()
     清空覆盖层()
