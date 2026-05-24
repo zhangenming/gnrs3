@@ -64,14 +64,9 @@ export function 安装原始兵力文本捕获(请求渲染) {
     状态.原始兵力文本.set(行 * 状态.宽度 + 列, {
       兵力,
       文本: String(兵力),
-      x: 点.x,
-      y: 点.y,
       画布,
       画布宽: 画布.width,
       画布高: 画布.height,
-      字体: String(ctx.font ?? ''),
-      对齐: ctx.textAlign ?? 'center',
-      基线: ctx.textBaseline ?? 'middle',
       时间: performance.now(),
     })
     请求原始兵力文本重绘()

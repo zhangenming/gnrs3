@@ -86,7 +86,6 @@ export function 渲染() {
     const 行 = Math.floor(状态.我方基地索引 / 状态.宽度)
     const 列 = 状态.我方基地索引 % 状态.宽度
     画我方基地标记(ctx, 列 * 格宽, 行 * 格高, 大小)
-    画我方基地兵力数字(ctx, 状态.我方基地索引, 列 * 格宽, 行 * 格高, 大小)
   }
 
   if (状态.敌方移动高亮列表.length) {
@@ -446,16 +445,12 @@ export function 渲染() {
   }
 
   function 画我方基地标记(ctx, x, y, 大小) {
-    const 外扩 = Math.max(5, 大小 * 0.16)
-    const 内缩 = Math.max(1, 大小 * 0.03)
+    const 外扩 = Math.max(6, 大小 * 0.18)
     const 外框左 = x - 外扩
     const 外框上 = y - 外扩
     const 外框大小 = 大小 + 外扩 * 2
-    const 中心左 = x + 内缩
-    const 中心上 = y + 内缩
-    const 中心大小 = Math.max(1, 大小 - 内缩 * 2)
     const 外边线宽 = Math.max(3, 大小 * 0.08)
-    const 高光边距 = Math.max(2, 大小 * 0.05)
+    const 高光边距 = Math.max(2, 外扩 * 0.36)
     const 高光左 = 外框左 + 高光边距
     const 高光上 = 外框上 + 高光边距
     const 高光大小 = Math.max(1, 外框大小 - 高光边距 * 2)
@@ -468,12 +463,9 @@ export function 渲染() {
     ctx.shadowOffsetX = 0
     ctx.shadowOffsetY = Math.max(1, 大小 * 0.03)
 
-    ctx.beginPath()
     ctx.fillStyle = '#d9b43b'
     ctx.fillRect(外框左, 外框上, 外框大小, 外框大小)
-
-    ctx.fillStyle = 'rgba(255, 232, 137, 0.52)'
-    ctx.fillRect(中心左, 中心上, 中心大小, 中心大小)
+    ctx.clearRect(x, y, 大小, 大小)
 
     ctx.shadowColor = 'transparent'
     ctx.strokeStyle = '#9a7720'
@@ -484,27 +476,6 @@ export function 渲染() {
     ctx.lineWidth = Math.max(2, 大小 * 0.04)
     ctx.strokeRect(高光左, 高光上, 高光大小, 高光大小)
 
-    ctx.restore()
-  }
-
-  function 画我方基地兵力数字(ctx, 基地索引, x, y, 大小) {
-    const 原始文本 = 状态.原始兵力文本.get(基地索引)
-    if (!原始文本?.文本) return
-
-    const 文本 = 原始文本.文本
-    const 字号比例 = 文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
-    const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
-
-    ctx.save()
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.lineJoin = 'round'
-    ctx.font = 原始文本.字体 || `900 ${字号}px Arial, sans-serif`
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.78)'
-    ctx.lineWidth = Math.max(2, 大小 * 0.11)
-    ctx.fillStyle = '#ffffff'
-    ctx.strokeText(文本, x + 大小 / 2, y + 大小 / 2)
-    ctx.fillText(文本, x + 大小 / 2, y + 大小 / 2)
     ctx.restore()
   }
 
