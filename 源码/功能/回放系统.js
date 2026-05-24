@@ -2,8 +2,8 @@
 // 游戏结束后用 A/D 按帧复盘整局，并尽量还原每一帧处理完成后的内部状态和地图画面。
 //
 // 实现原理:
-// 每次 game_start/game_update 处理完后，保存一份状态快照和当前地图 canvas 图片。
-// 复盘时恢复快照，让既有覆盖层渲染逻辑直接读取历史状态；地图底图使用当帧图片兜住原画面保真。
+// 每次 game_start/game_update 处理完后，保存一份状态快照。
+// 复盘时恢复快照，让既有覆盖层渲染逻辑直接读取历史状态；地图底图按快照地图即时绘制。
 import { 样式编号, 我方蓝色, 敌方红色 } from '../配置.js'
 import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
@@ -68,7 +68,6 @@ export function 记录回放帧(事件名, 数据包) {
     序号: 状态.回放帧列表.length,
     事件名,
     回合: Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合,
-    图片: 取得地图图片(),
     动画时间: performance.now(),
     状态快照: 取得状态快照(),
   }
@@ -295,13 +294,6 @@ function 同步回放底图(元素, 帧, css宽, css高) {
   const 备用画布 = 元素.querySelector('canvas')
   if (!图片 || !备用画布) return
 
-  if (帧.图片) {
-    if (图片.src !== 帧.图片) 图片.src = 帧.图片
-    图片.style.display = 'block'
-    备用画布.style.display = 'none'
-    return
-  }
-
   图片.removeAttribute('src')
   图片.style.display = 'none'
   备用画布.style.display = 'block'
@@ -489,17 +481,6 @@ function 安装回放样式() {
 }
 `.trim()
   document.documentElement.appendChild(样式)
-}
-
-function 取得地图图片() {
-  const 画布 = 取地图画布()
-  if (!画布 || !画布.width || !画布.height) return ''
-
-  try {
-    return 画布.toDataURL('image/png')
-  } catch {
-    return ''
-  }
 }
 
 function 取地图画布() {

@@ -11,6 +11,8 @@ import { 安装回放快捷键, 同步回放元素 } from './功能/回放系统
 import { 更新我方行动监控UI } from './功能/我方行动监控.js'
 import { 更新游戏数据进展图表 } from './功能/游戏数据进展图表.js'
 
+let 已请求页面同步 = false
+
 function 请求渲染() {
   if (状态.已请求渲染) return
   状态.已请求渲染 = true
@@ -37,14 +39,7 @@ function 启动() {
       return
     }
     状态.页面观察器 = new MutationObserver(() => {
-      更新大回合倒计时()
-      更新我方行动监控UI()
-      更新战场塔信息()
-      更新战场数据差()
-      更新游戏数据进展图表()
-      同步回放元素()
-      同步自适应棋盘()
-      请求渲染()
+      请求页面同步()
     })
     状态.页面观察器.observe(document.body, {
       childList: true,
@@ -64,10 +59,6 @@ function 启动() {
       passive: false,
       capture: true,
     })
-    window.addEventListener('mousemove', 请求渲染, {
-      passive: true,
-      capture: true,
-    })
     window.addEventListener('keydown', 请求渲染, {
       passive: true,
       capture: true,
@@ -80,6 +71,22 @@ function 启动() {
       事件.preventDefault()
       事件.stopImmediatePropagation()
       请求渲染()
+    }
+
+    function 请求页面同步() {
+      if (已请求页面同步) return
+      已请求页面同步 = true
+      requestAnimationFrame(() => {
+        已请求页面同步 = false
+        更新大回合倒计时()
+        更新我方行动监控UI()
+        更新战场塔信息()
+        更新战场数据差()
+        更新游戏数据进展图表()
+        同步回放元素()
+        同步自适应棋盘()
+        请求渲染()
+      })
     }
   }
 }
