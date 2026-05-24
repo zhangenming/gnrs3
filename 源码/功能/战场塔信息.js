@@ -11,6 +11,7 @@
 import { 战场塔信息类名 } from '../配置.js'
 import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
+import { 读取冻结战场塔信息, 记录战场塔信息快照 } from './战场数据冻结.js'
 
 export function 更新战场塔信息() {
   if (!document.body) return
@@ -27,6 +28,7 @@ export function 更新战场塔信息() {
 
   const 玩家表头格 = 表头格列表[玩家列]
   if (!玩家表头格) return
+  if (读取冻结战场塔信息(玩家表头格)) return
 
   const { 我方塔数, 敌方塔数 } = 统计塔数()
   const 塔差 = 我方塔数 - 敌方塔数
@@ -53,6 +55,7 @@ export function 更新战场塔信息() {
     `<span class="gio-battle-tower-item">差</span>` +
     `<span class="gio-battle-tower-diff">${差值文本}</span>` +
     `</span>`
+  记录战场塔信息快照(玩家表头格, 文本, 差值状态)
 
   function 取得战场数据表格() {
     const 表格列表 = document.body.querySelectorAll(

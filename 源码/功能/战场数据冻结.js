@@ -1,5 +1,5 @@
 // 功能目的:
-// 游戏结束时冻结右侧战场数据表，保留结束前一回合的 Army 和 Land。
+// 游戏结束时冻结右侧战场数据表，保留结束前一回合的塔数、Army 和 Land。
 import { 状态 } from '../状态.js'
 
 const 游戏结束事件集合 = new Set([
@@ -18,6 +18,7 @@ export function 处理战场数据冻结事件(事件名, 数据包) {
 export function 重置战场数据冻结() {
   状态.战场数据已冻结 = false
   状态.战场数据快照 = null
+  状态.战场塔信息快照 = null
 }
 
 export function 应用战场数据冻结(配置) {
@@ -61,6 +62,48 @@ export function 应用战场数据冻结(配置) {
       写入冻结文本(单元格列表[陆地列], 快照.陆地文本)
     }
   }
+}
+
+export function 读取冻结战场塔信息(单元格) {
+  if (!状态.战场数据已冻结) {
+    更新战场塔信息快照(单元格)
+    return null
+  }
+
+  const 快照 = 状态.战场塔信息快照
+  if (!快照 || !单元格) return null
+
+  单元格.classList.add(...快照.类名列表)
+  单元格.dataset.gioBattlePlayerColumn = 快照.玩家列
+  单元格.dataset.gioTowerSummary = 快照.文本
+  单元格.dataset.gioTowerDiff = 快照.差值状态
+  单元格.title = 快照.title
+  单元格.innerHTML = 快照.html
+  return 快照
+}
+
+export function 记录战场塔信息快照(单元格, 文本, 差值状态) {
+  if (状态.战场数据已冻结) return
+  if (!单元格 || !文本 || !差值状态) return
+
+  状态.战场塔信息快照 = {
+    文本,
+    差值状态,
+    html: 单元格.innerHTML,
+    title: 单元格.title,
+    玩家列: 单元格.dataset.gioBattlePlayerColumn ?? '',
+    类名列表: Array.from(单元格.classList),
+  }
+}
+
+function 更新战场塔信息快照(单元格) {
+  if (!单元格?.dataset?.gioTowerSummary) return
+
+  记录战场塔信息快照(
+    单元格,
+    单元格.dataset.gioTowerSummary,
+    单元格.dataset.gioTowerDiff,
+  )
 }
 
 function 包含已结束分数(数据包) {
