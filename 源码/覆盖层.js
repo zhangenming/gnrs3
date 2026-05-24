@@ -1348,7 +1348,18 @@ function 安装自适应样式() {
   const 样式 = document.createElement('style')
   样式.id = 自适应样式编号
   样式.textContent = `
+html:has(#game-page #gameMap.gio-adaptive-map),
 body:has(#game-page #gameMap.gio-adaptive-map) {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+}
+body:has(#game-page #gameMap.gio-adaptive-map) #game-page {
+    width: 100vw !important;
+    height: 100vh !important;
     overflow: hidden !important;
 }
 #${地图大小元素编号} {
