@@ -9,8 +9,10 @@ import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 
 const 面板类名 = 'gio-action-watch-panel'
+const 画布类名 = 'gio-action-watch-canvas'
 const 样式编号 = 'gio-action-watch-style'
 const 监控起始回合 = 50
+const 每行回合数 = 25
 const 行动类型列表 = ['空闲', '集兵', '扩地(开塔)', '抢地(抢塔)']
 const 行动优先级表 = new Map(
   行动类型列表.map((行动类型, idx) => [行动类型, idx]),
@@ -91,50 +93,33 @@ export function 更新我方行动监控UI() {
   }).length
   const 计数元素 = 面板.querySelector('.gio-action-watch-count')
   const 列表元素 = 面板.querySelector('.gio-action-watch-list')
+  if (!列表元素) return
+
+  const { 画布, 空状态 } = 确保画布列表(列表元素)
+  const 画布宽 = 取得画布CSS宽(列表元素)
   const 回合文本 = 回合状态列表
     .map((回合状态) => `${回合状态.回合}:${回合状态.行动类型}`)
     .join(',')
+  const 绘制签名 = `${画布宽}:${回合文本}`
 
-  if (面板.dataset.gioActionWatchTurns === 回合文本) return
-  面板.dataset.gioActionWatchTurns = 回合文本
+  if (面板.dataset.gioActionWatchTurns === 绘制签名) return
+  面板.dataset.gioActionWatchTurns = 绘制签名
 
-  if (计数元素) 计数元素.textContent = String(空闲数量)
-  if (!列表元素) return
+  if (计数元素 && 计数元素.textContent !== String(空闲数量)) {
+    计数元素.textContent = String(空闲数量)
+  }
 
-  列表元素.replaceChildren()
   面板.dataset.gioActionWatchEmpty = 回合状态列表.length ? 'false' : 'true'
 
   if (!回合状态列表.length) {
-    const 空状态 = document.createElement('span')
-    空状态.className = 'gio-action-watch-empty'
     空状态.textContent = '等待回合'
     列表元素.appendChild(空状态)
     面板.title = '等待我方行动记录'
     return
   }
 
-  for (const [大回合序号, 分组回合列表] of 取得大回合分组(回合状态列表)) {
-    const 行 = document.createElement('div')
-    行.className = 'gio-action-watch-row'
-
-    const 标题 = document.createElement('span')
-    标题.className = 'gio-action-watch-round'
-    标题.textContent = `大${大回合序号}`
-    行.appendChild(标题)
-
-    const 回合组 = document.createElement('span')
-    回合组.className = 'gio-action-watch-row-list'
-    for (const 回合状态 of 分组回合列表) {
-      const 标签 = document.createElement('span')
-      标签.className = `gio-action-watch-chip ${取得类型类名(回合状态.行动类型)}`
-      标签.textContent = String(回合状态.大回合内回合)
-      标签.title = `大${大回合序号} 第${回合状态.大回合内回合}: ${回合状态.行动类型} (turn ${回合状态.回合})`
-      回合组.appendChild(标签)
-    }
-    行.appendChild(回合组)
-    列表元素.appendChild(行)
-  }
-  面板.title = 取得标题文本()
+  绘制行动监控画布(画布, 画布宽, 取得大回合分组(回合状态列表))
+  面板.title = `空闲 ${空闲数量} / 已记录 ${回合状态列表.length}`
 
   function 取得回合状态列表() {
     const 最大回合 = 取得最大已确认回合()
@@ -182,20 +167,6 @@ export function 更新我方行动监控UI() {
     return (回合 % 大回合turn数) + 1
   }
 
-  function 取得类型类名(行动类型) {
-    if (行动类型 === '空闲') return 'gio-action-watch-chip-idle'
-    if (行动类型 === '扩地(开塔)') return 'gio-action-watch-chip-expand'
-    if (行动类型 === '抢地(抢塔)') return 'gio-action-watch-chip-fight'
-    return 'gio-action-watch-chip-gather'
-  }
-
-  function 取得标题文本() {
-    const 文本列表 = 回合状态列表.map((回合状态) => {
-      return `turn ${回合状态.回合}: ${回合状态.行动类型}`
-    })
-    return 文本列表.join('；')
-  }
-
   function 确保面板() {
     let 面板 = 状态.我方行动监控面板
     if (!面板 || !document.documentElement.contains(面板)) {
@@ -215,7 +186,16 @@ export function 更新我方行动监控UI() {
         '<span data-gio-action-watch-kind="expand">扩地(开塔)</span>' +
         '<span data-gio-action-watch-kind="fight">抢地(抢塔)</span>' +
         '</div>' +
-        '<div class="gio-action-watch-list"></div>'
+        `<div class="gio-action-watch-list"><canvas class="${画布类名}"></canvas><span class="gio-action-watch-empty">等待回合</span></div>`
+    }
+
+    if (
+      面板.parentElement &&
+      面板.parentElement !== document.body &&
+      document.documentElement.contains(面板.parentElement)
+    ) {
+      状态.我方行动监控面板 = 面板
+      return 面板
     }
 
     const 宿主 = 取得右侧宿主()
@@ -280,6 +260,126 @@ export function 更新我方行动监控UI() {
         '[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]',
       ),
     )
+  }
+
+  function 确保画布列表(列表元素) {
+    let 画布 = 列表元素.querySelector(`.${画布类名}`)
+    let 空状态 = 列表元素.querySelector('.gio-action-watch-empty')
+    if (!画布 || !空状态 || 列表元素.children.length > 2) {
+      画布 = document.createElement('canvas')
+      画布.className = 画布类名
+      空状态 = document.createElement('span')
+      空状态.className = 'gio-action-watch-empty'
+      空状态.textContent = '等待回合'
+      列表元素.replaceChildren(画布, 空状态)
+    }
+    return { 画布, 空状态 }
+  }
+
+  function 取得画布CSS宽(列表元素) {
+    return Math.max(716, Math.floor(列表元素.clientWidth || 0))
+  }
+
+  function 绘制行动监控画布(画布, css宽, 分组表) {
+    const dpr = window.devicePixelRatio ?? 1
+    const 标签宽 = 38
+    const 标签间距 = 6
+    const 单元间距 = 3
+    const 组间距 = 6
+    const 单元高 = 19
+    const 单元宽 = Math.max(
+      24,
+      (css宽 - 标签宽 - 标签间距 - 单元间距 * (每行回合数 - 1)) / 每行回合数,
+    )
+    const 内容宽 =
+      标签宽 + 标签间距 + 单元宽 * 每行回合数 + 单元间距 * (每行回合数 - 1)
+    const 分组列表 = Array.from(分组表)
+    const 组高度列表 = 分组列表.map(([, 分组回合列表]) => {
+      const 最大回合 = 分组回合列表.reduce((最大值, 回合状态) => {
+        return Math.max(最大值, 回合状态.大回合内回合)
+      }, 1)
+      const 行数 = Math.max(1, Math.ceil(最大回合 / 每行回合数))
+      return 行数 * 单元高 + (行数 - 1) * 单元间距
+    })
+    const css高 = Math.max(
+      单元高,
+      组高度列表.reduce((总高, 组高) => 总高 + 组高, 0) +
+        Math.max(0, 组高度列表.length - 1) * 组间距,
+    )
+    const 像素宽 = Math.round(内容宽 * dpr)
+    const 像素高 = Math.round(css高 * dpr)
+
+    if (画布.width !== 像素宽) 画布.width = 像素宽
+    if (画布.height !== 像素高) 画布.height = 像素高
+    画布.style.width = `${内容宽}px`
+    画布.style.height = `${css高}px`
+
+    const ctx = 画布.getContext('2d')
+    if (!ctx) return
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, 内容宽, css高)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.letterSpacing = '0px'
+
+    let y = 0
+    for (let idx = 0; idx < 分组列表.length; idx += 1) {
+      const [大回合序号, 分组回合列表] = 分组列表[idx]
+      const 组高 = 组高度列表[idx]
+      绘制大回合标签(大回合序号, y, 组高)
+      for (const 回合状态 of 分组回合列表) {
+        绘制回合单元(回合状态, y)
+      }
+      y += 组高 + 组间距
+    }
+
+    function 绘制大回合标签(大回合序号, y, 高) {
+      ctx.fillStyle = 'rgba(255, 191, 63, 0.16)'
+      ctx.beginPath()
+      ctx.roundRect(0, y, 标签宽, 高, 5)
+      ctx.fill()
+      ctx.fillStyle = '#ffcf66'
+      ctx.font = '900 11px Arial, sans-serif'
+      ctx.fillText(`大${大回合序号}`, 标签宽 / 2, y + 高 / 2)
+    }
+
+    function 绘制回合单元(回合状态, 组Y) {
+      const 序号 = Math.max(1, 回合状态.大回合内回合) - 1
+      const 行 = Math.floor(序号 / 每行回合数)
+      const 列 = 序号 % 每行回合数
+      const x = 标签宽 + 标签间距 + 列 * (单元宽 + 单元间距)
+      const y = 组Y + 行 * (单元高 + 单元间距)
+      const 样式 = 取得行动样式(回合状态.行动类型)
+
+      ctx.fillStyle = 样式.背景
+      ctx.beginPath()
+      ctx.roundRect(x, y, 单元宽, 单元高, 4)
+      ctx.fill()
+      ctx.fillStyle = 样式.文字
+      ctx.font = '800 11px Arial, sans-serif'
+      ctx.fillText(
+        String(回合状态.大回合内回合),
+        x + 单元宽 / 2,
+        y + 单元高 / 2,
+      )
+    }
+
+    function 取得行动样式(行动类型) {
+      if (行动类型 === '空闲') {
+        return { 背景: '#b4232a', 文字: '#fff7f7' }
+      }
+      if (行动类型 === '扩地(开塔)') {
+        return { 背景: '#247448', 文字: '#effff5' }
+      }
+      if (行动类型 === '抢地(抢塔)') {
+        return { 背景: '#b4481e', 文字: '#fff4ec' }
+      }
+      return {
+        背景: 'rgba(124, 148, 176, 0.24)',
+        文字: 'rgba(247, 251, 255, 0.82)',
+      }
+    }
   }
 }
 
@@ -390,66 +490,30 @@ function 安装样式() {
     color: #fff4ec;
 }
 .gio-action-watch-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
     max-height: 220px;
-    overflow-y: auto;
+    overflow: auto;
     scrollbar-width: thin;
 }
-.gio-action-watch-row {
-    display: grid;
-    grid-template-columns: 38px 1fr;
-    align-items: start;
-    gap: 6px;
+.${画布类名} {
+    display: block;
 }
-.gio-action-watch-round {
-    box-sizing: border-box;
-    min-width: 38px;
-    padding: 4px 5px;
-    border-radius: 5px;
-    background: rgba(255, 191, 63, 0.16);
-    color: #ffcf66;
-    text-align: center;
-    white-space: nowrap;
-    font: 900 11px/1 Arial, sans-serif;
+.${面板类名}[data-gio-action-watch-empty="true"] .${画布类名} {
+    display: none;
 }
-.gio-action-watch-row-list {
-    display: grid;
-    grid-template-columns: repeat(25, minmax(24px, 1fr));
-    gap: 3px;
-    min-width: 672px;
-}
-.gio-action-watch-chip,
 .gio-action-watch-empty {
     box-sizing: border-box;
-    min-width: 0;
+    display: none;
+    width: 100%;
     padding: 4px 6px;
     border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(247, 251, 255, 0.72);
     text-align: center;
     white-space: nowrap;
     font: 800 11px/1 Arial, sans-serif;
 }
-.gio-action-watch-chip-gather {
-    background: rgba(124, 148, 176, 0.24);
-    color: rgba(247, 251, 255, 0.82);
-}
-.gio-action-watch-chip-idle {
-    background: #b4232a;
-    color: #fff7f7;
-}
-.gio-action-watch-chip-expand {
-    background: #247448;
-    color: #effff5;
-}
-.gio-action-watch-chip-fight {
-    background: #b4481e;
-    color: #fff4ec;
-}
-.gio-action-watch-empty {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(247, 251, 255, 0.72);
+.${面板类名}[data-gio-action-watch-empty="true"] .gio-action-watch-empty {
+    display: block;
 }
 `.trim()
   document.documentElement.appendChild(样式)
