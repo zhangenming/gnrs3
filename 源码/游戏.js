@@ -23,6 +23,74 @@ export function 读取玩家信息(数据包) {
   }
 }
 
+export function 同步回放视角玩家索引() {
+  const 回放视角玩家索引 = 读取回放视角玩家索引()
+  if (Number.isInteger(回放视角玩家索引)) {
+    状态.我方索引 = 回放视角玩家索引
+  }
+  return 状态.我方索引
+
+  function 读取回放视角玩家索引() {
+    if (!document.body || !Array.isArray(状态.玩家名列表)) return null
+
+    const 表格列表 = document.body.querySelectorAll(
+      'table, .leaderboard, #leaderboard',
+    )
+    for (const 表格 of 表格列表) {
+      const 表头行 = 取得表头行(表格)
+      if (!表头行) continue
+
+      const 表头格列表 = 取得单元格列表(表头行)
+      const 视角列 = 表头格列表.findIndex((单元格) => {
+        return (单元格.textContent ?? '').trim() === 'POV'
+      })
+      const 玩家列 = 表头格列表.findIndex((单元格) => {
+        if (单元格.dataset.gioBattlePlayerColumn === 'true') return true
+        return (单元格.textContent ?? '').trim() === 'Player'
+      })
+      if (视角列 < 0 || 玩家列 < 0) continue
+
+      const 数据行列表 = Array.from(表格.querySelectorAll('tr')).filter(
+        (行) => {
+          return 行 !== 表头行
+        },
+      )
+      for (const 行 of 数据行列表) {
+        const 单元格列表 = 取得单元格列表(行)
+        const 视角格 = 单元格列表[视角列]
+        const 勾选框 = 视角格?.querySelector('input[type="checkbox"]')
+        if (!勾选框?.checked) continue
+
+        const 玩家名 = (单元格列表[玩家列]?.textContent ?? '').trim()
+        if (!玩家名) continue
+
+        const 玩家索引 = 状态.玩家名列表.indexOf(玩家名)
+        if (玩家索引 >= 0) return 玩家索引
+      }
+    }
+
+    return null
+  }
+
+  function 取得表头行(表格) {
+    const 行列表 = 表格.querySelectorAll('tr')
+    for (const 行 of 行列表) {
+      const 文本列表 = 取得单元格列表(行).map((单元格) => {
+        return (单元格.textContent ?? '').trim()
+      })
+      if (文本列表.includes('POV')) return 行
+    }
+    return null
+  }
+
+  function 取得单元格列表(行) {
+    return Array.from(行.children).filter((单元格) => {
+      const 标签名 = 单元格.tagName?.toLowerCase() ?? ''
+      return 标签名 === 'td' || 标签名 === 'th'
+    })
+  }
+}
+
 export function 尝试从地图读取尺寸(数据包) {
   if (状态.宽度 > 0 && 状态.高度 > 0) return
 
