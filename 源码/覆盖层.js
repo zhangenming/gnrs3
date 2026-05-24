@@ -27,12 +27,15 @@ import { 清理抢塔提示 } from './功能/抢塔提示.js'
 import { 有未到达视野标记 } from './功能/视野.js'
 
 const 自适应样式编号 = `${样式编号}-adaptive-ui`
+let 选中格子索引 = null
+let 已安装选中监听 = false
 
 export function 同步自适应棋盘() {
   安装自适应样式()
 
   const 画布 = 取游戏画布()
   if (!画布) return
+  安装选中监听()
 
   const 地图元素 = 画布.closest('#gameMap')
   if (!地图元素?.closest('#game-page')) return
@@ -78,6 +81,7 @@ export function 渲染() {
     !状态.敌方移动高亮列表.length &&
     !状态.抢塔提示列表.length &&
     !状态.兵力分布着色列表.length &&
+    !Number.isInteger(选中格子索引) &&
     !有未到达视野标记()
   ) {
     清空覆盖层()
@@ -136,7 +140,14 @@ export function 渲染() {
     画基地模拟兵力(ctx, 状态.我方基地索引, 列 * 格宽, 行 * 格高, 大小)
   }
 
-  if (状态.敌方移动高亮列表.length || 状态.抢塔提示列表.length || 有已占领塔) {
+  画选中棋子(ctx, 格宽, 格高, 大小, 动画时间)
+
+  if (
+    状态.敌方移动高亮列表.length ||
+    状态.抢塔提示列表.length ||
+    有已占领塔 ||
+    Number.isInteger(选中格子索引)
+  ) {
     requestAnimationFrame(() => {
       const 仍有已占领塔 = Array.from(状态.已知塔类型.values()).some((类型) => {
         return 类型 === '敌方塔' || 类型 === '我方塔'
@@ -144,7 +155,8 @@ export function 渲染() {
       if (
         (!状态.敌方移动高亮列表.length &&
           !状态.抢塔提示列表.length &&
-          !仍有已占领塔) ||
+          !仍有已占领塔 &&
+          !Number.isInteger(选中格子索引)) ||
         状态.已请求渲染
       ) {
         return
@@ -892,47 +904,6 @@ export function 渲染() {
 html.${基地危险类名}, body.${基地危险类名} {
     background-color: #4a0000 !important;
 }
-@keyframes gio-selected-tile-pulse {
-    0% { opacity: 0.9; transform: scale(0.94); border-color: #25f1ff; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.98), inset 0 0 0 3px rgba(255, 255, 255, 0.88), 0 0 12px rgba(37, 241, 255, 1) !important; }
-    50% { opacity: 1; transform: scale(1.08); border-color: #ffffff; box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.98), inset 0 0 0 3px #25f1ff, 0 0 22px rgba(37, 241, 255, 1) !important; }
-    100% { opacity: 0.9; transform: scale(0.94); border-color: #25f1ff; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.98), inset 0 0 0 3px rgba(255, 255, 255, 0.88), 0 0 12px rgba(37, 241, 255, 1) !important; }
-}
-#gameMap td.selected, #gameMap td.selected50, #gameMap td[class*='selected-'],
-.tiles-canvas-preview td.selected, .tiles-canvas-preview td.selected50, .tiles-canvas-preview td[class*='selected-'] {
-    position: relative !important;
-    border-color: transparent !important;
-    outline: none !important;
-    overflow: visible !important;
-}
-#gameMap td.selected::before, #gameMap td.selected50::before, #gameMap td[class*='selected-']::before,
-.tiles-canvas-preview td.selected::before, .tiles-canvas-preview td.selected50::before, .tiles-canvas-preview td[class*='selected-']::before {
-    content: '' !important;
-    position: absolute !important;
-    left: 8% !important;
-    top: 8% !important;
-    width: 84% !important;
-    height: 84% !important;
-    box-sizing: border-box !important;
-    border-radius: 999px !important;
-    pointer-events: none !important;
-    z-index: 2 !important;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.24) 0 34%, rgba(37, 241, 255, 0.2) 35% 48%, transparent 49%) !important;
-}
-#gameMap td.selected::after, #gameMap td.selected50::after, #gameMap td[class*='selected-']::after,
-.tiles-canvas-preview td.selected::after, .tiles-canvas-preview td.selected50::after, .tiles-canvas-preview td[class*='selected-']::after {
-    content: '' !important;
-    position: absolute !important;
-    left: 10% !important;
-    top: 10% !important;
-    width: 80% !important;
-    height: 80% !important;
-    box-sizing: border-box !important;
-    border: 3px solid #25f1ff !important;
-    border-radius: 999px !important;
-    pointer-events: none !important;
-    z-index: 3 !important;
-    animation: gio-selected-tile-pulse 0.95s ease-out infinite !important;
-}
 :root {
     --map-rgb-p1: 255,0,0;
     --map-color-p1: ${敌方红色};
@@ -1187,6 +1158,55 @@ html.${基地危险类名}, body.${基地危险类名} {
     ctx.restore()
   }
 
+  function 画选中棋子(ctx, 格宽, 格高, 大小, 动画时间) {
+    const 格子索引 = 选中格子索引
+    const 格子数 = 状态.宽度 * 状态.高度
+    if (!Number.isInteger(格子索引)) return
+    if (格子索引 < 0 || 格子索引 >= 格子数) {
+      选中格子索引 = null
+      return
+    }
+
+    const 行 = Math.floor(格子索引 / 状态.宽度)
+    const 列 = 格子索引 % 状态.宽度
+    const 中心x = 列 * 格宽 + 格宽 / 2
+    const 中心y = 行 * 格高 + 格高 / 2
+    const 动画相位 = (动画时间 % 760) / 760
+    const 脉冲 = 0.5 - Math.cos(动画相位 * Math.PI * 2) / 2
+    const 半径 = Math.max(5, 大小 * (0.42 + 脉冲 * 0.05))
+    const 外线宽 = Math.max(3, 大小 * (0.12 + 脉冲 * 0.03))
+    const 内线宽 = Math.max(1.5, 外线宽 * 0.35)
+
+    ctx.save()
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.shadowColor = 'rgba(255, 228, 77, 0.88)'
+    ctx.shadowBlur = Math.max(6, 大小 * (0.18 + 脉冲 * 0.1))
+
+    ctx.globalAlpha = 0.96
+    ctx.lineWidth = 外线宽 + Math.max(3, 大小 * 0.08)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.98)'
+    画圆环(半径)
+
+    ctx.globalAlpha = 1
+    ctx.lineWidth = 外线宽
+    ctx.strokeStyle = '#ffe44d'
+    画圆环(半径)
+
+    ctx.shadowColor = 'transparent'
+    ctx.lineWidth = 内线宽
+    ctx.strokeStyle = '#ffffff'
+    画圆环(Math.max(2, 半径 - 外线宽 * 0.95))
+
+    ctx.restore()
+
+    function 画圆环(半径) {
+      ctx.beginPath()
+      ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+  }
+
   function 画当前移动位置(ctx, 格子索引, 格宽, 格高, 大小) {
     const 行 = Math.floor(格子索引 / 状态.宽度)
     const 列 = 格子索引 % 状态.宽度
@@ -1250,6 +1270,55 @@ body:has(#game-page #gameMap.gio-adaptive-map) {
 
 function 取游戏画布() {
   return document.querySelector('#game-page #gameMap .game-map-canvas')
+}
+
+function 安装选中监听() {
+  if (已安装选中监听) return
+  if (!document) return
+  已安装选中监听 = true
+  document.addEventListener('pointerdown', 记录点击选中格子, {
+    capture: true,
+    passive: true,
+  })
+}
+
+function 记录点击选中格子(事件) {
+  if (Number.isInteger(事件.button) && 事件.button !== 0) return
+  const 目标 = 事件.target instanceof Element ? 事件.target : null
+  const 地图元素 = 目标?.closest?.('#game-page #gameMap')
+  if (!地图元素) return
+
+  const 画布 = 地图元素.querySelector('.game-map-canvas')
+  if (!画布) return
+
+  const 格子索引 = 取得点击格子索引(事件, 画布)
+  if (!Number.isInteger(格子索引)) return
+
+  选中格子索引 = 格子索引
+  请求覆盖层渲染()
+}
+
+function 取得点击格子索引(事件, 画布) {
+  if (!状态.宽度 || !状态.高度) return null
+
+  const 矩形 = 画布.getBoundingClientRect()
+  if (矩形.width <= 0 || 矩形.height <= 0) return null
+
+  const x = 事件.clientX - 矩形.left
+  const y = 事件.clientY - 矩形.top
+  if (x < 0 || y < 0 || x >= 矩形.width || y >= 矩形.height) return null
+
+  const 列 = Math.min(状态.宽度 - 1, Math.floor((x / 矩形.width) * 状态.宽度))
+  const 行 = Math.min(状态.高度 - 1, Math.floor((y / 矩形.height) * 状态.高度))
+  return 行 * 状态.宽度 + 列
+}
+
+function 请求覆盖层渲染() {
+  if (状态.已请求渲染) return
+  状态.已请求渲染 = true
+  requestAnimationFrame(() => {
+    渲染()
+  })
 }
 
 function 标记当前棋盘(地图元素, 宿主) {
