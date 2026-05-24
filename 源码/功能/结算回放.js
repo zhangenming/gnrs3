@@ -5,6 +5,8 @@ import { 是战场数据冻结事件 } from './战场数据冻结.js'
 
 const 元素类名 = 'gio-settlement-replay-frame'
 const 样式编号 = 'gio-settlement-replay-style'
+const 雾地形 = -3
+const 障碍物地形集合 = new Set([-2, -4])
 
 export function 记录结算回放快照(事件名, 数据包) {
   if (!是战场数据冻结事件(事件名, 数据包)) return
@@ -19,6 +21,10 @@ export function 记录结算回放快照(事件名, 数据包) {
   try {
     状态.结算回放快照 = {
       图片: 画布.toDataURL('image/png'),
+      宽度: 状态.宽度,
+      高度: 状态.高度,
+      地图数组: Array.isArray(状态.地图数组) ? 状态.地图数组.slice() : null,
+      已知障碍物列表: Array.from(状态.已知障碍物集合),
     }
   } catch {
     状态.结算回放快照 = null
@@ -63,6 +69,7 @@ export function 同步结算回放元素() {
   元素.style.top = `${画布矩形.top - 宿主矩形.top}px`
   元素.style.width = `${画布矩形.width}px`
   元素.style.height = `${画布矩形.height}px`
+  绘制结算回放地图修饰(元素, 画布矩形.width, 画布矩形.height)
 }
 
 function 显示结算回放() {
@@ -87,16 +94,17 @@ function 确保结算回放元素() {
 
   宿主.classList.add('gio-tower-memory-host')
   let 元素 = 宿主.querySelector(`.${元素类名}`)
-  if (元素?.tagName?.toLowerCase() !== 'img') {
+  if (元素?.tagName?.toLowerCase() !== 'div') {
     元素?.remove()
-    元素 = document.createElement('img')
+    元素 = document.createElement('div')
     元素.className = 元素类名
-    元素.alt = ''
+    元素.innerHTML = '<img alt=""><canvas></canvas>'
     宿主.appendChild(元素)
   }
 
-  if (元素.src !== 状态.结算回放快照.图片) {
-    元素.src = 状态.结算回放快照.图片
+  const 图片 = 元素.querySelector('img')
+  if (图片 && 图片.src !== 状态.结算回放快照.图片) {
+    图片.src = 状态.结算回放快照.图片
   }
   return 元素
 }
@@ -115,10 +123,16 @@ function 安装结算回放样式() {
     position: absolute;
     left: 0;
     top: 0;
-    display: block;
-    object-fit: fill;
     pointer-events: none;
     z-index: 2147483001;
+}
+.${元素类名} img,
+.${元素类名} canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
 }
 .gio-tower-memory-host {
     position: relative !important;
@@ -126,6 +140,89 @@ function 安装结算回放样式() {
 }
 `.trim()
   document.documentElement.appendChild(样式)
+}
+
+function 绘制结算回放地图修饰(元素, css宽, css高) {
+  const 快照 = 状态.结算回放快照
+  const 画布 = 元素.querySelector('canvas')
+  if (!画布 || !快照) return
+
+  const dpr = window.devicePixelRatio ?? 1
+  const 像素宽 = Math.round(css宽 * dpr)
+  const 像素高 = Math.round(css高 * dpr)
+  if (画布.width !== 像素宽) 画布.width = 像素宽
+  if (画布.height !== 像素高) 画布.height = 像素高
+
+  const ctx = 画布.getContext('2d')
+  if (!ctx) return
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.clearRect(0, 0, css宽, css高)
+  绘制雾区()
+  绘制障碍物()
+
+  function 绘制雾区() {
+    const { 地图数组, 宽度, 高度 } = 快照
+    if (!Array.isArray(地图数组) || !宽度 || !高度) return
+
+    const 格子数 = 宽度 * 高度
+    if (地图数组.length < 2 + 格子数 * 2) return
+
+    const 格宽 = css宽 / 宽度
+    const 格高 = css高 / 高度
+    ctx.fillStyle = '#333333'
+    for (let idx = 0; idx < 格子数; idx += 1) {
+      const 地形 = 地图数组[2 + 格子数 + idx]
+      if (地形 !== 雾地形) continue
+      const 行 = Math.floor(idx / 宽度)
+      const 列 = idx % 宽度
+      ctx.fillRect(列 * 格宽, 行 * 格高, 格宽 + 0.5, 格高 + 0.5)
+    }
+  }
+
+  function 绘制障碍物() {
+    const 障碍物集合 = 取得障碍物集合()
+    if (!障碍物集合.size) return
+
+    const 宽度 = 快照.宽度
+    const 高度 = 快照.高度
+    if (!宽度 || !高度) return
+
+    const 格子数 = 宽度 * 高度
+    const 格宽 = css宽 / 宽度
+    const 格高 = css高 / 高度
+    ctx.fillStyle = '#000000'
+    障碍物集合.forEach((障碍物索引) => {
+      if (
+        !Number.isInteger(障碍物索引) ||
+        障碍物索引 < 0 ||
+        障碍物索引 >= 格子数
+      ) {
+        return
+      }
+      const 行 = Math.floor(障碍物索引 / 宽度)
+      const 列 = 障碍物索引 % 宽度
+      ctx.fillRect(列 * 格宽, 行 * 格高, 格宽 + 0.5, 格高 + 0.5)
+    })
+  }
+
+  function 取得障碍物集合() {
+    const 障碍物集合 = new Set()
+    const { 地图数组, 宽度, 高度 } = 快照
+    if (Array.isArray(快照.已知障碍物列表)) {
+      快照.已知障碍物列表.forEach((索引) => 障碍物集合.add(索引))
+    }
+    if (!Array.isArray(地图数组) || !宽度 || !高度) return 障碍物集合
+
+    const 格子数 = 宽度 * 高度
+    if (地图数组.length < 2 + 格子数 * 2) return 障碍物集合
+
+    for (let idx = 0; idx < 格子数; idx += 1) {
+      const 地形 = 地图数组[2 + 格子数 + idx]
+      if (障碍物地形集合.has(地形)) 障碍物集合.add(idx)
+    }
+    return 障碍物集合
+  }
 }
 
 function 取地图画布() {
