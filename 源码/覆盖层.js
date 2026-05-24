@@ -178,6 +178,9 @@ export function 渲染() {
     ctx.save()
     ctx.fillStyle = '#000000'
     状态.已知障碍物集合.forEach((障碍物索引) => {
+      const 当前地形 = Array.isArray(地图数组)
+        ? 地图数组[2 + 格子数 + 障碍物索引]
+        : null
       if (
         !Number.isInteger(障碍物索引) ||
         障碍物索引 < 0 ||
@@ -187,14 +190,36 @@ export function 渲染() {
         return
       }
       if (Array.isArray(地图数组)) {
-        const 当前地形 = 地图数组[2 + 格子数 + 障碍物索引]
         if (Number.isInteger(当前地形) && 当前地形 >= -1) return
       }
       const 行 = Math.floor(障碍物索引 / 状态.宽度)
       const 列 = 障碍物索引 % 状态.宽度
-      ctx.fillRect(列 * 格宽, 行 * 格高, 格宽, 格高)
+      const x = 列 * 格宽
+      const y = 行 * 格高
+      ctx.fillRect(x, y, 格宽, 格高)
+      if (是未探索阻挡物(障碍物索引, 当前地形)) {
+        画未知阻挡物标记(x, y)
+      }
     })
     ctx.restore()
+
+    function 是未探索阻挡物(障碍物索引, 当前地形) {
+      return 当前地形 === -4 && !状态.已到达视野集合.has(障碍物索引)
+    }
+
+    function 画未知阻挡物标记(x, y) {
+      const 文本 = '?'
+      const 字号 = Math.max(14, Math.min(28, 大小 * 0.58))
+      ctx.font = `900 ${字号}px Arial, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.lineJoin = 'round'
+      ctx.lineWidth = Math.max(2, 大小 * 0.075)
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)'
+      ctx.fillStyle = '#ffffff'
+      ctx.strokeText(文本, x + 格宽 / 2, y + 格高 / 2)
+      ctx.fillText(文本, x + 格宽 / 2, y + 格高 / 2)
+    }
   }
 
   function 画兵力分布着色() {
