@@ -24,6 +24,7 @@ import { 记录回合, 更新大回合倒计时 } from './功能/大回合倒计
 import { 处理塔位置 } from './功能/塔记忆.js'
 import { 处理战场数据冻结事件, 重置战场数据冻结 } from './功能/战场数据冻结.js'
 import { 记录结算回放快照, 重置结算回放 } from './功能/结算回放.js'
+import { 尝试自动吃敌方基地, 重置自动吃基地 } from './功能/自动吃基地.js'
 import { 清除偷塔提示 } from './功能/偷塔提示.js'
 
 export function 挂钩socket(socket, 请求渲染) {
@@ -104,6 +105,7 @@ export function 挂钩socket(socket, 请求渲染) {
       更新基地危险状态()
       更新战场塔信息()
       更新战场数据差()
+      尝试自动吃敌方基地(socket, 请求渲染)
     })
   })
 
@@ -137,6 +139,7 @@ export function 挂钩socket(socket, 请求渲染) {
     状态.兵力分布着色列表 = []
     状态.兵力分布调试 = null
     状态.敌方移动高亮列表 = []
+    重置自动吃基地()
     清空移动队列('新局重置', 请求渲染)
     状态.当前回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 0
     重置战场数据冻结()
