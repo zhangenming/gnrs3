@@ -309,6 +309,9 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
     }
     return Math.max(
       Number.isInteger(状态.自动吃基地攻击序号) ? 状态.自动吃基地攻击序号 : 1,
+      Number.isInteger(状态.自动保护基地攻击序号)
+        ? 状态.自动保护基地攻击序号
+        : 1,
       队列最大攻击序号 + 1,
     )
   }
