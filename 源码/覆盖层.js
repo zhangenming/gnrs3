@@ -864,7 +864,7 @@ export function 渲染() {
 html.${基地危险类名}, body.${基地危险类名} {
     background-color: #4a0000 !important;
 }
-@keyframes gio-current-move-pulse {
+@keyframes gio-selected-tile-pulse {
     0% { opacity: 0.78; transform: scale(0.86); border-color: #25f1ff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.96), inset 0 0 0 2px rgba(255, 255, 255, 0.78), 0 0 9px rgba(37, 241, 255, 0.9) !important; }
     50% { opacity: 1; transform: scale(1.03); border-color: #ffffff; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.96), inset 0 0 0 2px #25f1ff, 0 0 16px rgba(37, 241, 255, 1) !important; }
     100% { opacity: 0.78; transform: scale(0.86); border-color: #25f1ff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.96), inset 0 0 0 2px rgba(255, 255, 255, 0.78), 0 0 9px rgba(37, 241, 255, 0.9) !important; }
@@ -889,7 +889,7 @@ html.${基地危险类名}, body.${基地危险类名} {
     border-radius: 999px !important;
     pointer-events: none !important;
     z-index: 3 !important;
-    animation: gio-current-move-pulse 0.95s ease-out infinite !important;
+    animation: gio-selected-tile-pulse 0.95s ease-out infinite !important;
 }
 :root {
     --map-rgb-p1: 255,0,0;
@@ -1150,29 +1150,25 @@ html.${基地危险类名}, body.${基地危险类名} {
     const 列 = 格子索引 % 状态.宽度
     const x = 列 * 格宽
     const y = 行 * 格高
-    const 中心x = x + 格宽 / 2
-    const 中心y = y + 格高 / 2
-    const 半径 = Math.max(4, 大小 * 0.42)
+    const 方形边长 = Math.max(4, 大小 * 0.76)
+    const 方形x = x + (格宽 - 方形边长) / 2
+    const 方形y = y + (格高 - 方形边长) / 2
     const 外线宽 = Math.max(2, 大小 * 0.08)
     const 内线宽 = Math.max(1.2, 大小 * 0.035)
 
     ctx.save()
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
+    ctx.lineCap = 'square'
+    ctx.lineJoin = 'miter'
 
     ctx.globalAlpha = 0.72
     ctx.lineWidth = 外线宽
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)'
-    ctx.beginPath()
-    ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
-    ctx.stroke()
+    ctx.strokeRect(方形x, 方形y, 方形边长, 方形边长)
 
     ctx.globalAlpha = 0.9
     ctx.lineWidth = 内线宽
     ctx.strokeStyle = '#25f1ff'
-    ctx.beginPath()
-    ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
-    ctx.stroke()
+    ctx.strokeRect(方形x, 方形y, 方形边长, 方形边长)
 
     ctx.restore()
   }
