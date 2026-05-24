@@ -16,10 +16,17 @@ const 敌方开塔提示元素编号 = 'gio-enemy-open-tower-alert'
 const 敌方开塔提示样式编号 = `${样式编号}-enemy-open-tower`
 const 敌方开塔提示持续毫秒 = 1800
 const 开塔最小净损失 = 3
+const 最早记录回合 = 50
 
 export function 更新敌方开塔提示(数据包) {
   同步敌方开塔提示元素()
   if (状态.战场数据已冻结) return
+  const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
+  if (!Number.isInteger(回合) || 回合 < 最早记录回合) {
+    状态.敌方开塔战场快照 = null
+    状态.敌方开塔调试 = null
+    return
+  }
 
   const 当前快照 = 读取战场快照(数据包)
   if (!当前快照) return
