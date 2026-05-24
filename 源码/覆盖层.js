@@ -446,14 +446,18 @@ export function 渲染() {
 
   function 画我方基地标记(ctx, x, y, 大小) {
     const 外扩 = Math.max(5, 大小 * 0.16)
-    const 底板左 = x - 外扩
-    const 底板上 = y - 外扩
-    const 底板大小 = 大小 + 外扩 * 2
-    const 边框线宽 = Math.max(3, 大小 * 0.08)
-    const 高光偏移 = Math.max(2, 大小 * 0.05)
-    const 内边左 = 底板左 + 高光偏移
-    const 内边上 = 底板上 + 高光偏移
-    const 内边大小 = Math.max(1, 底板大小 - 高光偏移 * 2)
+    const 间隙 = Math.max(2, 大小 * 0.05)
+    const 外框左 = x - 外扩
+    const 外框上 = y - 外扩
+    const 外框大小 = 大小 + 外扩 * 2
+    const 透空左 = x - 间隙
+    const 透空上 = y - 间隙
+    const 透空大小 = 大小 + 间隙 * 2
+    const 外边线宽 = Math.max(3, 大小 * 0.08)
+    const 高光边距 = Math.max(2, 大小 * 0.05)
+    const 高光左 = 外框左 + 高光边距
+    const 高光上 = 外框上 + 高光边距
+    const 高光大小 = Math.max(1, 外框大小 - 高光边距 * 2)
 
     ctx.save()
     ctx.lineJoin = 'round'
@@ -463,17 +467,20 @@ export function 渲染() {
     ctx.shadowOffsetX = 0
     ctx.shadowOffsetY = Math.max(1, 大小 * 0.03)
 
+    ctx.beginPath()
     ctx.fillStyle = '#d9b43b'
-    ctx.fillRect(底板左, 底板上, 底板大小, 底板大小)
+    ctx.rect(外框左, 外框上, 外框大小, 外框大小)
+    ctx.rect(透空左, 透空上, 透空大小, 透空大小)
+    ctx.fill('evenodd')
 
     ctx.shadowColor = 'transparent'
     ctx.strokeStyle = '#9a7720'
-    ctx.lineWidth = 边框线宽
-    ctx.strokeRect(底板左, 底板上, 底板大小, 底板大小)
+    ctx.lineWidth = 外边线宽
+    ctx.strokeRect(外框左, 外框上, 外框大小, 外框大小)
 
     ctx.strokeStyle = 'rgba(255, 241, 181, 0.95)'
     ctx.lineWidth = Math.max(2, 大小 * 0.04)
-    ctx.strokeRect(内边左, 内边上, 内边大小, 内边大小)
+    ctx.strokeRect(高光左, 高光上, 高光大小, 高光大小)
 
     ctx.restore()
   }
