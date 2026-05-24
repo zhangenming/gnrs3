@@ -23,6 +23,7 @@ import { 重构玩家颜色 } from './功能/玩家颜色.js'
 import { 记录回合, 更新大回合倒计时 } from './功能/大回合倒计时.js'
 import { 处理塔位置 } from './功能/塔记忆.js'
 import { 处理战场数据冻结事件, 重置战场数据冻结 } from './功能/战场数据冻结.js'
+import { 记录结算回放快照, 重置结算回放 } from './功能/结算回放.js'
 
 export function 挂钩socket(socket, 请求渲染) {
   if (!socket || socket.__塔记忆已挂钩) return
@@ -110,6 +111,7 @@ export function 挂钩socket(socket, 请求渲染) {
   }
 
   function 预处理入站事件(事件名, 数据包) {
+    记录结算回放快照(事件名, 数据包)
     处理战场数据冻结事件(事件名, 数据包)
     if (事件名 !== 'game_start' && 事件名 !== 'game_update') return
     记录回合(数据包 ?? {})
@@ -136,6 +138,7 @@ export function 挂钩socket(socket, 请求渲染) {
     清空移动队列('新局重置', 请求渲染)
     状态.当前回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 0
     重置战场数据冻结()
+    重置结算回放()
     状态.我方索引 = Number.isInteger(数据包?.playerIndex)
       ? 数据包.playerIndex
       : null

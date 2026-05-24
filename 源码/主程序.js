@@ -7,6 +7,7 @@ import { 安装原始兵力文本捕获 } from './功能/原始兵力文本.js'
 import { 清空覆盖层, 渲染 } from './覆盖层.js'
 import { 更新大回合倒计时 } from './功能/大回合倒计时.js'
 import { 挂钩socket } from './socket挂钩.js'
+import { 安装结算回放快捷键, 同步结算回放元素 } from './功能/结算回放.js'
 
 function 请求渲染() {
   if (状态.已请求渲染) return
@@ -18,6 +19,7 @@ function 请求渲染() {
 
 function 启动() {
   暴露调试接口(请求渲染, 清空覆盖层)
+  安装结算回放快捷键()
   轮询socket()
   安装页面观察器()
 
@@ -36,6 +38,7 @@ function 启动() {
       更新大回合倒计时()
       更新战场塔信息()
       更新战场数据差()
+      同步结算回放元素()
       请求渲染()
     })
     状态.页面观察器.observe(document.body, {
@@ -58,6 +61,7 @@ function 启动() {
       capture: true,
     })
     window.addEventListener('resize', 更新大回合倒计时, { passive: true })
+    window.addEventListener('resize', 同步结算回放元素, { passive: true })
   }
 }
 
