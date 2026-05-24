@@ -44,9 +44,18 @@ export function 更新地图缓存和兵力分布(数据包, 来源事件) {
     const 格子数 = 状态.宽度 * 状态.高度
     if (地图数组.length < 2 + 格子数 * 2) return
 
+    const 塔索引集合 = new Set(状态.已知塔集合)
+    const 当前塔信息 = 取得本次塔列表(数据包)
+    if (Array.isArray(当前塔信息?.塔列表)) {
+      当前塔信息.塔列表.forEach((塔索引) => {
+        if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
+      })
+    }
     for (let idx = 0; idx < 格子数; idx += 1) {
       const 地形 = 地图数组[2 + 格子数 + idx]
-      if (地形 === -2) {
+      if (塔索引集合.has(idx)) {
+        状态.已知障碍物集合.delete(idx)
+      } else if (地形 === -2 || 地形 === -4) {
         状态.已知障碍物集合.add(idx)
       } else if (Number.isInteger(地形) && 地形 >= -1) {
         状态.已知障碍物集合.delete(idx)

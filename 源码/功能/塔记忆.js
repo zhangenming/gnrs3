@@ -38,6 +38,7 @@ export function 处理塔位置(数据包, 请求渲染) {
 
   for (const 塔索引 of 状态.塔列表) {
     if (!Number.isInteger(塔索引) || 塔索引 < 0) continue
+    状态.已知障碍物集合.delete(塔索引)
     if (!状态.已知塔集合.has(塔索引)) {
       状态.已知塔集合.add(塔索引)
       状态.已知塔类型.set(塔索引, '中立塔')

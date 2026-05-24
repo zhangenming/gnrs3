@@ -150,7 +150,8 @@ export function 渲染() {
       if (
         !Number.isInteger(障碍物索引) ||
         障碍物索引 < 0 ||
-        障碍物索引 >= 格子数
+        障碍物索引 >= 格子数 ||
+        状态.已知塔集合.has(障碍物索引)
       ) {
         return
       }
