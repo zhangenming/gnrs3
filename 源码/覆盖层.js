@@ -365,7 +365,7 @@ export function 渲染() {
     const 是已占领塔 = 是敌方塔 || 是我方塔
     const 外线宽 = Math.max(2, 大小 * 0.09)
     const 内线宽 = Math.max(1.5, 大小 * (是敌方塔 ? 0.065 : 0.05))
-    const 外偏移 = 是已占领塔 ? Math.max(5, 大小 * 0.16) : 外线宽 / 2 + 1
+    const 外偏移 = 外线宽 / 2 + 1
     const 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2
     const 主色 = 是敌方塔 ? '#ff1010' : 是我方塔 ? '#00a8ff' : 中立黄色
 
@@ -374,12 +374,7 @@ export function 渲染() {
     ctx.lineCap = 'round'
 
     if (是已占领塔) {
-      const 中心X = x + 大小 / 2
-      const 中心Y = y + 大小 / 2
-      const 角度 = (动画时间 / 1400) * Math.PI * 2
-      ctx.translate(中心X, 中心Y)
-      ctx.rotate(角度)
-      ctx.translate(-中心X, -中心Y)
+      画占领塔旋转框()
     }
 
     ctx.lineWidth = 外线宽
@@ -402,7 +397,7 @@ export function 渲染() {
 
     if (是已占领塔) {
       const 角长 = Math.max(5, 大小 * 0.24)
-      const 角偏移 = 外偏移
+      const 角偏移 = Math.max(3, 大小 * 0.12)
       ctx.globalAlpha = 1
       ctx.lineWidth = Math.max(2, 大小 * 0.055)
       ctx.strokeStyle = 主色
@@ -423,6 +418,44 @@ export function 渲染() {
     }
 
     ctx.restore()
+
+    function 画占领塔旋转框() {
+      const 中心X = x + 大小 / 2
+      const 中心Y = y + 大小 / 2
+      const 扩张 = Math.max(3, 大小 * 0.14)
+      const 框大小 = 大小 + 扩张 * 2
+      const 角长 = Math.max(8, 大小 * 0.34)
+      const 线宽 = Math.max(3, 大小 * 0.1)
+      const 左 = 中心X - 框大小 / 2
+      const 上 = 中心Y - 框大小 / 2
+      const 右 = 左 + 框大小
+      const 下 = 上 + 框大小
+      const 角度 = (动画时间 / 1400) * Math.PI * 2
+
+      ctx.save()
+      ctx.translate(中心X, 中心Y)
+      ctx.rotate(角度)
+      ctx.translate(-中心X, -中心Y)
+      ctx.lineWidth = 线宽
+      ctx.strokeStyle = '#ffffff'
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
+      ctx.shadowBlur = Math.max(2, 大小 * 0.08)
+      ctx.beginPath()
+      ctx.moveTo(左, 上 + 角长)
+      ctx.lineTo(左, 上)
+      ctx.lineTo(左 + 角长, 上)
+      ctx.moveTo(右 - 角长, 上)
+      ctx.lineTo(右, 上)
+      ctx.lineTo(右, 上 + 角长)
+      ctx.moveTo(右, 下 - 角长)
+      ctx.lineTo(右, 下)
+      ctx.lineTo(右 - 角长, 下)
+      ctx.moveTo(左 + 角长, 下)
+      ctx.lineTo(左, 下)
+      ctx.lineTo(左, 下 - 角长)
+      ctx.stroke()
+      ctx.restore()
+    }
   }
 
   function 画基地标记(ctx, x, y, 大小) {
