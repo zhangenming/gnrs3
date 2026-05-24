@@ -18,7 +18,7 @@ import {
   记录移动操作,
   清空移动队列,
 } from './功能/移动队列.js'
-import { 清空覆盖层 } from './覆盖层.js'
+import { 清空覆盖层, 重置自适应棋盘尺寸 } from './覆盖层.js'
 import { 重构玩家颜色 } from './功能/玩家颜色.js'
 import { 记录回合, 更新大回合倒计时 } from './功能/大回合倒计时.js'
 import { 处理塔位置 } from './功能/塔记忆.js'
@@ -197,6 +197,7 @@ export function 挂钩socket(socket, 请求渲染) {
     状态.当前回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 0
     重置战场数据冻结()
     重置回放()
+    重置自适应棋盘尺寸()
     状态.我方索引 = Number.isInteger(数据包?.playerIndex)
       ? 数据包.playerIndex
       : null

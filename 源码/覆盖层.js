@@ -34,6 +34,7 @@ const 战场面板预留宽 = 440
 let 选中格子索引 = null
 let 已同步移动队列长度 = 0
 let 已安装选中监听 = false
+let 自适应棋盘尺寸缓存 = null
 
 export function 同步自适应棋盘() {
   安装自适应样式()
@@ -55,13 +56,23 @@ export function 同步自适应棋盘() {
 
   const 可用宽 = 取得地图可用宽()
   const 可用高 = Math.max(1, window.innerHeight)
-  const 缩放 = Math.max(0.1, Math.min(可用宽 / 尺寸.宽, 可用高 / 尺寸.高))
+  const 目标缩放 = Math.max(0.1, Math.min(可用宽 / 尺寸.宽, 可用高 / 尺寸.高))
+  const 缩放 = 取得稳定缩放(地图元素, 目标缩放)
 
   地图元素.style.setProperty('--gio-adaptive-map-scale', String(缩放))
   地图元素.style.setProperty('--gio-adaptive-map-width', `${尺寸.宽}px`)
   地图元素.style.setProperty('--gio-adaptive-map-height', `${尺寸.高}px`)
   宿主.style.setProperty('--gio-adaptive-map-width', `${尺寸.宽}px`)
   宿主.style.setProperty('--gio-adaptive-map-height', `${尺寸.高}px`)
+  宿主.style.setProperty(
+    '--gio-adaptive-map-visual-width',
+    `${Math.max(1, 尺寸.宽 * 缩放)}px`,
+  )
+  宿主.style.setProperty(
+    '--gio-adaptive-map-visual-height',
+    `${Math.max(1, 尺寸.高 * 缩放)}px`,
+  )
+  记录自适应棋盘尺寸(地图元素, 尺寸, 缩放)
   同步战场面板位置(尺寸, 缩放)
   同步地图大小标签(地图元素)
 
@@ -70,6 +81,43 @@ export function 同步自适应棋盘() {
     const 右侧预留宽 = 战场面板预留宽 + 战场面板间距 + 战场面板右侧间距
     return Math.max(1, 视口宽 - 右侧预留宽)
   }
+}
+
+function 取得稳定缩放(地图元素, 目标缩放) {
+  const 缓存签名 = 取得地图尺寸缓存签名(地图元素)
+  const 上次缩放 =
+    自适应棋盘尺寸缓存?.签名 === 缓存签名 ? 自适应棋盘尺寸缓存.缩放 : null
+  if (状态.战场数据已冻结 && Number.isFinite(上次缩放)) {
+    return Math.min(目标缩放, 上次缩放)
+  }
+  return 目标缩放
+}
+
+function 记录自适应棋盘尺寸(地图元素, 尺寸, 缩放) {
+  自适应棋盘尺寸缓存 = {
+    地图元素,
+    签名: 取得地图尺寸缓存签名(地图元素),
+    宽: 尺寸.宽,
+    高: 尺寸.高,
+    缩放,
+  }
+}
+
+export function 重置自适应棋盘尺寸() {
+  自适应棋盘尺寸缓存 = null
+  document
+    .querySelectorAll('#game-page #gameMap.gio-adaptive-map')
+    .forEach((地图元素) => {
+      地图元素.style.removeProperty('--gio-adaptive-map-scale')
+      地图元素.style.removeProperty('--gio-adaptive-map-width')
+      地图元素.style.removeProperty('--gio-adaptive-map-height')
+    })
+  document.querySelectorAll('.gio-adaptive-map-host').forEach((宿主) => {
+    宿主.style.removeProperty('--gio-adaptive-map-width')
+    宿主.style.removeProperty('--gio-adaptive-map-height')
+    宿主.style.removeProperty('--gio-adaptive-map-visual-width')
+    宿主.style.removeProperty('--gio-adaptive-map-visual-height')
+  })
 }
 
 export function 清空覆盖层() {
@@ -1388,6 +1436,9 @@ body:has(#game-page #gameMap.gio-adaptive-map) #game-page {
     width: 100vw !important;
     height: 100vh !important;
     overflow: hidden !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
 }
 #${地图大小元素编号} {
     position: fixed !important;
@@ -1403,8 +1454,30 @@ body:has(#game-page #gameMap.gio-adaptive-map) #game-page {
     white-space: nowrap !important;
 }
 #game-page #gameMap.gio-adaptive-map {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: var(--gio-adaptive-map-width, auto) !important;
+    height: var(--gio-adaptive-map-height, auto) !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 20 !important;
     transform: scale(var(--gio-adaptive-map-scale, 1)) !important;
     transform-origin: left top !important;
+    transition: none !important;
+    animation: none !important;
+}
+#game-page #gameMap.gio-adaptive-map .game-map-canvas {
+    width: var(--gio-adaptive-map-width, auto) !important;
+    height: var(--gio-adaptive-map-height, auto) !important;
+    max-width: none !important;
+    max-height: none !important;
+    transition: none !important;
+    animation: none !important;
 }
 #game-page #gameMap.gio-adaptive-map-host,
 #game-page .gio-adaptive-map-host {
@@ -1413,12 +1486,14 @@ body:has(#game-page #gameMap.gio-adaptive-map) #game-page {
     top: 0 !important;
     right: auto !important;
     bottom: auto !important;
-    width: var(--gio-adaptive-map-width, auto) !important;
-    height: var(--gio-adaptive-map-height, auto) !important;
+    width: var(--gio-adaptive-map-visual-width, var(--gio-adaptive-map-width, auto)) !important;
+    height: var(--gio-adaptive-map-visual-height, var(--gio-adaptive-map-height, auto)) !important;
     transform: none !important;
     margin: 0 !important;
     padding: 0 !important;
     z-index: 20 !important;
+    transition: none !important;
+    animation: none !important;
 }
 body:has(#game-page #gameMap.gio-adaptive-map) #game-leaderboard-container {
     left: var(--gio-battle-panel-left, 8px) !important;
@@ -1591,23 +1666,37 @@ function 标记当前棋盘(地图元素, 宿主) {
 }
 
 function 取得地图原始尺寸(地图元素, 画布) {
+  const 缓存签名 = 取得地图尺寸缓存签名(地图元素)
+  if (自适应棋盘尺寸缓存?.签名 === 缓存签名) {
+    return {
+      宽: 自适应棋盘尺寸缓存.宽,
+      高: 自适应棋盘尺寸缓存.高,
+    }
+  }
+
   const 宽 = 读取像素尺寸(
+    地图元素.style.getPropertyValue('--gio-adaptive-map-width'),
     画布.offsetWidth,
     地图元素.offsetWidth,
-    地图元素.style.getPropertyValue('--gio-adaptive-map-width'),
     画布.getBoundingClientRect().width /
       读取数字(地图元素.style.getPropertyValue('--gio-adaptive-map-scale'), 1),
   )
   const 高 = 读取像素尺寸(
+    地图元素.style.getPropertyValue('--gio-adaptive-map-height'),
     画布.offsetHeight,
     地图元素.offsetHeight,
-    地图元素.style.getPropertyValue('--gio-adaptive-map-height'),
     画布.getBoundingClientRect().height /
       读取数字(地图元素.style.getPropertyValue('--gio-adaptive-map-scale'), 1),
   )
 
   if (宽 <= 0 || 高 <= 0) return null
-  return { 宽, 高 }
+  const 尺寸 = { 宽, 高 }
+  记录自适应棋盘尺寸(地图元素, 尺寸, null)
+  return 尺寸
+}
+
+function 取得地图尺寸缓存签名(地图元素) {
+  return `${状态.宽度}x${状态.高度}|${地图元素.id}`
 }
 
 function 读取像素尺寸(...候选值列表) {
