@@ -31,6 +31,7 @@ const 地图大小元素编号 = `${样式编号}-map-size`
 const 战场面板间距 = 10
 const 战场面板右侧间距 = 8
 let 选中格子索引 = null
+let 已同步移动队列长度 = 0
 let 已安装选中监听 = false
 
 export function 同步自适应棋盘() {
@@ -1443,6 +1444,10 @@ function 安装选中监听() {
     capture: true,
     passive: true,
   })
+  document.addEventListener('keydown', 记录快捷键选中格子, {
+    capture: true,
+    passive: true,
+  })
 }
 
 function 记录点击选中格子(事件) {
@@ -1477,11 +1482,23 @@ function 取得点击格子索引(事件, 画布) {
 }
 
 function 取得选中棋子索引() {
-  const 最后移动 = 状态.移动队列.at(-1)
-  if (Number.isInteger(最后移动?.终点) && 最后移动.终点 >= 0) {
-    选中格子索引 = 最后移动.终点
+  if (状态.移动队列.length !== 已同步移动队列长度) {
+    已同步移动队列长度 = 状态.移动队列.length
+    const 最后移动 = 状态.移动队列.at(-1)
+    if (Number.isInteger(最后移动?.终点) && 最后移动.终点 >= 0) {
+      选中格子索引 = 最后移动.终点
+    }
   }
   return 选中格子索引
+}
+
+function 记录快捷键选中格子(事件) {
+  if (事件.key !== 'Shift') return
+  if (!Number.isInteger(状态.我方基地索引) || 状态.我方基地索引 < 0) return
+
+  选中格子索引 = 状态.我方基地索引
+  已同步移动队列长度 = 状态.移动队列.length
+  请求覆盖层渲染()
 }
 
 function 请求覆盖层渲染() {
