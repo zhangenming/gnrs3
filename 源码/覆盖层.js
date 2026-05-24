@@ -28,6 +28,9 @@ import { 有未到达视野标记 } from './功能/视野.js'
 
 const 自适应样式编号 = `${样式编号}-adaptive-ui`
 const 地图大小元素编号 = `${样式编号}-map-size`
+const 战场面板间距 = 10
+const 战场面板最大宽度 = 360
+const 战场面板最小宽度 = 260
 let 选中格子索引 = null
 let 已安装选中监听 = false
 
@@ -58,6 +61,7 @@ export function 同步自适应棋盘() {
   地图元素.style.setProperty('--gio-adaptive-map-height', `${尺寸.高}px`)
   宿主.style.setProperty('--gio-adaptive-map-width', `${尺寸.宽}px`)
   宿主.style.setProperty('--gio-adaptive-map-height', `${尺寸.高}px`)
+  同步战场面板位置(尺寸, 缩放)
   同步地图大小标签(地图元素)
 }
 
@@ -1324,8 +1328,44 @@ body:has(#game-page #gameMap.gio-adaptive-map) {
     padding: 0 !important;
     z-index: 20 !important;
 }
+body:has(#game-page #gameMap.gio-adaptive-map) #game-leaderboard-container {
+    left: var(--gio-battle-panel-left, 8px) !important;
+    top: var(--gio-battle-panel-top, 64px) !important;
+    right: auto !important;
+    width: var(--gio-battle-panel-width, 360px) !important;
+    max-width: calc(100vw - 16px) !important;
+    text-align: left !important;
+    z-index: 26 !important;
+}
+body:has(#game-page #gameMap.gio-adaptive-map) #game-leaderboard {
+    width: 100% !important;
+    min-width: 0 !important;
+}
+body:has(#game-page #gameMap.gio-adaptive-map) #game-pass-turn-button {
+    width: 100% !important;
+    min-width: 0 !important;
+}
 `.trim()
   document.documentElement.appendChild(样式)
+}
+
+function 同步战场面板位置(尺寸, 缩放) {
+  const 根元素 = document.documentElement
+  if (!根元素) return
+
+  const 面板宽 = Math.min(
+    战场面板最大宽度,
+    Math.max(战场面板最小宽度, window.innerWidth - 16),
+  )
+  const 地图右侧 = 尺寸.宽 * 缩放
+  const 理想左侧 = 地图右侧 + 战场面板间距
+  const 最大左侧 = Math.max(8, window.innerWidth - 面板宽 - 8)
+  const 面板左侧 = Math.min(Math.max(8, 理想左侧), 最大左侧)
+  const 面板上侧 = Math.min(Math.max(48, window.innerHeight * 0.09), 72)
+
+  根元素.style.setProperty('--gio-battle-panel-left', `${面板左侧}px`)
+  根元素.style.setProperty('--gio-battle-panel-top', `${面板上侧}px`)
+  根元素.style.setProperty('--gio-battle-panel-width', `${面板宽}px`)
 }
 
 function 取游戏画布() {

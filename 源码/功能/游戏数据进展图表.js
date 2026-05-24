@@ -430,8 +430,8 @@ function 安装样式() {
   样式.textContent = `
 .gio-data-progress-panel {
     box-sizing: border-box;
-    width: min(300px, 100%);
-    margin-top: 8px;
+    width: 100%;
+    margin-top: 6px;
     padding: 8px;
     border: 1px solid rgba(124, 148, 176, 0.42);
     border-radius: 6px;
