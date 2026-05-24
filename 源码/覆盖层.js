@@ -359,22 +359,13 @@ export function 渲染() {
     const 外偏移 = 外线宽 / 2 + 1
     const 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2
     const 主色 = 是敌方塔 ? 敌方红色 : 是我方塔 ? 我方蓝色 : 中立黄色
-    const 高光色 = 是敌方塔 ? '#ffb3b3' : 是我方塔 ? '#b8dcff' : '#fff4a8'
-    const 深色 = 是敌方塔 ? '#6b1212' : 是我方塔 ? '#0f4f8e' : '#7a4f00'
 
     ctx.save()
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
 
-    if (是敌方塔) {
-      ctx.globalAlpha = 0.42
-      ctx.fillStyle = 敌方红色
-      ctx.fillRect(x + 外偏移, y + 外偏移, 大小 - 外偏移 * 2, 大小 - 外偏移 * 2)
-      ctx.globalAlpha = 1
-    }
-
     ctx.lineWidth = 外线宽
-    ctx.strokeStyle = 深色
+    ctx.strokeStyle = 主色
     ctx.strokeRect(
       x + 外偏移,
       y + 外偏移,
@@ -389,16 +380,6 @@ export function 渲染() {
       y + 内偏移,
       Math.max(1, 大小 - 内偏移 * 2),
       Math.max(1, 大小 - 内偏移 * 2),
-    )
-
-    ctx.globalAlpha = 0.55
-    ctx.lineWidth = Math.max(1, 内线宽 * 0.75)
-    ctx.strokeStyle = 高光色
-    ctx.strokeRect(
-      x + 内偏移 + 内线宽 * 1.5,
-      y + 内偏移 + 内线宽 * 1.5,
-      Math.max(1, 大小 - (内偏移 + 内线宽 * 1.5) * 2),
-      Math.max(1, 大小 - (内偏移 + 内线宽 * 1.5) * 2),
     )
 
     if (是敌方塔 || 是我方塔) {
