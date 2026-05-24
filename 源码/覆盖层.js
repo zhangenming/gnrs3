@@ -446,11 +446,13 @@ export function 渲染() {
 
   function 画我方基地标记(ctx, x, y, 大小) {
     const 间隙 = Math.max(6, 大小 * 0.18)
-    const 金框线宽 = Math.max(4, 大小 * 0.12)
-    const 高光线宽 = Math.max(2, 大小 * 0.05)
+    const 金框厚度 = Math.max(5, 大小 * 0.16)
     const 外框左 = x - 间隙
     const 外框上 = y - 间隙
     const 外框大小 = 大小 + 间隙 * 2
+    const 内框左 = 外框左 + 金框厚度
+    const 内框上 = 外框上 + 金框厚度
+    const 内框大小 = Math.max(1, 外框大小 - 金框厚度 * 2)
 
     ctx.save()
     ctx.lineJoin = 'round'
@@ -460,18 +462,19 @@ export function 渲染() {
     ctx.shadowOffsetX = 0
     ctx.shadowOffsetY = Math.max(1, 大小 * 0.03)
 
-    ctx.lineWidth = 金框线宽
-    ctx.strokeStyle = '#d4af37'
-    ctx.strokeRect(外框左, 外框上, 外框大小, 外框大小)
+    ctx.fillStyle = '#d4af37'
+    ctx.fillRect(外框左, 外框上, 外框大小, 外框大小)
 
     ctx.shadowColor = 'transparent'
-    ctx.lineWidth = 高光线宽
-    ctx.strokeStyle = 'rgba(255, 240, 170, 0.9)'
+    ctx.clearRect(内框左, 内框上, 内框大小, 内框大小)
+
+    ctx.strokeStyle = 'rgba(255, 240, 170, 0.92)'
+    ctx.lineWidth = Math.max(2, 金框厚度 * 0.28)
     ctx.strokeRect(
-      外框左 + 金框线宽 * 0.7,
-      外框上 + 金框线宽 * 0.7,
-      Math.max(1, 外框大小 - 金框线宽 * 1.4),
-      Math.max(1, 外框大小 - 金框线宽 * 1.4),
+      外框左 + 金框厚度 * 0.45,
+      外框上 + 金框厚度 * 0.45,
+      Math.max(1, 外框大小 - 金框厚度 * 0.9),
+      Math.max(1, 外框大小 - 金框厚度 * 0.9),
     )
 
     ctx.restore()
