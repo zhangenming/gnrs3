@@ -13,6 +13,7 @@ import {
   战场塔信息类名,
   战场数据差类名,
   未到达视野背景色,
+  抢塔提示持续毫秒,
   样式编号,
   敌方红色,
   覆盖层类名,
@@ -22,6 +23,7 @@ import {
 import { 是我方或队友 } from './游戏.js'
 import { 状态 } from './状态.js'
 import { 清理敌方移动高亮 } from './功能/敌方移动高亮.js'
+import { 清理抢塔提示 } from './功能/抢塔提示.js'
 import { 有未到达视野标记 } from './功能/视野.js'
 
 export function 清空覆盖层() {
@@ -34,6 +36,7 @@ export function 清空覆盖层() {
 export function 渲染() {
   状态.已请求渲染 = false
   清理敌方移动高亮()
+  清理抢塔提示()
 
   if (
     !状态.已知塔集合.size &&
@@ -41,6 +44,7 @@ export function 渲染() {
     !Number.isInteger(状态.我方基地索引) &&
     !状态.移动队列.length &&
     !状态.敌方移动高亮列表.length &&
+    !状态.抢塔提示列表.length &&
     !状态.兵力分布着色列表.length &&
     !有未到达视野标记()
   ) {
@@ -83,6 +87,7 @@ export function 渲染() {
       画中立塔兵力(ctx, 塔索引, 列 * 格宽, 行 * 格高, 大小)
     }
   })
+  画抢塔提示(ctx, 格宽, 格高, 大小)
 
   状态.已知敌方基地集合.forEach((基地, 基地索引) => {
     const 行 = Math.floor(基地索引 / 状态.宽度)
@@ -98,12 +103,17 @@ export function 渲染() {
     画基地模拟兵力(ctx, 状态.我方基地索引, 列 * 格宽, 行 * 格高, 大小)
   }
 
-  if (状态.敌方移动高亮列表.length || 有已占领塔) {
+  if (状态.敌方移动高亮列表.length || 状态.抢塔提示列表.length || 有已占领塔) {
     requestAnimationFrame(() => {
       const 仍有已占领塔 = Array.from(状态.已知塔类型.values()).some((类型) => {
         return 类型 === '敌方塔' || 类型 === '我方塔'
       })
-      if ((!状态.敌方移动高亮列表.length && !仍有已占领塔) || 状态.已请求渲染) {
+      if (
+        (!状态.敌方移动高亮列表.length &&
+          !状态.抢塔提示列表.length &&
+          !仍有已占领塔) ||
+        状态.已请求渲染
+      ) {
         return
       }
       状态.已请求渲染 = true
@@ -624,6 +634,84 @@ export function 渲染() {
       画敌方移动终点(ctx, 移动.终点, 格宽, 格高, 大小, 脉冲)
     })
     ctx.restore()
+  }
+
+  function 画抢塔提示(ctx, 格宽, 格高, 大小) {
+    if (!状态.抢塔提示列表.length) return
+
+    const 格子数 = 状态.宽度 * 状态.高度
+    const 当前时间 = performance.now()
+    const 可绘制提示列表 = 状态.抢塔提示列表.filter((提示) => {
+      return (
+        Number.isInteger(提示.索引) &&
+        Number.isFinite(提示.记录时间) &&
+        提示.索引 >= 0 &&
+        提示.索引 < 格子数
+      )
+    })
+    if (!可绘制提示列表.length) return
+
+    ctx.save()
+    可绘制提示列表.forEach((提示) => {
+      const 经过比例 = Math.min(
+        1,
+        Math.max(0, (当前时间 - 提示.记录时间) / 抢塔提示持续毫秒),
+      )
+      const 闪烁 = 0.5 - Math.cos(经过比例 * Math.PI * 10) / 2
+      const 回弹 = 1 + (1 - 缓出四次方(经过比例)) * 0.58
+      const 透明度 = (1 - 经过比例) * (0.48 + 闪烁 * 0.42)
+      const 行 = Math.floor(提示.索引 / 状态.宽度)
+      const 列 = 提示.索引 % 状态.宽度
+      const 中心X = 列 * 格宽 + 格宽 / 2
+      const 中心Y = 行 * 格高 + 格高 / 2
+      const 宽 = 格宽 * 回弹
+      const 高 = 格高 * 回弹
+      const x = 中心X - 宽 / 2
+      const y = 中心Y - 高 / 2
+      const 线宽 = Math.max(2, 大小 * (0.08 + 闪烁 * 0.06))
+      const 角长 = Math.max(6, 大小 * (0.26 + 闪烁 * 0.1))
+
+      ctx.save()
+      ctx.globalAlpha = 透明度
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.4)'
+      ctx.fillRect(x, y, 宽, 高)
+
+      ctx.globalAlpha = Math.min(1, 透明度 + 0.24)
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.shadowColor = 'rgba(255, 0, 0, 0.8)'
+      ctx.shadowBlur = Math.max(6, 大小 * 0.18)
+      ctx.lineWidth = 线宽 + Math.max(2, 线宽 * 0.8)
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.82)'
+      画抢塔角标(x, y, 宽, 高, 角长)
+
+      ctx.lineWidth = 线宽
+      ctx.strokeStyle = '#ff2b2b'
+      画抢塔角标(x, y, 宽, 高, 角长)
+      ctx.restore()
+    })
+    ctx.restore()
+
+    function 画抢塔角标(x, y, 宽, 高, 角长) {
+      ctx.beginPath()
+      ctx.moveTo(x, y + 角长)
+      ctx.lineTo(x, y)
+      ctx.lineTo(x + 角长, y)
+      ctx.moveTo(x + 宽 - 角长, y)
+      ctx.lineTo(x + 宽, y)
+      ctx.lineTo(x + 宽, y + 角长)
+      ctx.moveTo(x + 宽, y + 高 - 角长)
+      ctx.lineTo(x + 宽, y + 高)
+      ctx.lineTo(x + 宽 - 角长, y + 高)
+      ctx.moveTo(x + 角长, y + 高)
+      ctx.lineTo(x, y + 高)
+      ctx.lineTo(x, y + 高 - 角长)
+      ctx.stroke()
+    }
+
+    function 缓出四次方(值) {
+      return 1 - (1 - 值) ** 4
+    }
   }
 
   function 安装样式() {
