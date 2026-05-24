@@ -865,16 +865,31 @@ html.${基地危险类名}, body.${基地危险类名} {
     background-color: #4a0000 !important;
 }
 @keyframes gio-current-move-pulse {
-    0% { box-shadow: inset 0 0 0 2px #00eaff, 0 0 0 2px rgba(0, 0, 0, 0.95), 0 0 7px rgba(0, 234, 255, 0.85) !important; }
-    50% { box-shadow: inset 0 0 0 3px #ffffff, 0 0 0 2px rgba(0, 0, 0, 0.95), 0 0 14px rgba(0, 234, 255, 1) !important; }
-    100% { box-shadow: inset 0 0 0 2px #00eaff, 0 0 0 2px rgba(0, 0, 0, 0.95), 0 0 7px rgba(0, 234, 255, 0.85) !important; }
+    0% { opacity: 0.78; transform: scale(0.86); border-color: #25f1ff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.96), inset 0 0 0 2px rgba(255, 255, 255, 0.78), 0 0 9px rgba(37, 241, 255, 0.9) !important; }
+    50% { opacity: 1; transform: scale(1.03); border-color: #ffffff; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.96), inset 0 0 0 2px #25f1ff, 0 0 16px rgba(37, 241, 255, 1) !important; }
+    100% { opacity: 0.78; transform: scale(0.86); border-color: #25f1ff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.96), inset 0 0 0 2px rgba(255, 255, 255, 0.78), 0 0 9px rgba(37, 241, 255, 0.9) !important; }
 }
 #gameMap td.selected, #gameMap td.selected50, #gameMap td[class*='selected-'],
 .tiles-canvas-preview td.selected, .tiles-canvas-preview td.selected50, .tiles-canvas-preview td[class*='selected-'] {
-    border-color: #ffffff !important;
-    outline: 2px solid #00eaff !important;
-    outline-offset: -3px !important;
-    animation: gio-current-move-pulse 0.9s infinite !important;
+    position: relative !important;
+    border-color: transparent !important;
+    outline: none !important;
+    overflow: visible !important;
+}
+#gameMap td.selected::after, #gameMap td.selected50::after, #gameMap td[class*='selected-']::after,
+.tiles-canvas-preview td.selected::after, .tiles-canvas-preview td.selected50::after, .tiles-canvas-preview td[class*='selected-']::after {
+    content: '' !important;
+    position: absolute !important;
+    left: 14% !important;
+    top: 14% !important;
+    width: 72% !important;
+    height: 72% !important;
+    box-sizing: border-box !important;
+    border: 2px solid #25f1ff !important;
+    border-radius: 999px !important;
+    pointer-events: none !important;
+    z-index: 3 !important;
+    animation: gio-current-move-pulse 0.95s ease-out infinite !important;
 }
 :root {
     --map-rgb-p1: 255,0,0;
@@ -1135,49 +1150,28 @@ html.${基地危险类名}, body.${基地危险类名} {
     const 列 = 格子索引 % 状态.宽度
     const x = 列 * 格宽
     const y = 行 * 格高
-    const 外线宽 = Math.max(2, 大小 * 0.07)
+    const 中心x = x + 格宽 / 2
+    const 中心y = y + 格高 / 2
+    const 半径 = Math.max(4, 大小 * 0.42)
+    const 外线宽 = Math.max(2, 大小 * 0.08)
     const 内线宽 = Math.max(1.2, 大小 * 0.035)
-    const 角长 = Math.max(4, 大小 * 0.2)
-    const 角偏移 = Math.max(4, 大小 * 0.18)
 
     ctx.save()
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
-    ctx.globalAlpha = 0.46
+    ctx.globalAlpha = 0.72
     ctx.lineWidth = 外线宽
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)'
     ctx.beginPath()
-    ctx.moveTo(x + 角偏移, y + 角偏移 + 角长)
-    ctx.lineTo(x + 角偏移, y + 角偏移)
-    ctx.lineTo(x + 角偏移 + 角长, y + 角偏移)
-    ctx.moveTo(x + 格宽 - 角偏移 - 角长, y + 角偏移)
-    ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移)
-    ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移 + 角长)
-    ctx.moveTo(x + 格宽 - 角偏移, y + 格高 - 角偏移 - 角长)
-    ctx.lineTo(x + 格宽 - 角偏移, y + 格高 - 角偏移)
-    ctx.lineTo(x + 格宽 - 角偏移 - 角长, y + 格高 - 角偏移)
-    ctx.moveTo(x + 角偏移 + 角长, y + 格高 - 角偏移)
-    ctx.lineTo(x + 角偏移, y + 格高 - 角偏移)
-    ctx.lineTo(x + 角偏移, y + 格高 - 角偏移 - 角长)
+    ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
     ctx.stroke()
 
     ctx.globalAlpha = 0.9
     ctx.lineWidth = 内线宽
     ctx.strokeStyle = '#25f1ff'
     ctx.beginPath()
-    ctx.moveTo(x + 角偏移, y + 角偏移 + 角长)
-    ctx.lineTo(x + 角偏移, y + 角偏移)
-    ctx.lineTo(x + 角偏移 + 角长, y + 角偏移)
-    ctx.moveTo(x + 格宽 - 角偏移 - 角长, y + 角偏移)
-    ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移)
-    ctx.lineTo(x + 格宽 - 角偏移, y + 角偏移 + 角长)
-    ctx.moveTo(x + 格宽 - 角偏移, y + 格高 - 角偏移 - 角长)
-    ctx.lineTo(x + 格宽 - 角偏移, y + 格高 - 角偏移)
-    ctx.lineTo(x + 格宽 - 角偏移 - 角长, y + 格高 - 角偏移)
-    ctx.moveTo(x + 角偏移 + 角长, y + 格高 - 角偏移)
-    ctx.lineTo(x + 角偏移, y + 格高 - 角偏移)
-    ctx.lineTo(x + 角偏移, y + 格高 - 角偏移 - 角长)
+    ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
     ctx.stroke()
 
     ctx.restore()
