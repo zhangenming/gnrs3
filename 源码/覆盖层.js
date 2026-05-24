@@ -142,6 +142,7 @@ export function 渲染() {
     if (!状态.已知障碍物集合.size) return
 
     const 格子数 = 状态.宽度 * 状态.高度
+    const 地图数组 = 状态.地图数组
 
     ctx.save()
     ctx.fillStyle = '#000000'
@@ -152,6 +153,10 @@ export function 渲染() {
         障碍物索引 >= 格子数
       ) {
         return
+      }
+      if (Array.isArray(地图数组)) {
+        const 当前地形 = 地图数组[2 + 格子数 + 障碍物索引]
+        if (Number.isInteger(当前地形) && 当前地形 >= -1) return
       }
       const 行 = Math.floor(障碍物索引 / 状态.宽度)
       const 列 = 障碍物索引 % 状态.宽度

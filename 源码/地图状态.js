@@ -46,7 +46,11 @@ export function 更新地图缓存和兵力分布(数据包, 来源事件) {
 
     for (let idx = 0; idx < 格子数; idx += 1) {
       const 地形 = 地图数组[2 + 格子数 + idx]
-      if (地形 === -2 || 地形 === -4) 状态.已知障碍物集合.add(idx)
+      if (地形 === -2) {
+        状态.已知障碍物集合.add(idx)
+      } else if (Number.isInteger(地形) && 地形 >= -1) {
+        状态.已知障碍物集合.delete(idx)
+      }
     }
   }
 

@@ -6,7 +6,7 @@ import { 是战场数据冻结事件 } from './战场数据冻结.js'
 const 元素类名 = 'gio-settlement-replay-frame'
 const 样式编号 = 'gio-settlement-replay-style'
 const 雾地形 = -3
-const 障碍物地形集合 = new Set([-2, -4])
+const 障碍物地形 = -2
 
 export function 记录结算回放快照(事件名, 数据包) {
   if (!是战场数据冻结事件(事件名, 数据包)) return
@@ -219,7 +219,11 @@ function 绘制结算回放地图修饰(元素, css宽, css高) {
 
     for (let idx = 0; idx < 格子数; idx += 1) {
       const 地形 = 地图数组[2 + 格子数 + idx]
-      if (障碍物地形集合.has(地形)) 障碍物集合.add(idx)
+      if (地形 === 障碍物地形) {
+        障碍物集合.add(idx)
+      } else if (Number.isInteger(地形) && 地形 >= -1) {
+        障碍物集合.delete(idx)
+      }
     }
     return 障碍物集合
   }
