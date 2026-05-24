@@ -3,8 +3,8 @@
 //
 // 实现原理:
 // 先定位排行榜表头里的 Player 列，再把该表头格替换成独立的塔信息节点。
-// 我方塔数直接遍历当前盘面里的塔位置，并读取地图数组中的归属值统计，保证和当前可见盘面一致。
-// 敌方塔数继续复用已维护的塔归属记忆，补足迷雾中的已知塔；差值段通过数据属性标记优劣，样式层据此给塔差着蓝色或红色。
+// 可见塔直接遍历当前盘面里的塔位置，并读取地图数组中的归属值统计，保证和当前可见盘面一致。
+// 迷雾中的敌方塔继续复用已维护的塔归属记忆；差值段通过数据属性标记优劣，样式层据此给塔差着蓝色或红色。
 //
 // 作用范围:
 // 只改写排行榜/战场数据表的 Player 表头格内容和样式，不参与地图状态计算。
@@ -63,8 +63,7 @@ export function 更新战场塔信息() {
       if (
         (文本.includes('Player') ||
           当前表格.querySelector('[data-gio-battle-player-column="true"]')) &&
-        文本.includes('Army') &&
-        文本.includes('Land')
+        是战场数据表格(当前表格)
       ) {
         return 当前表格
       }
@@ -96,7 +95,12 @@ export function 更新战场塔信息() {
     const 文本列表 = 取得单元格列表(行).map((单元格) =>
       (单元格.textContent ?? '').trim(),
     )
-    return 文本列表.includes('Army') && 文本列表.includes('Land')
+    if (文本列表.includes('Army') && 文本列表.includes('Land')) return true
+    return Boolean(
+      行.querySelector(
+        '[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]',
+      ),
+    )
   }
 
   function 取得单元格列表(行) {
@@ -126,17 +130,48 @@ export function 更新战场塔信息() {
 
     let 我方塔数 = 0
     let 敌方塔数 = 0
-    const 格子数 = 状态.宽度 * 状态.高度
     for (const 塔索引 of 塔索引集合) {
-      const 归属 = 状态.地图数组?.[2 + 格子数 + 塔索引]
-      if (Number.isInteger(归属) && 归属 >= 0 && 是我方或队友(归属)) {
-        我方塔数 += 1
-        continue
+      const 归属 = 读取当前地图归属(塔索引)
+      if (Number.isInteger(归属)) {
+        if (归属 >= 0) {
+          if (是我方或队友(归属)) {
+            我方塔数 += 1
+          } else {
+            敌方塔数 += 1
+          }
+          continue
+        }
+        if (归属 === -1) continue
       }
 
       const 塔类型 = 状态.已知塔类型.get(塔索引)
       if (塔类型 === '敌方塔') 敌方塔数 += 1
     }
     return { 我方塔数, 敌方塔数 }
+  }
+
+  function 是战场数据表格(表格元素) {
+    const 文本 = 表格元素.textContent ?? ''
+    if (文本.includes('Army') && 文本.includes('Land')) return true
+    return Boolean(
+      表格元素.querySelector(
+        '[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]',
+      ),
+    )
+  }
+
+  function 读取当前地图归属(格子索引) {
+    const 地图数组 = 状态.地图数组
+    if (!Array.isArray(地图数组) || !Number.isInteger(格子索引)) return null
+
+    const 宽度 = 地图数组[0]
+    const 高度 = 地图数组[1]
+    const 格子数 = 宽度 * 高度
+    if (!Number.isFinite(格子数) || 格子索引 < 0 || 格子索引 >= 格子数)
+      return null
+    if (地图数组.length < 2 + 格子数 * 2) return null
+
+    const 归属 = 地图数组[2 + 格子数 + 格子索引]
+    return Number.isInteger(归属) ? 归属 : null
   }
 }
