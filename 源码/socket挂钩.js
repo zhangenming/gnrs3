@@ -22,13 +22,7 @@ import { 清空覆盖层 } from './覆盖层.js'
 import { 重构玩家颜色 } from './功能/玩家颜色.js'
 import { 记录回合, 更新大回合倒计时 } from './功能/大回合倒计时.js'
 import { 处理塔位置 } from './功能/塔记忆.js'
-
-const 游戏结束事件集合 = new Set([
-  'game_lost',
-  'game_won',
-  'game_over',
-  'game_end',
-])
+import { 处理战场数据冻结事件, 重置战场数据冻结 } from './功能/战场数据冻结.js'
 
 export function 挂钩socket(socket, 请求渲染) {
   if (!socket || socket.__塔记忆已挂钩) return
@@ -116,22 +110,10 @@ export function 挂钩socket(socket, 请求渲染) {
   }
 
   function 预处理入站事件(事件名, 数据包) {
-    if (游戏结束事件集合.has(事件名)) {
-      状态.战场数据已冻结 = true
-      return
-    }
-    if (包含已结束分数(数据包)) 状态.战场数据已冻结 = true
+    处理战场数据冻结事件(事件名, 数据包)
     if (事件名 !== 'game_start' && 事件名 !== 'game_update') return
     记录回合(数据包 ?? {})
     重构玩家颜色(数据包 ?? {})
-  }
-
-  function 包含已结束分数(数据包) {
-    if (!Array.isArray(数据包?.scores)) return false
-
-    return 数据包.scores.some((分数) => {
-      return 分数?.dead === true && 分数.total === 0
-    })
   }
 
   function 重置本局(数据包) {
@@ -153,8 +135,7 @@ export function 挂钩socket(socket, 请求渲染) {
     状态.敌方移动高亮列表 = []
     清空移动队列('新局重置', 请求渲染)
     状态.当前回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 0
-    状态.战场数据已冻结 = false
-    状态.战场数据快照 = null
+    重置战场数据冻结()
     状态.我方索引 = Number.isInteger(数据包?.playerIndex)
       ? 数据包.playerIndex
       : null
