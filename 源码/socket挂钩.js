@@ -170,6 +170,7 @@ export function 挂钩socket(socket, 请求渲染) {
     状态.已知塔集合.clear()
     状态.已知塔类型.clear()
     状态.中立塔兵力表.clear()
+    状态.中立塔开塔成本表.clear()
     状态.我方开塔增长表.clear()
     状态.已知基地集合.clear()
     状态.已知敌方基地集合.clear()

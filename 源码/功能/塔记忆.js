@@ -71,14 +71,17 @@ export function 更新塔类型(数据包, 塔索引) {
 
   function 更新我方开塔增长(旧类型, 可见类型) {
     if (旧类型 === '中立塔' && 可见类型 === '我方塔') {
-      const 开塔耗兵 = 状态.中立塔兵力表.get(塔索引)
+      const 开塔耗兵 =
+        状态.中立塔开塔成本表.get(塔索引) ?? 状态.中立塔兵力表.get(塔索引)
       if (!Number.isInteger(开塔耗兵) || 开塔耗兵 < 0) return
       状态.我方开塔增长表.set(塔索引, {
         开塔耗兵,
         回合: Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合,
       })
+      状态.中立塔开塔成本表.delete(塔索引)
     } else if (可见类型 !== '我方塔') {
       状态.我方开塔增长表.delete(塔索引)
+      if (可见类型 === '敌方塔') 状态.中立塔开塔成本表.delete(塔索引)
     }
   }
 
@@ -96,6 +99,10 @@ export function 更新塔类型(数据包, 塔索引) {
     if (!Number.isInteger(兵力) || 兵力 < 0) return
 
     状态.中立塔兵力表.set(塔索引, 兵力)
+    const 已记成本 = 状态.中立塔开塔成本表.get(塔索引)
+    if (兵力 > 0 && (!Number.isInteger(已记成本) || 兵力 > 已记成本)) {
+      状态.中立塔开塔成本表.set(塔索引, 兵力)
+    }
   }
 
   function 读取可见地块兵力(数据包, 格子索引) {
