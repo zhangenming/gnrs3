@@ -83,7 +83,7 @@ export function 渲染() {
     !状态.敌方移动高亮列表.length &&
     !状态.抢塔提示列表.length &&
     !状态.兵力分布着色列表.length &&
-    !Number.isInteger(选中格子索引) &&
+    !Number.isInteger(取得选中棋子索引()) &&
     !有未到达视野标记()
   ) {
     清空覆盖层()
@@ -150,7 +150,7 @@ export function 渲染() {
     状态.敌方移动高亮列表.length ||
     状态.抢塔提示列表.length ||
     有已占领塔 ||
-    Number.isInteger(选中格子索引)
+    Number.isInteger(取得选中棋子索引())
   ) {
     requestAnimationFrame(() => {
       const 仍有已占领塔 = Array.from(状态.已知塔类型.values()).some((类型) => {
@@ -160,7 +160,7 @@ export function 渲染() {
         (!状态.敌方移动高亮列表.length &&
           !状态.抢塔提示列表.length &&
           !仍有已占领塔 &&
-          !Number.isInteger(选中格子索引)) ||
+          !Number.isInteger(取得选中棋子索引())) ||
         状态.已请求渲染
       ) {
         return
@@ -1206,7 +1206,7 @@ html.${基地危险类名}, body.${基地危险类名} {
   }
 
   function 画选中棋子(ctx, 格宽, 格高, 大小, 动画时间) {
-    const 格子索引 = 选中格子索引
+    const 格子索引 = 取得选中棋子索引()
     const 格子数 = 状态.宽度 * 状态.高度
     if (!Number.isInteger(格子索引)) return
     if (格子索引 < 0 || 格子索引 >= 格子数) {
@@ -1371,6 +1371,14 @@ function 取得点击格子索引(事件, 画布) {
   const 列 = Math.min(状态.宽度 - 1, Math.floor((x / 矩形.width) * 状态.宽度))
   const 行 = Math.min(状态.高度 - 1, Math.floor((y / 矩形.height) * 状态.高度))
   return 行 * 状态.宽度 + 列
+}
+
+function 取得选中棋子索引() {
+  const 最后移动 = 状态.移动队列.at(-1)
+  if (Number.isInteger(最后移动?.终点) && 最后移动.终点 >= 0) {
+    选中格子索引 = 最后移动.终点
+  }
+  return 选中格子索引
 }
 
 function 请求覆盖层渲染() {
