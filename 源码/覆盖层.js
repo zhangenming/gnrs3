@@ -124,6 +124,8 @@ export function 渲染() {
     画塔标记(ctx, 列 * 格宽, 行 * 格高, 大小, 类型)
     if (类型 === '中立塔') {
       画中立塔兵力(ctx, 塔索引, 列 * 格宽, 行 * 格高, 大小)
+    } else if (类型 === '我方塔') {
+      画我方开塔增长(ctx, 塔索引, 列 * 格宽, 行 * 格高, 大小)
     }
   })
   画抢塔提示(ctx, 格宽, 格高, 大小)
@@ -662,6 +664,29 @@ export function 渲染() {
     ctx.restore()
   }
 
+  function 画我方开塔增长(ctx, 塔索引, x, y, 大小) {
+    const 增长 = 取得我方开塔增长(塔索引)
+    if (!Number.isInteger(增长)) return
+
+    const 文本 = 增长 > 0 ? `+${增长}` : String(增长)
+    const 字号 = Math.max(9, Math.min(16, 大小 * 0.36))
+    const 边距 = Math.max(3, 大小 * 0.1)
+    const 文本x = x + 大小 - 边距
+    const 文本y = y + 大小 - 边距
+
+    ctx.save()
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'bottom'
+    ctx.lineJoin = 'round'
+    ctx.font = `900 ${字号}px Arial, sans-serif`
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)'
+    ctx.lineWidth = Math.max(2, 大小 * 0.08)
+    ctx.fillStyle = 增长 < 0 ? '#ffe26a' : 增长 > 0 ? '#76ff96' : '#ffffff'
+    ctx.strokeText(文本, 文本x, 文本y)
+    ctx.fillText(文本, 文本x, 文本y)
+    ctx.restore()
+  }
+
   function 取得模拟基地兵力(基地索引) {
     const 记忆 = 状态.基地兵力表.get(基地索引)
     if (!记忆 || !Number.isInteger(记忆.兵力) || 记忆.兵力 < 0) return null
@@ -679,6 +704,26 @@ export function 渲染() {
     const 大回合额外增长 = Math.floor(当前回合 / 50) - Math.floor(记录回合 / 50)
 
     return 记忆.兵力 + 基地自然增长 + 大回合额外增长
+  }
+
+  function 取得我方开塔增长(塔索引) {
+    const 记忆 = 状态.我方开塔增长表.get(塔索引)
+    if (!记忆 || !Number.isInteger(记忆.开塔耗兵) || 记忆.开塔耗兵 < 0)
+      return null
+
+    const 当前回合 = 状态.当前回合
+    const 记录回合 = Number.isInteger(记忆.回合) ? 记忆.回合 : 当前回合
+    if (!Number.isInteger(当前回合) || !Number.isInteger(记录回合)) {
+      return -记忆.开塔耗兵
+    }
+
+    const 回合差 = 当前回合 - 记录回合
+    if (回合差 <= 0) return -记忆.开塔耗兵
+
+    const 塔自然增长 = Math.floor(当前回合 / 2) - Math.floor(记录回合 / 2)
+    const 大回合额外增长 = Math.floor(当前回合 / 50) - Math.floor(记录回合 / 50)
+
+    return -记忆.开塔耗兵 + 塔自然增长 + 大回合额外增长
   }
 
   function 画操作轨迹(ctx, 格宽, 格高, 大小) {
