@@ -127,8 +127,8 @@ export function 更新我方行动监控UI() {
     for (const 回合状态 of 分组回合列表) {
       const 标签 = document.createElement('span')
       标签.className = `gio-action-watch-chip ${取得类型类名(回合状态.行动类型)}`
-      标签.textContent = String(回合状态.回合)
-      标签.title = `${回合状态.回合}: ${回合状态.行动类型}`
+      标签.textContent = String(回合状态.大回合内回合)
+      标签.title = `大${大回合序号} 第${回合状态.大回合内回合}: ${回合状态.行动类型} (turn ${回合状态.回合})`
       回合组.appendChild(标签)
     }
     行.appendChild(回合组)
@@ -144,6 +144,7 @@ export function 更新我方行动监控UI() {
     for (let 回合 = 监控起始回合; 回合 <= 最大回合; 回合 += 1) {
       列表.push({
         回合,
+        大回合内回合: 取得大回合内回合(回合),
         行动类型: 状态.我方行动类型表.get(回合) ?? '空闲',
       })
     }
@@ -177,6 +178,10 @@ export function 更新我方行动监控UI() {
     return 分组表
   }
 
+  function 取得大回合内回合(回合) {
+    return (回合 % 大回合turn数) + 1
+  }
+
   function 取得类型类名(行动类型) {
     if (行动类型 === '空闲') return 'gio-action-watch-chip-idle'
     if (行动类型 === '扩地(开塔)') return 'gio-action-watch-chip-expand'
@@ -186,7 +191,7 @@ export function 更新我方行动监控UI() {
 
   function 取得标题文本() {
     const 文本列表 = 回合状态列表.map((回合状态) => {
-      return `${回合状态.回合}: ${回合状态.行动类型}`
+      return `turn ${回合状态.回合}: ${回合状态.行动类型}`
     })
     return 文本列表.join('；')
   }
@@ -409,14 +414,15 @@ function 安装样式() {
     font: 900 11px/1 Arial, sans-serif;
 }
 .gio-action-watch-row-list {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(25, minmax(24px, 1fr));
     gap: 3px;
+    min-width: 672px;
 }
 .gio-action-watch-chip,
 .gio-action-watch-empty {
     box-sizing: border-box;
-    min-width: 30px;
+    min-width: 0;
     padding: 4px 6px;
     border-radius: 4px;
     text-align: center;
