@@ -9,6 +9,7 @@ export const 大回合turn数 = 50
 export const 大回合倒计时元素编号 = 'gio-big-turn-countdown'
 export const 大回合倒计时类名 = 'gio-big-turn-cell'
 export const 战场数据差类名 = 'gio-battle-data-diff-cell'
+export const 战场塔信息类名 = 'gio-battle-tower-summary-cell'
 export const 基地危险类名 = 'gio-general-danger'
 export const 兵力着色最小兵力 = 3
 export const 兵力着色最多级别 = 5

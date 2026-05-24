@@ -1,11 +1,16 @@
 // 功能目的:
 // 在 generals.io 右侧战场数据表中，把我方与敌方的 Army、Land 显示为差值，
-// 让 1v1 对局时可以直接看到兵力和土地的领先或落后幅度。
+// 并在 Player 表头位置显示敌我塔数和塔差，让 1v1 对局时可以直接看到兵力、土地和据点差距。
+//
+// 实现原理:
+// 先定位排行榜表头和敌我双方数据行，再读取 Army、Land 两列文本计算差值。
+// 塔统计使用已维护的塔位置与塔归属记忆，优先反映当前可见归属，并沿用最后一次可见归属补足迷雾中的已知塔。
+// Player 表头格通过数据属性承载“敌X 我Y 差Z”，样式层把它渲染到截图标出的同一位置。
 //
 // 作用范围:
 // 只改写排行榜/战场数据表的表头格内容和样式，不参与地图状态计算。
 // 会优先根据玩家索引和用户名识别我方与敌方行，并给差值格写入数据属性，供样式层区分优势和劣势。
-import { 我方蓝色, 战场数据差类名, 敌方红色 } from '../配置.js'
+import { 我方蓝色, 战场塔信息类名, 战场数据差类名, 敌方红色 } from '../配置.js'
 import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 
@@ -47,6 +52,8 @@ export function 更新战场数据差() {
 
   const 我方格列表 = 取得单元格列表(我方行)
   const 敌方格列表 = 取得单元格列表(敌方行)
+  const 塔统计 = 统计塔数()
+  更新塔信息格(表头格列表[玩家列], 塔统计.我方塔数, 塔统计.敌方塔数)
   更新差值格(
     表头格列表[兵力列],
     读取数字(我方格列表[兵力列]) - 读取数字(敌方格列表[兵力列]),
@@ -190,5 +197,45 @@ export function 更新战场数据差() {
     单元格.classList.add(战场数据差类名)
     单元格.dataset.gioBattleKind = 类型
     单元格.dataset.gioBattleDiff = 差值状态
+  }
+
+  function 统计塔数() {
+    const 塔索引集合 = new Set()
+    if (Array.isArray(状态.塔列表)) {
+      状态.塔列表.forEach((塔索引) => {
+        if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
+      })
+    }
+    状态.已知塔集合.forEach((塔索引) => {
+      if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
+    })
+
+    let 我方塔数 = 0
+    let 敌方塔数 = 0
+    for (const 塔索引 of 塔索引集合) {
+      const 塔类型 = 状态.已知塔类型.get(塔索引)
+      if (塔类型 === '我方塔') 我方塔数 += 1
+      if (塔类型 === '敌方塔') 敌方塔数 += 1
+    }
+    return { 我方塔数, 敌方塔数 }
+  }
+
+  function 更新塔信息格(单元格, 我方塔数, 敌方塔数) {
+    if (!单元格) return
+
+    const 塔差 = 我方塔数 - 敌方塔数
+    const 文本 = `敌${敌方塔数} 我${我方塔数} 差${塔差 > 0 ? `+${塔差}` : 塔差}`
+    const 差值状态 = 塔差 > 0 ? 'advantage' : 塔差 < 0 ? 'disadvantage' : 'even'
+    if (
+      单元格.classList.contains(战场塔信息类名) &&
+      单元格.dataset.gioTowerSummary === 文本 &&
+      单元格.dataset.gioTowerDiff === 差值状态
+    )
+      return
+
+    单元格.classList.add(战场塔信息类名)
+    单元格.dataset.gioTowerSummary = 文本
+    单元格.dataset.gioTowerDiff = 差值状态
+    单元格.title = '敌方塔数 / 我方塔数 / 塔差（我方减敌方）'
   }
 }

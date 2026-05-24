@@ -10,6 +10,7 @@ import {
   大回合倒计时元素编号,
   大回合倒计时类名,
   基地危险类名,
+  战场塔信息类名,
   战场数据差类名,
   未到达视野背景色,
   样式编号,
@@ -593,6 +594,31 @@ export function 渲染() {
 }
 .${战场数据差类名}[data-gio-battle-diff="disadvantage"] {
     background-color: ${敌方红色} !important;
+}
+.${战场塔信息类名} {
+    line-height: 1.05 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+.${战场塔信息类名}::after {
+    content: attr(data-gio-tower-summary);
+    display: table;
+    margin: 3px auto 0;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background-color: rgba(0, 0, 0, 0.28);
+    color: #f5f5f5;
+    font: 700 10px/1.2 Arial, sans-serif;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+}
+.${战场塔信息类名}[data-gio-tower-diff="advantage"]::after {
+    color: ${我方蓝色};
+}
+.${战场塔信息类名}[data-gio-tower-diff="disadvantage"]::after {
+    color: ${敌方红色};
+}
+.${战场塔信息类名}[data-gio-tower-diff="even"]::after {
+    color: #f5f5f5;
 }
 html.${基地危险类名}, body.${基地危险类名} {
     background-color: #4a0000 !important;
