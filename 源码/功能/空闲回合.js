@@ -3,6 +3,7 @@
 //
 // 作用范围:
 // 只读取本地 socket 出站事件和当前回合，不改变真实游戏操作队列。
+import { 大回合turn数 } from '../配置.js'
 import { 状态 } from '../状态.js'
 
 const 面板类名 = 'gio-idle-turn-panel'
@@ -70,13 +71,41 @@ export function 更新空闲回合UI() {
     return
   }
 
-  for (const 回合 of 回合列表) {
-    const 标签 = document.createElement('span')
-    标签.className = 'gio-idle-turn-chip'
-    标签.textContent = String(回合)
-    列表元素.appendChild(标签)
+  for (const [大回合序号, 分组回合列表] of 取得大回合分组(回合列表)) {
+    const 行 = document.createElement('div')
+    行.className = 'gio-idle-turn-row'
+
+    const 标题 = document.createElement('span')
+    标题.className = 'gio-idle-turn-round'
+    标题.textContent = `大${大回合序号}`
+    行.appendChild(标题)
+
+    const 回合组 = document.createElement('span')
+    回合组.className = 'gio-idle-turn-row-list'
+    for (const 回合 of 分组回合列表) {
+      const 标签 = document.createElement('span')
+      标签.className = 'gio-idle-turn-chip'
+      标签.textContent = String(回合)
+      回合组.appendChild(标签)
+    }
+    行.appendChild(回合组)
+    列表元素.appendChild(行)
   }
   面板.title = `空闲回合：${回合列表.join(', ')}`
+
+  function 取得大回合分组(回合列表) {
+    const 分组表 = new Map()
+    for (const 回合 of 回合列表) {
+      const 大回合序号 = Math.floor(回合 / 大回合turn数) + 1
+      const 分组 = 分组表.get(大回合序号)
+      if (分组) {
+        分组.push(回合)
+      } else {
+        分组表.set(大回合序号, [回合])
+      }
+    }
+    return 分组表
+  }
 
   function 确保面板() {
     let 面板 = 状态.空闲回合面板
@@ -309,11 +338,33 @@ function 安装样式() {
 }
 .gio-idle-turn-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 4px;
     max-height: 144px;
     overflow-y: auto;
     scrollbar-width: thin;
+}
+.gio-idle-turn-row {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    align-items: start;
+    gap: 5px;
+}
+.gio-idle-turn-round {
+    box-sizing: border-box;
+    min-width: 34px;
+    padding: 3px 4px;
+    border-radius: 5px;
+    background: rgba(255, 191, 63, 0.16);
+    color: #ffcf66;
+    text-align: center;
+    white-space: nowrap;
+    font: 900 11px/1 Arial, sans-serif;
+}
+.gio-idle-turn-row-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
 }
 .gio-idle-turn-chip,
 .gio-idle-turn-empty {
