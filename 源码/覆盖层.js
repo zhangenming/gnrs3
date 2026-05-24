@@ -445,37 +445,35 @@ export function 渲染() {
   }
 
   function 画我方基地标记(ctx, x, y, 大小) {
-    const 间隙 = Math.max(6, 大小 * 0.18)
-    const 金框厚度 = Math.max(5, 大小 * 0.16)
-    const 外框左 = x - 间隙
-    const 外框上 = y - 间隙
-    const 外框大小 = 大小 + 间隙 * 2
-    const 内框左 = 外框左 + 金框厚度
-    const 内框上 = 外框上 + 金框厚度
-    const 内框大小 = Math.max(1, 外框大小 - 金框厚度 * 2)
+    const 外扩 = Math.max(5, 大小 * 0.16)
+    const 底板左 = x - 外扩
+    const 底板上 = y - 外扩
+    const 底板大小 = 大小 + 外扩 * 2
+    const 边框线宽 = Math.max(3, 大小 * 0.08)
+    const 高光偏移 = Math.max(2, 大小 * 0.05)
+    const 内边左 = 底板左 + 高光偏移
+    const 内边上 = 底板上 + 高光偏移
+    const 内边大小 = Math.max(1, 底板大小 - 高光偏移 * 2)
 
     ctx.save()
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
-    ctx.shadowBlur = Math.max(2, 大小 * 0.08)
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.28)'
+    ctx.shadowBlur = Math.max(2, 大小 * 0.06)
     ctx.shadowOffsetX = 0
     ctx.shadowOffsetY = Math.max(1, 大小 * 0.03)
 
-    ctx.fillStyle = '#d4af37'
-    ctx.fillRect(外框左, 外框上, 外框大小, 外框大小)
+    ctx.fillStyle = '#d9b43b'
+    ctx.fillRect(底板左, 底板上, 底板大小, 底板大小)
 
     ctx.shadowColor = 'transparent'
-    ctx.clearRect(内框左, 内框上, 内框大小, 内框大小)
+    ctx.strokeStyle = '#9a7720'
+    ctx.lineWidth = 边框线宽
+    ctx.strokeRect(底板左, 底板上, 底板大小, 底板大小)
 
-    ctx.strokeStyle = 'rgba(255, 240, 170, 0.92)'
-    ctx.lineWidth = Math.max(2, 金框厚度 * 0.28)
-    ctx.strokeRect(
-      外框左 + 金框厚度 * 0.45,
-      外框上 + 金框厚度 * 0.45,
-      Math.max(1, 外框大小 - 金框厚度 * 0.9),
-      Math.max(1, 外框大小 - 金框厚度 * 0.9),
-    )
+    ctx.strokeStyle = 'rgba(255, 241, 181, 0.95)'
+    ctx.lineWidth = Math.max(2, 大小 * 0.04)
+    ctx.strokeRect(内边左, 内边上, 内边大小, 内边大小)
 
     ctx.restore()
   }
