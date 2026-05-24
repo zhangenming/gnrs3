@@ -18,6 +18,7 @@ const 陆地线颜色 = '#ffbf3f'
 let 图表实例 = null
 let ECharts加载Promise = null
 let 正在等待ECharts = false
+let 图表渲染签名 = ''
 
 export function 记录游戏数据进展(数据包) {
   const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
@@ -49,6 +50,8 @@ export function 记录游戏数据进展(数据包) {
 export function 重置游戏数据进展() {
   状态.游戏数据进展列表 = []
   状态.游戏数据进展上次统计回合 = null
+  图表渲染签名 = ''
+  图表实例?.clear()
   更新游戏数据进展图表()
 }
 
@@ -60,6 +63,8 @@ export function 更新游戏数据进展图表() {
   if (!面板) return
 
   更新面板状态(面板)
+  if (!状态.游戏数据进展列表.length) return
+
   if (globalThis.echarts?.init) {
     渲染图表(globalThis.echarts, 面板)
     return
@@ -227,9 +232,15 @@ function 取得战场数据表格() {
 function 更新面板状态(面板) {
   const 数据数量 = 状态.游戏数据进展列表.length
   const 计数元素 = 面板.querySelector('.gio-data-progress-count')
-  if (计数元素) 计数元素.textContent = String(数据数量)
+  const 数量文本 = String(数据数量)
+  if (计数元素 && 计数元素.textContent !== 数量文本) {
+    计数元素.textContent = 数量文本
+  }
 
-  面板.dataset.gioDataProgressEmpty = 数据数量 ? 'false' : 'true'
+  const 空状态 = 数据数量 ? 'false' : 'true'
+  if (面板.dataset.gioDataProgressEmpty !== 空状态) {
+    面板.dataset.gioDataProgressEmpty = 空状态
+  }
 }
 
 function 加载ECharts() {
@@ -271,12 +282,26 @@ function 渲染图表(echarts, 面板) {
   if (图表实例 && 图表实例.getDom?.() !== 图表元素) {
     图表实例.dispose()
     图表实例 = null
+    图表渲染签名 = ''
   }
+  const 渲染签名 = 取得图表渲染签名(图表元素)
+  if (图表实例 && 图表渲染签名 === 渲染签名) return
+
   图表实例 ??= echarts.getInstanceByDom(图表元素) ?? echarts.init(图表元素)
   图表实例.setOption(取得图表配置(), true)
+  图表渲染签名 = 渲染签名
   requestAnimationFrame(() => {
     图表实例?.resize()
   })
+}
+
+function 取得图表渲染签名(图表元素) {
+  const 数据签名 = 状态.游戏数据进展列表
+    .map((数据点) => {
+      return `${数据点.回合}:${数据点.兵力差}:${数据点.陆地差}`
+    })
+    .join('|')
+  return `${图表元素.clientWidth}x${图表元素.clientHeight}|${数据签名}`
 }
 
 function 取得图表配置() {

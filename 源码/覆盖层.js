@@ -1347,8 +1347,9 @@ function 同步地图大小标签(地图元素) {
 
   const 长 = 状态.宽度
   const 宽 = 状态.高度
-  标签.textContent = `地图大小: ${长} * ${宽} = ${长 * 宽}`
-  标签.style.display = 'block'
+  const 文本 = `地图大小: ${长} * ${宽} = ${长 * 宽}`
+  if (标签.textContent !== 文本) 标签.textContent = 文本
+  if (标签.style.display !== 'block') 标签.style.display = 'block'
 
   const 间距 = 8
   const 地图矩形 = 地图元素.getBoundingClientRect()
@@ -1358,8 +1359,10 @@ function 同步地图大小标签(地图元素) {
   const x = 右侧x + 标签矩形.width + 间距 <= window.innerWidth ? 右侧x : 内侧x
   const y = 地图矩形.top + 间距
 
-  标签.style.left = `${Math.max(间距, x)}px`
-  标签.style.top = `${Math.max(间距, y)}px`
+  const left = `${Math.max(间距, x)}px`
+  const top = `${Math.max(间距, y)}px`
+  if (标签.style.left !== left) 标签.style.left = left
+  if (标签.style.top !== top) 标签.style.top = top
 }
 
 function 确保地图大小标签() {
