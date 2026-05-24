@@ -865,9 +865,9 @@ html.${基地危险类名}, body.${基地危险类名} {
     background-color: #4a0000 !important;
 }
 @keyframes gio-selected-tile-pulse {
-    0% { opacity: 0.78; transform: scale(0.86); border-color: #25f1ff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.96), inset 0 0 0 2px rgba(255, 255, 255, 0.78), 0 0 9px rgba(37, 241, 255, 0.9) !important; }
-    50% { opacity: 1; transform: scale(1.03); border-color: #ffffff; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.96), inset 0 0 0 2px #25f1ff, 0 0 16px rgba(37, 241, 255, 1) !important; }
-    100% { opacity: 0.78; transform: scale(0.86); border-color: #25f1ff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.96), inset 0 0 0 2px rgba(255, 255, 255, 0.78), 0 0 9px rgba(37, 241, 255, 0.9) !important; }
+    0% { opacity: 0.9; transform: scale(0.94); border-color: #25f1ff; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.98), inset 0 0 0 3px rgba(255, 255, 255, 0.88), 0 0 12px rgba(37, 241, 255, 1) !important; }
+    50% { opacity: 1; transform: scale(1.08); border-color: #ffffff; box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.98), inset 0 0 0 3px #25f1ff, 0 0 22px rgba(37, 241, 255, 1) !important; }
+    100% { opacity: 0.9; transform: scale(0.94); border-color: #25f1ff; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.98), inset 0 0 0 3px rgba(255, 255, 255, 0.88), 0 0 12px rgba(37, 241, 255, 1) !important; }
 }
 #gameMap td.selected, #gameMap td.selected50, #gameMap td[class*='selected-'],
 .tiles-canvas-preview td.selected, .tiles-canvas-preview td.selected50, .tiles-canvas-preview td[class*='selected-'] {
@@ -876,16 +876,30 @@ html.${基地危险类名}, body.${基地危险类名} {
     outline: none !important;
     overflow: visible !important;
 }
+#gameMap td.selected::before, #gameMap td.selected50::before, #gameMap td[class*='selected-']::before,
+.tiles-canvas-preview td.selected::before, .tiles-canvas-preview td.selected50::before, .tiles-canvas-preview td[class*='selected-']::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 8% !important;
+    top: 8% !important;
+    width: 84% !important;
+    height: 84% !important;
+    box-sizing: border-box !important;
+    border-radius: 999px !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.24) 0 34%, rgba(37, 241, 255, 0.2) 35% 48%, transparent 49%) !important;
+}
 #gameMap td.selected::after, #gameMap td.selected50::after, #gameMap td[class*='selected-']::after,
 .tiles-canvas-preview td.selected::after, .tiles-canvas-preview td.selected50::after, .tiles-canvas-preview td[class*='selected-']::after {
     content: '' !important;
     position: absolute !important;
-    left: 14% !important;
-    top: 14% !important;
-    width: 72% !important;
-    height: 72% !important;
+    left: 10% !important;
+    top: 10% !important;
+    width: 80% !important;
+    height: 80% !important;
     box-sizing: border-box !important;
-    border: 2px solid #25f1ff !important;
+    border: 3px solid #25f1ff !important;
     border-radius: 999px !important;
     pointer-events: none !important;
     z-index: 3 !important;
