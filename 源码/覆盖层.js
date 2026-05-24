@@ -27,6 +27,7 @@ import { 清理抢塔提示 } from './功能/抢塔提示.js'
 import { 有未到达视野标记 } from './功能/视野.js'
 
 const 自适应样式编号 = `${样式编号}-adaptive-ui`
+const 地图大小元素编号 = `${样式编号}-map-size`
 let 选中格子索引 = null
 let 已安装选中监听 = false
 
@@ -57,6 +58,7 @@ export function 同步自适应棋盘() {
   地图元素.style.setProperty('--gio-adaptive-map-height', `${尺寸.高}px`)
   宿主.style.setProperty('--gio-adaptive-map-width', `${尺寸.宽}px`)
   宿主.style.setProperty('--gio-adaptive-map-height', `${尺寸.高}px`)
+  同步地图大小标签(地图元素)
 }
 
 export function 清空覆盖层() {
@@ -1246,6 +1248,19 @@ function 安装自适应样式() {
 body:has(#game-page #gameMap.gio-adaptive-map) {
     overflow: hidden !important;
 }
+#${地图大小元素编号} {
+    position: fixed !important;
+    pointer-events: none !important;
+    z-index: 2147483001 !important;
+    display: none;
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
+    background: rgba(0, 0, 0, 0.72) !important;
+    color: #ffffff !important;
+    font: 800 13px/1 Arial, sans-serif !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+    white-space: nowrap !important;
+}
 #game-page #gameMap.gio-adaptive-map {
     transform: scale(var(--gio-adaptive-map-scale, 1)) !important;
     transform-origin: left top !important;
@@ -1319,6 +1334,43 @@ function 请求覆盖层渲染() {
   requestAnimationFrame(() => {
     渲染()
   })
+}
+
+function 同步地图大小标签(地图元素) {
+  const 标签 = 确保地图大小标签()
+  if (!标签) return
+
+  if (!状态.宽度 || !状态.高度) {
+    标签.style.display = 'none'
+    return
+  }
+
+  const 长 = 状态.宽度
+  const 宽 = 状态.高度
+  标签.textContent = `地图大小: ${长} * ${宽} = ${长 * 宽}`
+  标签.style.display = 'block'
+
+  const 间距 = 8
+  const 地图矩形 = 地图元素.getBoundingClientRect()
+  const 标签矩形 = 标签.getBoundingClientRect()
+  const 右侧x = 地图矩形.right + 间距
+  const 内侧x = 地图矩形.right - 标签矩形.width - 间距
+  const x = 右侧x + 标签矩形.width + 间距 <= window.innerWidth ? 右侧x : 内侧x
+  const y = 地图矩形.top + 间距
+
+  标签.style.left = `${Math.max(间距, x)}px`
+  标签.style.top = `${Math.max(间距, y)}px`
+}
+
+function 确保地图大小标签() {
+  const 已有标签 = document.getElementById(地图大小元素编号)
+  if (已有标签) return 已有标签
+  if (!document.body) return null
+
+  const 标签 = document.createElement('div')
+  标签.id = 地图大小元素编号
+  document.body.appendChild(标签)
+  return 标签
 }
 
 function 标记当前棋盘(地图元素, 宿主) {
