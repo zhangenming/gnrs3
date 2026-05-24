@@ -596,29 +596,33 @@ export function 渲染() {
     background-color: ${敌方红色} !important;
 }
 .${战场塔信息类名} {
-    line-height: 1.05 !important;
     text-align: center !important;
     white-space: nowrap !important;
+    color: #000000 !important;
 }
-.${战场塔信息类名}::after {
-    content: attr(data-gio-tower-summary);
-    display: table;
-    margin: 3px auto 0;
-    padding: 1px 6px;
+.${战场塔信息类名} .gio-battle-tower-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 auto;
+    padding: 2px 8px;
     border-radius: 999px;
-    background-color: rgba(0, 0, 0, 0.28);
-    color: #f5f5f5;
-    font: 700 10px/1.2 Arial, sans-serif;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+    background-color: #d8d8d8;
+    color: #000000 !important;
+    font: 700 11px/1.2 Arial, sans-serif;
+    text-shadow: none !important;
 }
-.${战场塔信息类名}[data-gio-tower-diff="advantage"]::after {
+.${战场塔信息类名} .gio-battle-tower-item {
+    color: #000000 !important;
+}
+.${战场塔信息类名} .gio-battle-tower-diff {
+    color: #000000 !important;
+}
+.${战场塔信息类名}[data-gio-tower-diff="advantage"] .gio-battle-tower-diff {
     color: ${我方蓝色};
 }
-.${战场塔信息类名}[data-gio-tower-diff="disadvantage"]::after {
+.${战场塔信息类名}[data-gio-tower-diff="disadvantage"] .gio-battle-tower-diff {
     color: ${敌方红色};
-}
-.${战场塔信息类名}[data-gio-tower-diff="even"]::after {
-    color: #f5f5f5;
 }
 html.${基地危险类名}, body.${基地危险类名} {
     background-color: #4a0000 !important;

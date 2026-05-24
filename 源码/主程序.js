@@ -1,5 +1,6 @@
 import { 状态 } from './状态.js'
 import { 安全执行 } from './工具.js'
+import { 更新战场塔信息 } from './功能/战场塔信息.js'
 import { 更新战场数据差 } from './功能/战场数据差.js'
 import { 暴露调试接口 } from './调试接口.js'
 import { 安装原始兵力文本捕获 } from './功能/原始兵力文本.js'
@@ -33,6 +34,7 @@ function 启动() {
     }
     状态.页面观察器 = new MutationObserver(() => {
       更新大回合倒计时()
+      更新战场塔信息()
       更新战场数据差()
       请求渲染()
     })

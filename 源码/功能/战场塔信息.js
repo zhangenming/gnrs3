@@ -1,0 +1,135 @@
+// 功能目的:
+// 在 generals.io 右侧战场数据表的 Player 列位置显示敌我双方塔数和塔差。
+//
+// 实现原理:
+// 先定位排行榜表头里的 Player 列，再把该表头格替换成独立的塔信息节点。
+// 塔统计使用已维护的塔位置与塔归属记忆，优先反映当前可见归属，并沿用最后一次可见归属补足迷雾中的已知塔。
+// 差值段通过数据属性标记优劣，样式层据此给塔差着蓝色或红色。
+//
+// 作用范围:
+// 只改写排行榜/战场数据表的 Player 表头格内容和样式，不参与地图状态计算。
+import { 战场塔信息类名 } from '../配置.js'
+import { 状态 } from '../状态.js'
+
+export function 更新战场塔信息() {
+  if (!document.body) return
+
+  const 表格 = 取得战场数据表格()
+  if (!表格) return
+
+  const 表头行 = 取得表头行(表格)
+  if (!表头行) return
+
+  const 表头格列表 = 取得单元格列表(表头行)
+  const 玩家列 = 取得玩家列索引(表头格列表)
+  if (玩家列 < 0) return
+
+  const 玩家表头格 = 表头格列表[玩家列]
+  if (!玩家表头格) return
+
+  const { 我方塔数, 敌方塔数 } = 统计塔数()
+  const 塔差 = 我方塔数 - 敌方塔数
+  const 差值状态 = 塔差 > 0 ? 'advantage' : 塔差 < 0 ? 'disadvantage' : 'even'
+  const 差值文本 = 塔差 > 0 ? `+${塔差}` : String(塔差)
+  const 文本 = `敌${敌方塔数} 我${我方塔数} 差${差值文本}`
+
+  if (
+    玩家表头格.classList.contains(战场塔信息类名) &&
+    玩家表头格.dataset.gioTowerSummary === 文本 &&
+    玩家表头格.dataset.gioTowerDiff === 差值状态
+  )
+    return
+
+  玩家表头格.classList.add(战场塔信息类名)
+  玩家表头格.dataset.gioBattlePlayerColumn = 'true'
+  玩家表头格.dataset.gioTowerSummary = 文本
+  玩家表头格.dataset.gioTowerDiff = 差值状态
+  玩家表头格.title = '敌方塔数 / 我方塔数 / 塔差（我方减敌方）'
+  玩家表头格.innerHTML =
+    `<span class="gio-battle-tower-pill">` +
+    `<span class="gio-battle-tower-item">敌${敌方塔数}</span>` +
+    `<span class="gio-battle-tower-item">我${我方塔数}</span>` +
+    `<span class="gio-battle-tower-item">差</span>` +
+    `<span class="gio-battle-tower-diff">${差值文本}</span>` +
+    `</span>`
+
+  function 取得战场数据表格() {
+    const 表格列表 = document.body.querySelectorAll(
+      'table, .leaderboard, #leaderboard',
+    )
+    for (const 当前表格 of 表格列表) {
+      const 文本 = 当前表格.textContent ?? ''
+      if (
+        (文本.includes('Player') ||
+          当前表格.querySelector('[data-gio-battle-player-column="true"]')) &&
+        文本.includes('Army') &&
+        文本.includes('Land')
+      ) {
+        return 当前表格
+      }
+    }
+    return null
+  }
+
+  function 取得表头行(表格元素) {
+    const 行列表 = 表格元素.querySelectorAll('tr')
+    for (const 行 of 行列表) {
+      if (
+        行.querySelector('[data-gio-battle-player-column="true"]') &&
+        是战场数据行(行)
+      ) {
+        return 行
+      }
+
+      const 文本列表 = 取得单元格列表(行).map((单元格) =>
+        (单元格.textContent ?? '').trim(),
+      )
+      if (文本列表.includes('Player') && 是战场数据行(行)) {
+        return 行
+      }
+    }
+    return null
+  }
+
+  function 是战场数据行(行) {
+    const 文本列表 = 取得单元格列表(行).map((单元格) =>
+      (单元格.textContent ?? '').trim(),
+    )
+    return 文本列表.includes('Army') && 文本列表.includes('Land')
+  }
+
+  function 取得单元格列表(行) {
+    return Array.from(行.children).filter((单元格) => {
+      const 标签名 = 单元格.tagName?.toLowerCase() ?? ''
+      return 标签名 === 'td' || 标签名 === 'th'
+    })
+  }
+
+  function 取得玩家列索引(单元格列表) {
+    return 单元格列表.findIndex((单元格) => {
+      if (单元格.dataset.gioBattlePlayerColumn === 'true') return true
+      return (单元格.textContent ?? '').trim() === 'Player'
+    })
+  }
+
+  function 统计塔数() {
+    const 塔索引集合 = new Set()
+    if (Array.isArray(状态.塔列表)) {
+      状态.塔列表.forEach((塔索引) => {
+        if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
+      })
+    }
+    状态.已知塔集合.forEach((塔索引) => {
+      if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
+    })
+
+    let 我方塔数 = 0
+    let 敌方塔数 = 0
+    for (const 塔索引 of 塔索引集合) {
+      const 塔类型 = 状态.已知塔类型.get(塔索引)
+      if (塔类型 === '我方塔') 我方塔数 += 1
+      if (塔类型 === '敌方塔') 敌方塔数 += 1
+    }
+    return { 我方塔数, 敌方塔数 }
+  }
+}
