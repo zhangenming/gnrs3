@@ -29,8 +29,7 @@ import { 有未到达视野标记 } from './功能/视野.js'
 const 自适应样式编号 = `${样式编号}-adaptive-ui`
 const 地图大小元素编号 = `${样式编号}-map-size`
 const 战场面板间距 = 10
-const 战场面板最大宽度 = 360
-const 战场面板最小宽度 = 260
+const 战场面板右侧间距 = 8
 let 选中格子索引 = null
 let 已安装选中监听 = false
 
@@ -1418,14 +1417,13 @@ function 同步战场面板位置(尺寸, 缩放) {
   const 根元素 = document.documentElement
   if (!根元素) return
 
-  const 面板宽 = Math.min(
-    战场面板最大宽度,
-    Math.max(战场面板最小宽度, window.innerWidth - 16),
-  )
   const 地图右侧 = 尺寸.宽 * 缩放
   const 理想左侧 = 地图右侧 + 战场面板间距
-  const 最大左侧 = Math.max(8, window.innerWidth - 面板宽 - 8)
-  const 面板左侧 = Math.min(Math.max(8, 理想左侧), 最大左侧)
+  const 面板左侧 = Math.min(
+    Math.max(8, 理想左侧),
+    window.innerWidth - 战场面板右侧间距,
+  )
+  const 面板宽 = Math.max(0, window.innerWidth - 面板左侧 - 战场面板右侧间距)
   const 面板上侧 = Math.min(Math.max(48, window.innerHeight * 0.09), 72)
 
   根元素.style.setProperty('--gio-battle-panel-left', `${面板左侧}px`)

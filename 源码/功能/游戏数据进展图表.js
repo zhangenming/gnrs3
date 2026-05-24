@@ -183,10 +183,16 @@ function 确保面板() {
   面板.className = 'gio-data-progress-panel'
   面板.title = '每 50 turn 统计一次我方减敌方的 Army 和 Land'
 
-  const 宿主 = 取得右侧宿主()
-  if (宿主) {
+  const 挂载点 = 取得右侧挂载点()
+  if (挂载点) {
     面板.classList.remove('gio-data-progress-floating')
-    if (面板.parentElement !== 宿主) 宿主.appendChild(面板)
+    if (挂载点.表格?.parentElement === 挂载点.宿主) {
+      if (挂载点.表格.nextElementSibling !== 面板) {
+        挂载点.表格.insertAdjacentElement('afterend', 面板)
+      }
+    } else if (面板.parentElement !== 挂载点.宿主) {
+      挂载点.宿主.appendChild(面板)
+    }
   } else if (!状态.游戏数据进展列表.length) {
     面板.remove()
     return null
@@ -199,16 +205,16 @@ function 确保面板() {
   return 面板
 }
 
-function 取得右侧宿主() {
+function 取得右侧挂载点() {
   const 表格 = 取得战场数据表格()
   if (!表格) return null
 
   const 标签名 = 表格.tagName?.toLowerCase() ?? ''
-  if (标签名 !== 'table') return 表格
+  if (标签名 !== 'table') return { 宿主: 表格, 表格: null }
 
   const 宿主 = 表格.parentElement
   if (!宿主 || 宿主 === document.body) return null
-  return 宿主
+  return { 宿主, 表格 }
 }
 
 function 取得战场数据表格() {
@@ -218,15 +224,24 @@ function 取得战场数据表格() {
   for (const 表格 of 表格列表) {
     const 文本 = 表格.textContent ?? ''
     if (
-      文本.includes('Army') &&
-      文本.includes('Land') &&
       (文本.includes('Player') ||
-        表格.querySelector('[data-gio-battle-player-column="true"]'))
+        表格.querySelector('[data-gio-battle-player-column="true"]')) &&
+      是战场数据表格(表格)
     ) {
       return 表格
     }
   }
   return null
+}
+
+function 是战场数据表格(表格) {
+  const 文本 = 表格.textContent ?? ''
+  if (文本.includes('Army') && 文本.includes('Land')) return true
+  return Boolean(
+    表格.querySelector(
+      '[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]',
+    ),
+  )
 }
 
 function 更新面板状态(面板) {
