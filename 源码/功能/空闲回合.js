@@ -8,10 +8,11 @@ import { 状态 } from '../状态.js'
 const 面板类名 = 'gio-idle-turn-panel'
 const 样式编号 = 'gio-idle-turn-style'
 const 位置存储键 = 'gio-idle-turn-panel-position'
+const 空闲记录起始回合 = 50
 
 export function 记录空闲回合操作() {
   const 回合 = 状态.当前回合
-  if (!Number.isInteger(回合) || 回合 < 0) return
+  if (!Number.isInteger(回合) || 回合 < 空闲记录起始回合) return
 
   状态.空闲回合操作集合.add(回合)
   状态.空闲回合集合.delete(回合)
@@ -19,7 +20,7 @@ export function 记录空闲回合操作() {
 }
 
 export function 结算空闲回合(回合) {
-  if (!Number.isInteger(回合) || 回合 < 0) return
+  if (!Number.isInteger(回合) || 回合 < 空闲记录起始回合) return
 
   if (!状态.空闲回合操作集合.has(回合)) {
     状态.空闲回合集合.add(回合)
@@ -44,7 +45,9 @@ export function 更新空闲回合UI() {
   const 面板 = 确保面板()
   if (!面板) return
 
-  const 回合列表 = Array.from(状态.空闲回合集合).sort((左, 右) => 左 - 右)
+  const 回合列表 = Array.from(状态.空闲回合集合)
+    .filter((回合) => 回合 >= 空闲记录起始回合)
+    .sort((左, 右) => 左 - 右)
   const 计数元素 = 面板.querySelector('.gio-idle-turn-count')
   const 列表元素 = 面板.querySelector('.gio-idle-turn-list')
   const 回合文本 = 回合列表.join(',')
