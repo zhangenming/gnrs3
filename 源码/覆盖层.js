@@ -464,49 +464,34 @@ export function 渲染() {
   }
 
   function 画我方基地标记(ctx, x, y, 大小) {
-    const 外扩 = Math.max(4, 大小 * 0.14)
-    const 黑框线宽 = Math.max(5, 大小 * 0.18)
-    const 蓝框线宽 = Math.max(3, 大小 * 0.1)
-    const 黑框偏移 = -外扩 + 黑框线宽 / 2
-    const 蓝框偏移 = -外扩 + 黑框线宽 + 蓝框线宽 / 2
-    const 十字线宽 = Math.max(2.5, 大小 * 0.08)
-    const 十字半径 = Math.max(7, 大小 * 0.26)
+    const 间隙 = Math.max(6, 大小 * 0.18)
+    const 金框线宽 = Math.max(4, 大小 * 0.12)
+    const 高光线宽 = Math.max(2, 大小 * 0.05)
+    const 外框左 = x - 间隙
+    const 外框上 = y - 间隙
+    const 外框大小 = 大小 + 间隙 * 2
 
     ctx.save()
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
+    ctx.shadowBlur = Math.max(2, 大小 * 0.08)
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = Math.max(1, 大小 * 0.03)
 
-    ctx.globalAlpha = 0.24
-    ctx.fillStyle = 我方蓝色
-    ctx.fillRect(x + 1, y + 1, Math.max(1, 大小 - 2), Math.max(1, 大小 - 2))
-    ctx.globalAlpha = 1
+    ctx.lineWidth = 金框线宽
+    ctx.strokeStyle = '#d4af37'
+    ctx.strokeRect(外框左, 外框上, 外框大小, 外框大小)
 
-    ctx.lineWidth = 黑框线宽
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.96)'
+    ctx.shadowColor = 'transparent'
+    ctx.lineWidth = 高光线宽
+    ctx.strokeStyle = 'rgba(255, 240, 170, 0.9)'
     ctx.strokeRect(
-      x + 黑框偏移,
-      y + 黑框偏移,
-      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽),
-      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽),
+      外框左 + 金框线宽 * 0.7,
+      外框上 + 金框线宽 * 0.7,
+      Math.max(1, 外框大小 - 金框线宽 * 1.4),
+      Math.max(1, 外框大小 - 金框线宽 * 1.4),
     )
-
-    ctx.lineWidth = 蓝框线宽
-    ctx.strokeStyle = 我方蓝色
-    ctx.strokeRect(
-      x + 蓝框偏移,
-      y + 蓝框偏移,
-      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽 * 2 - 蓝框线宽),
-      Math.max(1, 大小 + 外扩 * 2 - 黑框线宽 * 2 - 蓝框线宽),
-    )
-
-    ctx.strokeStyle = '#d9efff'
-    ctx.lineWidth = 十字线宽
-    ctx.beginPath()
-    ctx.moveTo(x + 大小 / 2, y + 大小 / 2 - 十字半径)
-    ctx.lineTo(x + 大小 / 2, y + 大小 / 2 + 十字半径)
-    ctx.moveTo(x + 大小 / 2 - 十字半径, y + 大小 / 2)
-    ctx.lineTo(x + 大小 / 2 + 十字半径, y + 大小 / 2)
-    ctx.stroke()
 
     ctx.restore()
   }
