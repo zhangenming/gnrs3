@@ -7,6 +7,7 @@ import { 状态 } from '../状态.js'
 
 const 面板类名 = 'gio-idle-turn-panel'
 const 样式编号 = 'gio-idle-turn-style'
+const 位置存储键 = 'gio-idle-turn-panel-position'
 
 export function 记录空闲回合操作() {
   const 回合 = 状态.当前回合
@@ -89,14 +90,38 @@ export function 更新空闲回合UI() {
         '</div>' +
         '<div class="gio-idle-turn-list"></div>'
     }
+    安装拖动(面板)
 
-    const 宿主 = 取得右侧宿主()
-    if (宿主) {
-      面板.classList.remove('gio-idle-turn-floating')
-      if (面板.parentElement !== 宿主) 宿主.appendChild(面板)
+    const 记忆位置 = 读取记忆位置()
+    if (记忆位置 || 面板.dataset.gioIdlePositioned === 'true') {
+      应用固定位置(
+        面板,
+        记忆位置 ?? {
+          left: Number.parseFloat(面板.style.left),
+          top: Number.parseFloat(面板.style.top),
+        },
+      )
     } else {
-      面板.classList.add('gio-idle-turn-floating')
-      if (面板.parentElement !== document.body) document.body.appendChild(面板)
+      const 宿主 = 取得右侧宿主()
+      if (!宿主) {
+        面板.classList.add('gio-idle-turn-floating')
+        面板.style.left = ''
+        面板.style.top = ''
+        面板.style.right = '12px'
+        面板.style.bottom = '12px'
+        if (面板.parentElement !== document.body)
+          document.body.appendChild(面板)
+        状态.空闲回合面板 = 面板
+        return 面板
+      }
+
+      面板.classList.remove('gio-idle-turn-floating')
+      delete 面板.dataset.gioIdlePositioned
+      面板.style.left = ''
+      面板.style.top = ''
+      面板.style.right = ''
+      面板.style.bottom = ''
+      if (面板.parentElement !== 宿主) 宿主.appendChild(面板)
     }
 
     状态.空闲回合面板 = 面板
@@ -132,6 +157,100 @@ export function 更新空闲回合UI() {
     }
     return null
   }
+
+  function 安装拖动(面板) {
+    if (面板.dataset.gioIdleDragReady === 'true') return
+    面板.dataset.gioIdleDragReady = 'true'
+
+    面板.addEventListener('pointerdown', (事件) => {
+      const 头部 = 事件.target?.closest?.('.gio-idle-turn-head')
+      if (!头部 || 事件.button !== 0) return
+
+      const 起始矩形 = 面板.getBoundingClientRect()
+      const 起始x = 事件.clientX
+      const 起始y = 事件.clientY
+      const 起始左 = 起始矩形.left
+      const 起始上 = 起始矩形.top
+
+      面板.setPointerCapture?.(事件.pointerId)
+      面板.classList.add('gio-idle-turn-dragging')
+      面板.style.width = `${起始矩形.width}px`
+      应用固定位置(面板, { left: 起始左, top: 起始上 })
+      事件.preventDefault()
+
+      function 拖动(移动事件) {
+        const 位置 = 限制位置({
+          left: 起始左 + 移动事件.clientX - 起始x,
+          top: 起始上 + 移动事件.clientY - 起始y,
+        })
+        应用固定位置(面板, 位置)
+      }
+
+      function 结束拖动() {
+        面板.releasePointerCapture?.(事件.pointerId)
+        面板.classList.remove('gio-idle-turn-dragging')
+        保存位置({
+          left: Number.parseFloat(面板.style.left),
+          top: Number.parseFloat(面板.style.top),
+        })
+        window.removeEventListener('pointermove', 拖动, true)
+        window.removeEventListener('pointerup', 结束拖动, true)
+        window.removeEventListener('pointercancel', 结束拖动, true)
+      }
+
+      window.addEventListener('pointermove', 拖动, true)
+      window.addEventListener('pointerup', 结束拖动, true)
+      window.addEventListener('pointercancel', 结束拖动, true)
+    })
+  }
+
+  function 应用固定位置(面板, 位置) {
+    if (面板.parentElement !== document.body) document.body.appendChild(面板)
+
+    const 限制后位置 = 限制位置(位置)
+    面板.classList.add('gio-idle-turn-floating')
+    面板.dataset.gioIdlePositioned = 'true'
+    面板.style.left = `${限制后位置.left}px`
+    面板.style.top = `${限制后位置.top}px`
+    面板.style.right = 'auto'
+    面板.style.bottom = 'auto'
+  }
+
+  function 读取记忆位置() {
+    try {
+      const 文本 = localStorage.getItem(位置存储键)
+      if (!文本) return null
+
+      const 位置 = JSON.parse(文本)
+      if (!Number.isFinite(位置?.left) || !Number.isFinite(位置?.top))
+        return null
+      return 限制位置(位置)
+    } catch {
+      return null
+    }
+  }
+
+  function 保存位置(位置) {
+    if (!Number.isFinite(位置.left) || !Number.isFinite(位置.top)) return
+
+    try {
+      localStorage.setItem(位置存储键, JSON.stringify(限制位置(位置)))
+    } catch {
+      return
+    }
+  }
+
+  function 限制位置(位置) {
+    const 左 = Number.isFinite(位置?.left) ? 位置.left : window.innerWidth - 252
+    const 上 = Number.isFinite(位置?.top) ? 位置.top : window.innerHeight - 120
+    const 最大左 = Math.max(0, window.innerWidth - 48)
+    const 最大上 = Math.max(0, window.innerHeight - 36)
+
+    return {
+      left: Math.min(Math.max(0, 左), 最大左),
+      top: Math.min(Math.max(0, 上), 最大上),
+    }
+  }
 }
 
 function 安装样式() {
@@ -155,9 +274,10 @@ function 安装样式() {
 }
 .${面板类名}.gio-idle-turn-floating {
     position: fixed;
-    right: 12px;
-    bottom: 12px;
     z-index: 2147482999;
+}
+.${面板类名}.gio-idle-turn-dragging {
+    user-select: none;
 }
 .gio-idle-turn-head {
     display: flex;
@@ -165,6 +285,11 @@ function 安装样式() {
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 6px;
+    cursor: grab;
+    touch-action: none;
+}
+.gio-idle-turn-dragging .gio-idle-turn-head {
+    cursor: grabbing;
 }
 .gio-idle-turn-title {
     color: #f7fbff;
