@@ -5,7 +5,7 @@
 // 作用范围:
 // 只改写排行榜/战场数据表的表头格内容和样式，不参与地图状态计算。
 // 会优先根据玩家索引和用户名识别我方与敌方行，并给差值格写入数据属性，供样式层区分优势和劣势。
-import { 战场数据差类名 } from '../配置.js'
+import { 我方蓝色, 战场数据差类名, 敌方红色 } from '../配置.js'
 import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 
@@ -173,6 +173,11 @@ export function 更新战场数据差() {
     if (!单元格 || !Number.isFinite(差值)) return
     const 文本 = 差值 > 0 ? `+${差值}` : String(差值)
     const 差值状态 = 差值 >= 0 ? 'advantage' : 'disadvantage'
+    const 背景色 = 差值 >= 0 ? 我方蓝色 : 敌方红色
+    单元格.style.backgroundColor = 背景色
+    单元格.style.color = '#ffffff'
+    单元格.style.fontWeight = '800'
+    单元格.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.85)'
     if (
       单元格.textContent === 文本 &&
       单元格.classList.contains(战场数据差类名) &&
