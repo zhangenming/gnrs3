@@ -47,6 +47,8 @@ export function 更新战场数据差() {
 
   const 我方格列表 = 取得单元格列表(我方行)
   const 敌方格列表 = 取得单元格列表(敌方行)
+  更新玩家数据快照(玩家行列表)
+  恢复冻结玩家数据(玩家行列表)
   更新差值格(
     表头格列表[兵力列],
     读取数字(我方格列表[兵力列]) - 读取数字(敌方格列表[兵力列]),
@@ -184,6 +186,52 @@ export function 更新战场数据差() {
   function 读取数字(单元格) {
     const 数字 = Number.parseInt((单元格?.textContent ?? '').trim(), 10)
     return Number.isFinite(数字) ? 数字 : 0
+  }
+
+  function 更新玩家数据快照(玩家行列表) {
+    if (状态.战场数据已冻结) return
+
+    const 快照 = new Map()
+    for (const 行 of 玩家行列表) {
+      const 单元格列表 = 取得单元格列表(行)
+      const 玩家名 = (单元格列表[玩家列]?.textContent ?? '').trim()
+      if (!玩家名) continue
+
+      const 兵力文本 = 读取数字文本(单元格列表[兵力列])
+      const 陆地文本 = 读取数字文本(单元格列表[陆地列])
+      if (!兵力文本 || !陆地文本) continue
+
+      快照.set(玩家名, {
+        兵力文本,
+        陆地文本,
+      })
+    }
+
+    if (快照.size >= 2) 状态.战场数据快照 = 快照
+  }
+
+  function 恢复冻结玩家数据(玩家行列表) {
+    if (!状态.战场数据已冻结 || !状态.战场数据快照) return
+
+    for (const 行 of 玩家行列表) {
+      const 单元格列表 = 取得单元格列表(行)
+      const 玩家名 = (单元格列表[玩家列]?.textContent ?? '').trim()
+      const 快照 = 状态.战场数据快照.get(玩家名)
+      if (!快照) continue
+
+      写入冻结文本(单元格列表[兵力列], 快照.兵力文本)
+      写入冻结文本(单元格列表[陆地列], 快照.陆地文本)
+    }
+  }
+
+  function 读取数字文本(单元格) {
+    const 文本 = (单元格?.textContent ?? '').trim()
+    return /^\d+$/.test(文本) ? 文本 : ''
+  }
+
+  function 写入冻结文本(单元格, 文本) {
+    if (!单元格 || !文本 || 单元格.textContent === 文本) return
+    单元格.textContent = 文本
   }
 
   function 更新差值格(单元格, 差值, 类型) {

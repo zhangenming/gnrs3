@@ -19,6 +19,8 @@ export const 状态 = {
   当前回合: null,
   大回合倒计时元素: null,
   上次大回合倒计时文本: '',
+  战场数据已冻结: false,
+  战场数据快照: null,
   我方索引: null,
   玩家名列表: null,
   队伍: null,
