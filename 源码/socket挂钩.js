@@ -135,6 +135,7 @@ export function 挂钩socket(socket, 请求渲染) {
     状态.基地被敌发现 = false
     清除抢塔提示()
     状态.已到达视野集合.clear()
+    状态.已知障碍物集合.clear()
     状态.地图数组 = null
     状态.原始兵力文本.clear()
     状态.兵力分布着色列表 = []

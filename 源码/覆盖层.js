@@ -42,6 +42,7 @@ export function 渲染() {
     !状态.已知塔集合.size &&
     !状态.已知敌方基地集合.size &&
     !Number.isInteger(状态.我方基地索引) &&
+    !状态.已知障碍物集合.size &&
     !状态.移动队列.length &&
     !状态.敌方移动高亮列表.length &&
     !状态.抢塔提示列表.length &&
@@ -72,6 +73,7 @@ export function 渲染() {
   const 动画时间 = performance.now()
 
   画未到达视野背景()
+  画障碍物()
   画兵力分布着色()
   画操作轨迹(ctx, 格宽, 格高, 大小)
   画敌方移动高亮(ctx, 格宽, 格高, 大小)
@@ -133,6 +135,28 @@ export function 渲染() {
       const 列 = idx % 状态.宽度
       ctx.fillRect(列 * 格宽, 行 * 格高, 格宽, 格高)
     }
+    ctx.restore()
+  }
+
+  function 画障碍物() {
+    if (!状态.已知障碍物集合.size) return
+
+    const 格子数 = 状态.宽度 * 状态.高度
+
+    ctx.save()
+    ctx.fillStyle = '#000000'
+    状态.已知障碍物集合.forEach((障碍物索引) => {
+      if (
+        !Number.isInteger(障碍物索引) ||
+        障碍物索引 < 0 ||
+        障碍物索引 >= 格子数
+      ) {
+        return
+      }
+      const 行 = Math.floor(障碍物索引 / 状态.宽度)
+      const 列 = 障碍物索引 % 状态.宽度
+      ctx.fillRect(列 * 格宽, 行 * 格高, 格宽, 格高)
+    })
     ctx.restore()
   }
 
