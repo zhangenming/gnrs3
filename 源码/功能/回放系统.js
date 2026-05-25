@@ -105,9 +105,11 @@ export function 安装回放快捷键(请求渲染) {
 
       if (事件.key === 'a' || 事件.key === 'A') {
         事件.preventDefault()
+        事件.stopImmediatePropagation()
         移动回放帧(-1, 请求渲染)
       } else if (事件.key === 'd' || 事件.key === 'D') {
         事件.preventDefault()
+        事件.stopImmediatePropagation()
         移动回放帧(1, 请求渲染)
       }
     },

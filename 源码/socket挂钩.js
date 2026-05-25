@@ -54,6 +54,7 @@ export function 挂钩socket(socket, 请求渲染) {
     const 原emit = socket.emit
     socket.__塔记忆emit已挂钩 = true
     socket.emit = function (事件名, ...参数) {
+      if (状态.回放已结束 && 是移动操作事件(事件名)) return this
       安全执行('emit出站操作记录', () => {
         if (事件名 === 'attack') {
           记录移动操作(参数[0], 参数[1], 参数[2], 参数[3], 请求渲染)
@@ -144,6 +145,12 @@ export function 挂钩socket(socket, 请求渲染) {
 
   function 延后执行(事件, 函数体) {
     setTimeout(() => 安全执行(事件, 函数体), 0)
+  }
+
+  function 是移动操作事件(事件名) {
+    return (
+      事件名 === 'attack' || 事件名 === 'undo_move' || 事件名 === 'clear_moves'
+    )
   }
 
   function 预处理入站事件(事件名, 数据包) {
