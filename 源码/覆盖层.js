@@ -686,6 +686,7 @@ export function 渲染() {
   }
 
   function 画基地标记(ctx, x, y, 大小) {
+    const 主色 = '#f6c945'
     const 外扩 = Math.max(6, 大小 * 0.18)
     const 外框左 = x - 外扩
     const 外框上 = y - 外扩
@@ -704,7 +705,9 @@ export function 渲染() {
     ctx.shadowOffsetX = 0
     ctx.shadowOffsetY = Math.max(1, 大小 * 0.03)
 
-    ctx.fillStyle = '#d9b43b'
+    画基地旋转框()
+
+    ctx.fillStyle = 主色
     ctx.fillRect(外框左, 外框上, 外框大小, 外框大小)
 
     ctx.shadowColor = 'transparent'
@@ -717,6 +720,44 @@ export function 渲染() {
     ctx.strokeRect(高光左, 高光上, 高光大小, 高光大小)
 
     ctx.restore()
+
+    function 画基地旋转框() {
+      const 中心X = x + 大小 / 2
+      const 中心Y = y + 大小 / 2
+      const 扩张 = Math.max(3, 大小 * 0.14)
+      const 框大小 = 大小 + 扩张 * 2
+      const 角长 = Math.max(8, 大小 * 0.34)
+      const 线宽 = Math.max(3, 大小 * 0.1)
+      const 左 = 中心X - 框大小 / 2
+      const 上 = 中心Y - 框大小 / 2
+      const 右 = 左 + 框大小
+      const 下 = 上 + 框大小
+      const 角度 = (当前动画时间 / 1400) * Math.PI * 2
+
+      ctx.save()
+      ctx.translate(中心X, 中心Y)
+      ctx.rotate(角度)
+      ctx.translate(-中心X, -中心Y)
+      ctx.lineWidth = 线宽
+      ctx.strokeStyle = 主色
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
+      ctx.shadowBlur = Math.max(2, 大小 * 0.08)
+      ctx.beginPath()
+      ctx.moveTo(左, 上 + 角长)
+      ctx.lineTo(左, 上)
+      ctx.lineTo(左 + 角长, 上)
+      ctx.moveTo(右 - 角长, 上)
+      ctx.lineTo(右, 上)
+      ctx.lineTo(右, 上 + 角长)
+      ctx.moveTo(右, 下 - 角长)
+      ctx.lineTo(右, 下)
+      ctx.lineTo(右 - 角长, 下)
+      ctx.moveTo(左 + 角长, 下)
+      ctx.lineTo(左, 下)
+      ctx.lineTo(左, 下 - 角长)
+      ctx.stroke()
+      ctx.restore()
+    }
   }
 
   function 画基地模拟兵力(ctx, 基地索引, x, y, 大小) {
