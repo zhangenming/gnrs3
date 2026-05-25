@@ -20,6 +20,8 @@ const 行动类型列表 = ['空闲', '集兵', '扩地(开塔)', '抢地(抢塔
 const 行动优先级表 = new Map(
   行动类型列表.map((行动类型, idx) => [行动类型, idx]),
 )
+let 我方行动监控数据版本 = 0
+let 已请求更新我方行动监控UI = false
 
 export function 更新我方行动地图判断(
   旧地图数组,
@@ -163,6 +165,7 @@ export function 结算我方行动回合(回合) {
 
   if (!状态.我方行动类型表.has(回合)) {
     状态.我方行动类型表.set(回合, '空闲')
+    我方行动监控数据版本 += 1
   }
   更新我方行动监控UI()
 }
@@ -173,10 +176,20 @@ export function 结算当前我方行动回合() {
 
 export function 重置我方行动监控() {
   状态.我方行动类型表.clear()
+  我方行动监控数据版本 += 1
   更新我方行动监控UI()
 }
 
 export function 更新我方行动监控UI() {
+  if (已请求更新我方行动监控UI) return
+  已请求更新我方行动监控UI = true
+  requestAnimationFrame(() => {
+    已请求更新我方行动监控UI = false
+    同步我方行动监控UI()
+  })
+}
+
+function 同步我方行动监控UI() {
   if (!document.body) return
   if (!document.querySelector('#game-page #gameMap')) {
     状态.我方行动监控面板?.remove()
@@ -198,10 +211,9 @@ export function 更新我方行动监控UI() {
 
   const { 画布, 空状态 } = 确保画布列表(列表元素)
   const 画布宽 = 取得画布CSS宽(列表元素)
-  const 回合文本 = 回合状态列表
-    .map((回合状态) => `${回合状态.回合}:${回合状态.行动类型}`)
-    .join(',')
-  const 绘制签名 = `${画布宽}:${回合文本}`
+  const 最大已确认回合 =
+    回合状态列表[回合状态列表.length - 1]?.回合 ?? 监控起始回合 - 1
+  const 绘制签名 = `${画布宽}:${最大已确认回合}:${我方行动监控数据版本}`
 
   if (面板.dataset.gioActionWatchTurns === 绘制签名) return
   面板.dataset.gioActionWatchTurns = 绘制签名
@@ -465,6 +477,7 @@ function 设置我方行动类型(回合, 行动类型) {
   if (旧优先级 > 新优先级) return
 
   状态.我方行动类型表.set(回合, 行动类型)
+  我方行动监控数据版本 += 1
   更新我方行动监控UI()
 }
 

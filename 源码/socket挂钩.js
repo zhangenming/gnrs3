@@ -49,6 +49,9 @@ export function 挂钩socket(socket, 请求渲染) {
   if (!socket || socket.__塔记忆已挂钩) return
   socket.__塔记忆已挂钩 = true
   状态.socket已挂钩 = true
+  const 使用emitEvent预处理 = typeof socket.emitEvent === 'function'
+  const 使用入站预处理 =
+    使用emitEvent预处理 || typeof socket.onevent === 'function'
 
   if (typeof socket.emit === 'function' && !socket.__塔记忆emit已挂钩) {
     const 原emit = socket.emit
@@ -68,7 +71,11 @@ export function 挂钩socket(socket, 请求渲染) {
     }
   }
 
-  if (typeof socket.onevent === 'function' && !socket.__塔记忆onevent已挂钩) {
+  if (
+    !使用emitEvent预处理 &&
+    typeof socket.onevent === 'function' &&
+    !socket.__塔记忆onevent已挂钩
+  ) {
     const 原onevent = socket.onevent
     socket.__塔记忆onevent已挂钩 = true
     socket.onevent = function (包) {
@@ -80,10 +87,7 @@ export function 挂钩socket(socket, 请求渲染) {
     }
   }
 
-  if (
-    typeof socket.emitEvent === 'function' &&
-    !socket.__塔记忆emitEvent已挂钩
-  ) {
+  if (使用emitEvent预处理 && !socket.__塔记忆emitEvent已挂钩) {
     const 原emitEvent = socket.emitEvent
     socket.__塔记忆emitEvent已挂钩 = true
     socket.emitEvent = function (参数列表) {
@@ -95,12 +99,14 @@ export function 挂钩socket(socket, 请求渲染) {
   }
 
   socket.on('game_start', (数据包) => {
-    安全执行('game_start回合倒计时', () => {
-      记录回合(数据包 ?? {})
-    })
-    安全执行('game_start颜色重构', () => {
-      重构玩家颜色(数据包 ?? {})
-    })
+    if (!使用入站预处理) {
+      安全执行('game_start回合倒计时', () => {
+        记录回合(数据包 ?? {})
+      })
+      安全执行('game_start颜色重构', () => {
+        重构玩家颜色(数据包 ?? {})
+      })
+    }
     延后执行('game_start', () => {
       重置本局(数据包 ?? {})
       处理塔位置(数据包 ?? {}, 请求渲染)
@@ -110,12 +116,14 @@ export function 挂钩socket(socket, 请求渲染) {
   })
 
   socket.on('game_update', (数据包) => {
-    安全执行('game_update回合倒计时', () => {
-      记录回合(数据包 ?? {})
-    })
-    安全执行('game_update颜色重构', () => {
-      重构玩家颜色(数据包 ?? {})
-    })
+    if (!使用入站预处理) {
+      安全执行('game_update回合倒计时', () => {
+        记录回合(数据包 ?? {})
+      })
+      安全执行('game_update颜色重构', () => {
+        重构玩家颜色(数据包 ?? {})
+      })
+    }
     延后执行('game_update', () => {
       const 已处理我方移动列表 = 按攻击序号清理移动队列(
         数据包?.attackIndex,

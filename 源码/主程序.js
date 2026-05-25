@@ -96,8 +96,12 @@ function 启动() {
 
     function 页面变化需要同步(变动列表) {
       return 变动列表.some((变动) => {
-        if (节点需要同步(变动.target)) return true
-        return [...变动.addedNodes, ...变动.removedNodes].some(节点需要同步)
+        const 变动节点列表 = [...变动.addedNodes, ...变动.removedNodes]
+        if (变动节点列表.length) {
+          if (变动节点列表.some(节点需要同步)) return true
+          if (变动节点列表.every(节点属于插件)) return false
+        }
+        return 节点需要同步(变动.target)
       })
     }
 
@@ -113,6 +117,11 @@ function 启动() {
     function 取得元素节点(节点) {
       if (节点 instanceof Element) return 节点
       return 节点?.parentElement ?? null
+    }
+
+    function 节点属于插件(节点) {
+      const 元素 = 取得元素节点(节点)
+      return Boolean(元素 && 是插件节点(元素))
     }
 
     function 是插件节点(元素) {
