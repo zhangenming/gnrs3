@@ -37,18 +37,22 @@ export function 撤销移动操作(请求渲染) {
 }
 
 export function 按攻击序号清理移动队列(攻击序号, 请求渲染) {
-  if (!Number.isInteger(攻击序号)) return
+  if (!Number.isInteger(攻击序号)) return []
   const 原长度 = 状态.移动队列.length
-  if (!原长度) return
+  if (!原长度) return []
 
+  const 已处理移动列表 = []
   状态.移动队列 = 状态.移动队列.filter((移动) => {
-    return !Number.isInteger(移动.攻击序号) || 移动.攻击序号 > 攻击序号
+    const 已处理 = Number.isInteger(移动.攻击序号) && 移动.攻击序号 <= 攻击序号
+    if (已处理) 已处理移动列表.push(移动)
+    return !已处理
   })
 
   if (状态.移动队列.length !== 原长度) {
     重算兵力分布着色('按攻击序号清理移动队列')
     请求渲染()
   }
+  return 已处理移动列表
 }
 
 export function 清空移动队列(来源, 请求渲染) {

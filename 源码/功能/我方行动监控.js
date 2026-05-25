@@ -2,7 +2,7 @@
 // 总结每个 turn 我方的行动类型，并在右侧显示已经确认的行动监控。
 //
 // 作用范围:
-// 读取本地 socket 出站事件、当前回合、地图归属差分和塔记忆。
+// 读取服务器确认的本地移动、当前回合、地图归属差分和塔记忆。
 // 只维护本地行动记录与页面面板，真实游戏操作队列由原 socket 流程处理。
 import { 大回合turn数 } from '../配置.js'
 import { 是我方或队友 } from '../游戏.js'
@@ -13,19 +13,19 @@ const 画布类名 = 'gio-action-watch-canvas'
 const 样式编号 = 'gio-action-watch-style'
 const 监控起始回合 = 50
 const 每行回合数 = 25
+const 塔基地自然增长turn数 = 2
+const 阻挡地形集合 = new Set([-2, -4, -5, -6])
 const 行动类型列表 = ['空闲', '集兵', '扩地(开塔)', '抢地(抢塔)']
 const 行动优先级表 = new Map(
   行动类型列表.map((行动类型, idx) => [行动类型, idx]),
 )
 
-export function 记录我方行动操作(目标索引) {
-  const 回合 = 状态.当前回合
-  if (!Number.isInteger(回合) || 回合 < 监控起始回合) return
-
-  设置我方行动类型(回合, 取得攻击行动类型(目标索引))
-}
-
-export function 更新我方行动地图判断(旧地图数组, 新地图数组, 数据包) {
+export function 更新我方行动地图判断(
+  旧地图数组,
+  新地图数组,
+  数据包,
+  已处理我方移动列表 = [],
+) {
   const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn - 1 : 状态.当前回合
   if (!Number.isInteger(回合) || 回合 < 监控起始回合) return
   if (!Array.isArray(旧地图数组) || !Array.isArray(新地图数组)) return
@@ -39,6 +39,12 @@ export function 更新我方行动地图判断(旧地图数组, 新地图数组,
     return
   }
 
+  const 真实行动类型 = 取得已处理移动行动类型()
+  if (真实行动类型) {
+    设置我方行动类型(回合, 真实行动类型)
+    return
+  }
+
   for (let idx = 0; idx < 格子数; idx += 1) {
     const 旧归属 = 旧地图数组[2 + 格子数 + idx]
     const 新归属 = 新地图数组[2 + 格子数 + idx]
@@ -48,7 +54,7 @@ export function 更新我方行动地图判断(旧地图数组, 新地图数组,
       设置我方行动类型(回合, '抢地(抢塔)')
       return
     }
-    if (旧归属 === -1) {
+    if (是中立或迷雾地(旧归属)) {
       设置我方行动类型(回合, '扩地(开塔)')
     }
   }
@@ -59,6 +65,95 @@ export function 更新我方行动地图判断(旧地图数组, 新地图数组,
 
   function 是敌方格(归属) {
     return Number.isInteger(归属) && 归属 >= 0 && !是我方或队友(归属)
+  }
+
+  function 是中立或迷雾地(归属) {
+    return Number.isInteger(归属) && 归属 < 0 && !阻挡地形集合.has(归属)
+  }
+
+  function 取得已处理移动行动类型() {
+    if (!Array.isArray(已处理我方移动列表) || !已处理我方移动列表.length) {
+      return null
+    }
+
+    let 行动类型 = null
+    for (const 移动 of 已处理我方移动列表) {
+      if (!移动产生实际变化(移动)) continue
+      const 移动行动类型 = 取得移动行动类型(移动.终点)
+      行动类型 = 取得更高优先级行动类型(行动类型, 移动行动类型)
+    }
+    return 行动类型
+  }
+
+  function 移动产生实际变化(移动) {
+    if (取得可移动兵力(移动) <= 0) return false
+
+    return [移动?.起点, 移动?.终点].some((格子索引) => {
+      if (!Number.isInteger(格子索引) || 格子索引 < 0 || 格子索引 >= 格子数) {
+        return false
+      }
+
+      const 旧兵力 = 旧地图数组[2 + 格子索引]
+      const 新兵力 = 新地图数组[2 + 格子索引]
+      const 旧归属 = 旧地图数组[2 + 格子数 + 格子索引]
+      const 新归属 = 新地图数组[2 + 格子数 + 格子索引]
+      if (旧归属 !== 新归属) return true
+      if (!Number.isInteger(旧兵力) || !Number.isInteger(新兵力)) {
+        return 旧兵力 !== 新兵力
+      }
+
+      return 新兵力 - 旧兵力 !== 取得自然增长(格子索引, 新归属)
+    })
+  }
+
+  function 取得可移动兵力(移动) {
+    const 起点 = 移动?.起点
+    if (!Number.isInteger(起点) || 起点 < 0 || 起点 >= 格子数) return 0
+
+    const 起点兵力 = 旧地图数组[2 + 起点]
+    const 起点归属 = 旧地图数组[2 + 格子数 + 起点]
+    if (!Number.isInteger(起点兵力) || !是我方格(起点归属)) return 0
+
+    const 留守兵力 = 移动.是否半兵 ? Math.ceil(起点兵力 / 2) : 1
+    return Math.max(0, 起点兵力 - 留守兵力)
+  }
+
+  function 取得自然增长(格子索引, 归属) {
+    if (!Number.isInteger(归属) || 归属 < 0) return 0
+
+    let 增长 = 0
+    if (状态.已知塔集合.has(格子索引) || 状态.已知基地集合.has(格子索引)) {
+      增长 += 取得周期增长次数(回合, 回合 + 1, 塔基地自然增长turn数)
+    }
+    增长 += 取得周期增长次数(回合, 回合 + 1, 大回合turn数)
+    return 增长
+  }
+
+  function 取得周期增长次数(起始回合, 目标回合, 周期) {
+    return Math.floor(目标回合 / 周期) - Math.floor(起始回合 / 周期)
+  }
+
+  function 取得移动行动类型(目标索引) {
+    if (!Number.isInteger(目标索引) || 目标索引 < 0) return '集兵'
+
+    const 塔类型 = 状态.已知塔类型.get(目标索引)
+    if (塔类型 === '中立塔') return '扩地(开塔)'
+    if (塔类型 === '敌方塔') return '抢地(抢塔)'
+
+    if (目标索引 >= 格子数) return '集兵'
+
+    const 旧归属 = 旧地图数组[2 + 格子数 + 目标索引]
+    if (是中立或迷雾地(旧归属)) return '扩地(开塔)'
+    if (Number.isInteger(旧归属) && 旧归属 >= 0 && !是我方或队友(旧归属)) {
+      return '抢地(抢塔)'
+    }
+    return '集兵'
+  }
+
+  function 取得更高优先级行动类型(左行动类型, 右行动类型) {
+    const 左优先级 = 行动优先级表.get(左行动类型) ?? -1
+    const 右优先级 = 行动优先级表.get(右行动类型) ?? -1
+    return 右优先级 > 左优先级 ? 右行动类型 : 左行动类型
   }
 }
 
@@ -397,27 +492,6 @@ function 设置我方行动类型(回合, 行动类型) {
 
   状态.我方行动类型表.set(回合, 行动类型)
   更新我方行动监控UI()
-}
-
-function 取得攻击行动类型(目标索引) {
-  if (!Number.isInteger(目标索引) || 目标索引 < 0) return '集兵'
-
-  const 塔类型 = 状态.已知塔类型.get(目标索引)
-  if (塔类型 === '中立塔') return '扩地(开塔)'
-  if (塔类型 === '敌方塔') return '抢地(抢塔)'
-
-  const 地图数组 = 状态.地图数组
-  if (!Array.isArray(地图数组) || !状态.宽度 || !状态.高度) return '集兵'
-
-  const 格子数 = 状态.宽度 * 状态.高度
-  if (目标索引 >= 格子数 || 地图数组.length < 2 + 格子数 * 2) return '集兵'
-
-  const 归属 = 地图数组[2 + 格子数 + 目标索引]
-  if (归属 === -1) return '扩地(开塔)'
-  if (Number.isInteger(归属) && 归属 >= 0 && !是我方或队友(归属)) {
-    return '抢地(抢塔)'
-  }
-  return '集兵'
 }
 
 function 安装样式() {
