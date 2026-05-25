@@ -68,6 +68,7 @@ function 启动() {
     window.addEventListener('resize', 同步回放元素, { passive: true })
 
     function 禁止滚轮缩放(事件) {
+      if (!document.querySelector('#game-page #gameMap')) return
       事件.preventDefault()
       事件.stopImmediatePropagation()
       请求渲染()

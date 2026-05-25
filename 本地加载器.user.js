@@ -32,6 +32,7 @@ void import('http://127.0.0.1:48291/源码/主程序.js').catch((错误) => {
 })
 
 function 禁止滚轮缩放(事件) {
+  if (!document.querySelector('#game-page #gameMap')) return
   事件.preventDefault()
   事件.stopImmediatePropagation()
 }
