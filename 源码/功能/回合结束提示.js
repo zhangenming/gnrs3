@@ -1,5 +1,5 @@
 // 功能目的:
-// 在大回合快结束时显示醒目的固定提示，避免战斗中错过全图兵力+1的时机。
+// 在鼠标右下角显示大回合倒计时，避免战斗中错过全图兵力+1的时机。
 //
 // 作用范围:
 // 只读取当前大回合倒计时并维护一个页面提示，不影响游戏数据和操作队列。
@@ -7,15 +7,19 @@ import { 样式编号 } from '../配置.js'
 
 const 回合结束提示元素编号 = 'gio-turn-end-alert'
 const 回合结束提示样式编号 = `${样式编号}-turn-end-alert`
-const 提前提示turn数 = 20
-const 紧急提示turn数 = 6
+const 警告turn数 = 10
+const 紧急turn数 = 5
+const 鼠标偏移像素 = 14
+
+let 鼠标X = 24
+let 鼠标Y = 24
+let 已安装鼠标监听 = false
 
 export function 更新回合结束提示(倒计时) {
   if (!document.body) return
 
   if (
     !Number.isInteger(倒计时) ||
-    倒计时 >= 提前提示turn数 ||
     !document.querySelector('#game-page #gameMap')
   ) {
     清除回合结束提示()
@@ -23,36 +27,33 @@ export function 更新回合结束提示(倒计时) {
   }
 
   安装样式()
+  安装鼠标监听()
   const 元素 = 确保提示元素()
   if (!元素) return
 
-  const 是结算回合 = 倒计时 === 0
-  const 是紧急 = 倒计时 <= 紧急提示turn数
-  const 主文本 = 是结算回合 ? '大回合结算' : '大回合快结束'
-  const 数字文本 = 是结算回合 ? '+1' : 格式化剩余回合(倒计时)
-  const 单位文本 = 是结算回合 ? '全图' : '回合'
-  const 签名 = `${主文本}:${数字文本}:${单位文本}:${是紧急}`
+  const 提示级别 = 取得提示级别(倒计时)
+  const 签名 = `${倒计时}:${提示级别}`
 
   if (元素.dataset.gioTurnEndAlert !== 签名) {
-    元素.innerHTML =
-      `<span class="gio-turn-end-alert-label">${主文本}</span>` +
-      `<span class="gio-turn-end-alert-count">${数字文本}</span>` +
-      `<span class="gio-turn-end-alert-unit">${单位文本}</span>`
+    元素.textContent = String(倒计时)
     元素.dataset.gioTurnEndAlert = 签名
   }
 
-  元素.classList.toggle('gio-turn-end-alert-urgent', 是紧急)
-  元素.title = 是结算回合
-    ? '大回合结算：所有位置兵力+1，塔和基地本回合共+2'
-    : `距离大回合结算还剩 ${数字文本} 回合（${倒计时} turn）`
-
-  function 格式化剩余回合(倒计时) {
-    const 剩余回合 = 倒计时 / 2
-    return Number.isInteger(剩余回合) ? String(剩余回合) : 剩余回合.toFixed(1)
-  }
+  元素.dataset.level = 提示级别
+  元素.title =
+    倒计时 === 0
+      ? '大回合结算：所有位置兵力+1，塔和基地本回合共+2'
+      : `距离大回合结算还剩 ${倒计时} turn`
+  更新提示位置(元素)
 
   function 清除回合结束提示() {
     document.getElementById(回合结束提示元素编号)?.remove()
+  }
+
+  function 取得提示级别(倒计时) {
+    if (倒计时 < 紧急turn数) return 'danger'
+    if (倒计时 < 警告turn数) return 'warning'
+    return 'normal'
   }
 
   function 确保提示元素() {
@@ -65,6 +66,31 @@ export function 更新回合结束提示(倒计时) {
     return 元素
   }
 
+  function 安装鼠标监听() {
+    if (已安装鼠标监听) return
+    已安装鼠标监听 = true
+    window.addEventListener(
+      'pointermove',
+      (事件) => {
+        鼠标X = 事件.clientX
+        鼠标Y = 事件.clientY
+        const 元素 = document.getElementById(回合结束提示元素编号)
+        if (元素) 更新提示位置(元素)
+      },
+      { passive: true },
+    )
+  }
+
+  function 更新提示位置(元素) {
+    const 宽 = 元素.offsetWidth || 44
+    const 高 = 元素.offsetHeight || 32
+    const 最大X = Math.max(0, window.innerWidth - 宽 - 4)
+    const 最大Y = Math.max(0, window.innerHeight - 高 - 4)
+    const 左 = Math.min(鼠标X + 鼠标偏移像素, 最大X)
+    const 上 = Math.min(鼠标Y + 鼠标偏移像素, 最大Y)
+    元素.style.transform = `translate(${左}px, ${上}px)`
+  }
+
   function 安装样式() {
     if (!document.documentElement) return
     if (document.getElementById(回合结束提示样式编号)) return
@@ -75,57 +101,38 @@ export function 更新回合结束提示(倒计时) {
 #${回合结束提示元素编号} {
     box-sizing: border-box;
     position: fixed;
-    top: 10px;
-    right: 12px;
+    top: 0;
+    left: 0;
     z-index: 2147483201;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    width: min(340px, calc(100vw - 24px));
-    min-height: 44px;
-    padding: 6px 12px;
-    border: 2px solid rgba(255, 255, 255, 0.96);
-    border-radius: 6px;
-    background: linear-gradient(90deg, #8f3200, #d86c00 52%, #ffbd3a);
+    min-width: 36px;
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 4px;
+    background: rgba(16, 18, 22, 0.88);
     color: #ffffff;
-    font: 900 16px/1 Arial, sans-serif;
+    font: 900 18px/1 Arial, sans-serif;
     letter-spacing: 0;
     text-align: center;
-    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.88);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42), 0 0 18px rgba(255, 135, 0, 0.72);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.96);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.36);
     pointer-events: none;
-    animation: gio-turn-end-alert-pulse 820ms ease-in-out infinite;
+    will-change: transform;
 }
-body:has(#game-page #gameMap.gio-adaptive-map) #${回合结束提示元素编号} {
-    top: max(8px, calc(var(--gio-battle-panel-top, 64px) - 50px));
-    right: auto;
-    left: var(--gio-battle-panel-left, 12px);
-    width: min(340px, max(220px, var(--gio-battle-panel-width, 340px)));
-    max-width: calc(100vw - var(--gio-battle-panel-left, 12px) - 8px);
+#${回合结束提示元素编号}[data-level='warning'] {
+    background: rgba(214, 163, 0, 0.94);
+    color: #fff4a8;
+    border-color: rgba(255, 242, 150, 0.9);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.36), 0 0 12px rgba(255, 211, 0, 0.45);
 }
-#${回合结束提示元素编号}.gio-turn-end-alert-urgent {
-    background: linear-gradient(90deg, #7f0000, #e00000 54%, #ff4a2c);
-    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.48), 0 0 24px rgba(255, 0, 0, 0.86);
-    animation-duration: 460ms;
-}
-.gio-turn-end-alert-label,
-.gio-turn-end-alert-unit {
-    flex: 0 1 auto;
-    min-width: 0;
-    white-space: nowrap;
-}
-.gio-turn-end-alert-count {
-    flex: 0 0 auto;
-    min-width: 42px;
-    font: 900 30px/0.9 Arial, sans-serif;
-}
-.gio-turn-end-alert-unit {
-    font-size: 13px;
-}
-@keyframes gio-turn-end-alert-pulse {
-    0%, 100% { transform: scale(1); filter: brightness(1); }
-    50% { transform: scale(1.045); filter: brightness(1.16); }
+#${回合结束提示元素编号}[data-level='danger'] {
+    background: rgba(206, 23, 23, 0.96);
+    color: #ffffff;
+    border-color: rgba(255, 182, 182, 0.92);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 14px rgba(255, 35, 35, 0.58);
 }
 `.trim()
     document.documentElement.appendChild(样式)
