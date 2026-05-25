@@ -5,9 +5,8 @@
 // 通过挂钩 CanvasRenderingContext2D 的 fillText、strokeText 和 clearRect 记录/清理兵力文本。
 // 覆盖层绘制高兵力地块时会复用这些原始数字，避免辅助标记遮住后看不清实际兵力。
 import { 状态 } from '../状态.js'
-import { 安全执行 } from '../工具.js'
 
-export function 安装原始兵力文本捕获(请求渲染) {
+export function 安装原始兵力文本捕获(_请求渲染) {
   const 钩子键 = '__gio兵力文本捕获钩子'
   const 记录器键 = '__gio兵力文本记录器'
   const 清理器键 = '__gio兵力文本清理器'
@@ -61,15 +60,27 @@ export function 安装原始兵力文本捕获(请求渲染) {
     const 行 = Math.floor(点.y / 格高)
     if (行 < 0 || 列 < 0 || 行 >= 状态.高度 || 列 >= 状态.宽度) return
 
-    状态.原始兵力文本.set(行 * 状态.宽度 + 列, {
+    const 索引 = 行 * 状态.宽度 + 列
+    const 文本值 = String(兵力)
+    const 已有记录 = 状态.原始兵力文本.get(索引)
+    if (
+      已有记录?.兵力 === 兵力 &&
+      已有记录?.文本 === 文本值 &&
+      已有记录?.画布 === 画布 &&
+      已有记录?.画布宽 === 画布.width &&
+      已有记录?.画布高 === 画布.height
+    ) {
+      return
+    }
+
+    状态.原始兵力文本.set(索引, {
       兵力,
-      文本: String(兵力),
+      文本: 文本值,
       画布,
       画布宽: 画布.width,
       画布高: 画布.height,
       时间: performance.now(),
     })
-    请求原始兵力文本重绘()
   }
 
   function 清理原始兵力文本(ctx, x, y, 宽, 高) {
@@ -93,13 +104,14 @@ export function 安装原始兵力文本捕获(请求渲染) {
     const 上 = Math.min(起点.y, 终点.y)
     const 下 = Math.max(起点.y, 终点.y)
     if (左 <= 1 && 上 <= 1 && 右 >= 画布.width - 1 && 下 >= 画布.height - 1) {
+      if (!状态.原始兵力文本.size) return
       状态.原始兵力文本.clear()
-      请求原始兵力文本重绘()
       return
     }
 
     const 格宽 = 画布.width / 状态.宽度
     const 格高 = 画布.height / 状态.高度
+    let 已删除记录 = false
     for (const [索引] of 状态.原始兵力文本) {
       const 行 = Math.floor(索引 / 状态.宽度)
       const 列 = 索引 % 状态.宽度
@@ -107,9 +119,10 @@ export function 安装原始兵力文本捕获(请求渲染) {
       const 中心y = 行 * 格高 + 格高 / 2
       if (中心x >= 左 && 中心x <= 右 && 中心y >= 上 && 中心y <= 下) {
         状态.原始兵力文本.delete(索引)
+        已删除记录 = true
       }
     }
-    请求原始兵力文本重绘()
+    if (!已删除记录) return
   }
 
   function 解析兵力文本(文本) {
@@ -126,14 +139,5 @@ export function 安装原始兵力文本捕获(请求渲染) {
       x: x * 变换.a + y * 变换.c + 变换.e,
       y: x * 变换.b + y * 变换.d + 变换.f,
     }
-  }
-
-  function 请求原始兵力文本重绘() {
-    if (状态.原始兵力文本待渲染) return
-    状态.原始兵力文本待渲染 = true
-    requestAnimationFrame(() => {
-      状态.原始兵力文本待渲染 = false
-      安全执行('原始兵力文本重绘', 请求渲染)
-    })
   }
 }
