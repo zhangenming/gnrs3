@@ -82,6 +82,11 @@ export function 重置我方行动监控() {
 
 export function 更新我方行动监控UI() {
   if (!document.body) return
+  if (!document.querySelector('#game-page #gameMap')) {
+    状态.我方行动监控面板?.remove()
+    状态.我方行动监控面板 = null
+    return
+  }
 
   安装样式()
   const 面板 = 确保面板()
