@@ -142,6 +142,7 @@ export function 渲染() {
     !状态.已知障碍物集合.size &&
     !状态.移动队列.length &&
     !状态.敌方移动高亮列表.length &&
+    !状态.敌方最强兵力位置 &&
     !状态.抢塔提示列表.length &&
     !状态.兵力分布着色列表.length &&
     !Number.isInteger(取得选中棋子索引()) &&
@@ -208,6 +209,7 @@ export function 渲染() {
     画基地模拟兵力(ctx, 状态.我方基地索引, 列 * 格宽, 行 * 格高, 大小)
   }
 
+  画敌方最强兵力标记(ctx, 格宽, 格高, 大小)
   画选中棋子(ctx, 格宽, 格高, 大小, 当前动画时间)
 
   if (
@@ -1001,6 +1003,55 @@ export function 渲染() {
     function 缓出四次方(值) {
       return 1 - (1 - 值) ** 4
     }
+  }
+
+  function 画敌方最强兵力标记(ctx, 格宽, 格高, 大小) {
+    const 记录 = 状态.敌方最强兵力位置
+    const 格子数 = 状态.宽度 * 状态.高度
+    if (!记录 || !Number.isInteger(记录.索引)) return
+    if (记录.索引 < 0 || 记录.索引 >= 格子数) return
+
+    const 行 = Math.floor(记录.索引 / 状态.宽度)
+    const 列 = 记录.索引 % 状态.宽度
+    const 半径 = Math.max(5, Math.min(12, 大小 * 0.24))
+    const 边距 = Math.max(2, 大小 * 0.08)
+    const 中心x = 列 * 格宽 + 格宽 - 半径 - 边距
+    const 中心y = 行 * 格高 + 格高 - 半径 - 边距
+    const 星外半径 = 半径 * 0.72
+    const 星内半径 = 星外半径 * 0.45
+
+    ctx.save()
+    ctx.lineJoin = 'round'
+    ctx.lineCap = 'round'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.62)'
+    ctx.shadowBlur = Math.max(2, 大小 * 0.08)
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.84)'
+    ctx.beginPath()
+    ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
+    ctx.fill()
+
+    ctx.shadowColor = 'transparent'
+    ctx.lineWidth = Math.max(1.5, 半径 * 0.18)
+    ctx.strokeStyle = '#ffffff'
+    ctx.stroke()
+
+    ctx.fillStyle = '#ffd84a'
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)'
+    ctx.lineWidth = Math.max(1, 半径 * 0.16)
+    ctx.beginPath()
+    for (let idx = 0; idx < 10; idx += 1) {
+      const 角度 = -Math.PI / 2 + (idx * Math.PI) / 5
+      const 当前半径 = idx % 2 === 0 ? 星外半径 : 星内半径
+      const x = 中心x + Math.cos(角度) * 当前半径
+      const y = 中心y + Math.sin(角度) * 当前半径
+      if (idx === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+    ctx.stroke()
+    ctx.fill()
+    ctx.restore()
   }
 
   function 安装样式() {
