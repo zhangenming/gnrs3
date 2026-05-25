@@ -1,7 +1,12 @@
 import { 是我方或队友 } from '../游戏.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 状态 } from '../状态.js'
 
 export function 更新敌方最强兵力位置() {
+  if (!功能已启用('敌方主力标记')) {
+    状态.敌方最强兵力位置 = null
+    return
+  }
   const 地图数组 = 状态.地图数组
   if (!Array.isArray(地图数组) || !状态.宽度 || !状态.高度) return
   if (!Number.isInteger(状态.我方索引)) return

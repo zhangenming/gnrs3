@@ -10,6 +10,9 @@ import { 挂钩socket } from './socket挂钩.js'
 import { 安装回放快捷键, 同步回放元素 } from './功能/回放系统.js'
 import { 更新我方行动监控UI } from './功能/我方行动监控.js'
 import { 更新游戏数据进展图表 } from './功能/游戏数据进展图表.js'
+import { 安装功能控制UI } from './功能控制面板.js'
+import { 安装功能恢复 } from './功能恢复.js'
+import { 功能已启用, 初始化功能开关 } from './功能开关.js'
 
 let 已请求页面同步 = false
 
@@ -22,8 +25,13 @@ function 请求渲染() {
 }
 
 function 启动() {
+  初始化功能开关()
   暴露调试接口(请求渲染, 清空覆盖层)
-  安装回放快捷键(请求渲染)
+  安装功能控制UI()
+  安装功能恢复()
+  if (功能已启用('回放系统')) {
+    安装回放快捷键(请求渲染)
+  }
   轮询socket()
   安装页面观察器()
 
@@ -51,8 +59,10 @@ function 启动() {
     window.addEventListener(
       'resize',
       () => {
-        状态.自适应棋盘待同步 = true
-        同步自适应棋盘()
+        if (功能已启用('自适应棋盘')) {
+          状态.自适应棋盘待同步 = true
+          同步自适应棋盘()
+        }
         请求渲染()
       },
       { passive: true },
@@ -66,6 +76,7 @@ function 启动() {
     window.addEventListener('resize', 同步回放元素, { passive: true })
 
     function 禁止滚轮缩放(事件) {
+      if (!功能已启用('禁止滚轮缩放')) return
       if (!document.querySelector('#game-page #gameMap')) return
       事件.preventDefault()
       事件.stopImmediatePropagation()
@@ -79,14 +90,18 @@ function 启动() {
         已请求页面同步 = false
         状态.页面同步中 = true
         try {
-          状态.自适应棋盘待同步 = true
+          if (功能已启用('自适应棋盘')) {
+            状态.自适应棋盘待同步 = true
+          }
           更新大回合倒计时()
           更新我方行动监控UI()
           更新战场塔信息()
           更新战场数据差()
           更新游戏数据进展图表()
           同步回放元素()
-          同步自适应棋盘()
+          if (功能已启用('自适应棋盘')) {
+            同步自适应棋盘()
+          }
           请求渲染()
         } finally {
           状态.页面同步中 = false
@@ -163,5 +178,7 @@ function 启动() {
 
 安全执行('启动', 启动)
 安全执行('原始兵力文本捕获', () => {
-  安装原始兵力文本捕获(请求渲染)
+  if (功能已启用('兵力分布着色')) {
+    安装原始兵力文本捕获(请求渲染)
+  }
 })

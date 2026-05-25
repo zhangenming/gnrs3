@@ -4,6 +4,7 @@
 // 作用范围:
 // 只读取当前大回合倒计时并维护一个页面提示，不影响游戏数据和操作队列。
 import { 样式编号 } from '../配置.js'
+import { 功能已启用 } from '../功能开关.js'
 
 const 回合结束提示元素编号 = 'gio-turn-end-alert'
 const 回合结束提示样式编号 = `${样式编号}-turn-end-alert`
@@ -16,6 +17,10 @@ let 鼠标Y = 24
 let 已安装鼠标监听 = false
 
 export function 更新回合结束提示(倒计时) {
+  if (!功能已启用('回合结束提示')) {
+    清除回合结束提示()
+    return
+  }
   if (!document.body) return
 
   if (
@@ -45,10 +50,6 @@ export function 更新回合结束提示(倒计时) {
       ? '大回合结算：所有位置兵力+1，塔和基地本回合共+2'
       : `距离大回合结算还剩 ${倒计时} turn`
   更新提示位置(元素)
-
-  function 清除回合结束提示() {
-    document.getElementById(回合结束提示元素编号)?.remove()
-  }
 
   function 取得提示级别(倒计时) {
     if (倒计时 < 紧急turn数) return 'danger'
@@ -137,4 +138,8 @@ export function 更新回合结束提示(倒计时) {
 `.trim()
     document.documentElement.appendChild(样式)
   }
+}
+
+export function 清除回合结束提示() {
+  document.getElementById(回合结束提示元素编号)?.remove()
 }

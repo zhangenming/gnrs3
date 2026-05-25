@@ -6,11 +6,16 @@
 // 一旦发现敌方贴近基地周围九宫格，就给页面根节点和 body 添加危险类名，让样式层做醒目提示。
 import { 基地危险类名 } from '../配置.js'
 import { 是我方或队友 } from '../游戏.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 状态 } from '../状态.js'
 
 const 死亡前基地刚暴露turn数 = 6
 
 export function 更新基地危险状态() {
+  if (!功能已启用('基地危险提醒')) {
+    更新基地危险背景()
+    return
+  }
   if (状态.基地被敌发现) {
     更新基地危险背景()
     return
@@ -54,6 +59,10 @@ export function 更新基地危险状态() {
 }
 
 export function 处理死亡时基地危险状态() {
+  if (!功能已启用('基地危险提醒')) {
+    更新基地危险背景()
+    return
+  }
   if (!状态.基地被敌发现) return
   const 当前回合 = 取得当前回合()
   if (!Number.isInteger(当前回合) || !Number.isInteger(状态.基地被敌发现回合)) {
@@ -67,7 +76,8 @@ export function 处理死亡时基地危险状态() {
 }
 
 export function 更新基地危险背景() {
-  const 显示危险背景 = 状态.基地被敌发现 && !状态.基地危险背景豁免
+  const 显示危险背景 =
+    功能已启用('基地危险提醒') && 状态.基地被敌发现 && !状态.基地危险背景豁免
   document.documentElement?.classList.toggle(基地危险类名, 显示危险背景)
   document.body?.classList.toggle(基地危险类名, 显示危险背景)
 }

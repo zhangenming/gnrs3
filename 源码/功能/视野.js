@@ -6,14 +6,17 @@
 // 覆盖层会把未到达视野的区域铺上背景色，帮助 1v1 中判断哪些方向仍缺少侦察信息。
 import { 玩家最小距离 } from '../配置.js'
 import { 是我方或队友 } from '../游戏.js'
+import { 任一功能已启用 } from '../功能开关.js'
 import { 状态 } from '../状态.js'
 
 export function 有未到达视野标记() {
+  if (!任一功能已启用('未到达视野', '敌方基地推测')) return false
   if (!状态.宽度 || !状态.高度) return false
   return 状态.已到达视野集合.size < 状态.宽度 * 状态.高度
 }
 
 export function 记录已到达视野(数据包) {
+  if (!任一功能已启用('未到达视野', '敌方基地推测')) return
   if (!状态.宽度 || !状态.高度) return
 
   const 格子数 = 状态.宽度 * 状态.高度

@@ -9,9 +9,10 @@ import {
   大回合倒计时元素编号,
   大回合倒计时类名,
 } from '../配置.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 状态 } from '../状态.js'
 import { 取得大回合倒计时 } from '../工具.js'
-import { 更新回合结束提示 } from './回合结束提示.js'
+import { 更新回合结束提示, 清除回合结束提示 } from './回合结束提示.js'
 import { 更新我方行动监控UI, 结算我方行动回合 } from './我方行动监控.js'
 import { 取得战场数据表格 } from './战场表格.js'
 
@@ -28,6 +29,11 @@ export function 记录回合(数据包) {
 }
 
 export function 更新大回合倒计时() {
+  if (!功能已启用('大回合倒计时')) {
+    移除大回合倒计时()
+    清除回合结束提示()
+    return
+  }
   const 倒计时 = 取得大回合倒计时(状态.当前回合)
   const 大回合序号 = 取得大回合序号(状态.当前回合)
   更新回合结束提示(倒计时)
@@ -99,4 +105,12 @@ export function 更新大回合倒计时() {
 
     return null
   }
+}
+
+export function 移除大回合倒计时() {
+  状态.大回合倒计时元素?.classList.remove(大回合倒计时类名)
+  状态.大回合倒计时元素 = null
+  状态.上次大回合倒计时文本 = ''
+  const 旧元素 = document.getElementById(大回合倒计时元素编号)
+  旧元素?.remove()
 }

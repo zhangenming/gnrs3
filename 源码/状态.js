@@ -1,4 +1,9 @@
 export const 状态 = {
+  功能总开关: true,
+  功能开关: {},
+  功能控制按钮: null,
+  功能控制面板: null,
+  原始战场节点快照: new WeakMap(),
   宽度: 0,
   高度: 0,
   塔列表: null,

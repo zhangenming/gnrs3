@@ -12,10 +12,15 @@
 // 只读取地图归属、塔列表和玩家归属关系，只维护抢塔提示动画列表。
 // 它不修改游戏地图、塔记忆、移动队列或页面全局样式。
 import { 抢塔提示持续毫秒 } from '../配置.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 取得本次塔列表, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 
 export function 更新抢塔提示(旧地图数组, 新地图数组, 数据包) {
+  if (!功能已启用('抢塔提示')) {
+    状态.抢塔提示列表 = []
+    return
+  }
   清理抢塔提示()
   const 抢塔索引列表 = 取得抢塔索引列表()
   if (!抢塔索引列表.length) return
@@ -84,6 +89,10 @@ export function 更新抢塔提示(旧地图数组, 新地图数组, 数据包) 
 }
 
 export function 清理抢塔提示() {
+  if (!功能已启用('抢塔提示')) {
+    状态.抢塔提示列表 = []
+    return
+  }
   const 当前时间 = performance.now()
   状态.抢塔提示列表 = 状态.抢塔提示列表.filter((提示) => {
     if (!Number.isInteger(提示.索引)) return false

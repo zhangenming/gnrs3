@@ -16,9 +16,14 @@ import {
   尝试从地图读取尺寸,
   是我方或队友,
 } from '../游戏.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 状态 } from '../状态.js'
 
 export function 处理塔位置(数据包, 请求渲染) {
+  if (!功能已启用('塔记忆标记')) {
+    请求渲染()
+    return
+  }
   读取玩家信息(数据包)
   尝试从地图读取尺寸(数据包)
 
@@ -50,6 +55,7 @@ export function 处理塔位置(数据包, 请求渲染) {
 }
 
 export function 更新塔类型(数据包, 塔索引) {
+  if (!功能已启用('塔记忆标记')) return
   if (!Number.isInteger(塔索引) || 塔索引 < 0) return
   if (!状态.已知塔类型.has(塔索引)) {
     状态.已知塔类型.set(塔索引, '中立塔')

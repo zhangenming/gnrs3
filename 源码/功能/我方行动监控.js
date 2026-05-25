@@ -5,6 +5,7 @@
 // 读取服务器确认的本地移动、当前回合、地图归属差分和塔记忆。
 // 只维护本地行动记录与页面面板，真实游戏操作队列由原 socket 流程处理。
 import { 大回合turn数 } from '../配置.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 取得战场数据表格 } from './战场表格.js'
@@ -29,6 +30,7 @@ export function 更新我方行动地图判断(
   数据包,
   已处理我方移动列表 = [],
 ) {
+  if (!功能已启用('我方行动监控')) return
   const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn - 1 : 状态.当前回合
   if (!Number.isInteger(回合) || 回合 < 监控起始回合) return
   if (!Array.isArray(旧地图数组) || !Array.isArray(新地图数组)) return
@@ -161,6 +163,7 @@ export function 更新我方行动地图判断(
 }
 
 export function 结算我方行动回合(回合) {
+  if (!功能已启用('我方行动监控')) return
   if (!Number.isInteger(回合) || 回合 < 监控起始回合) return
 
   if (!状态.我方行动类型表.has(回合)) {
@@ -171,6 +174,7 @@ export function 结算我方行动回合(回合) {
 }
 
 export function 结算当前我方行动回合() {
+  if (!功能已启用('我方行动监控')) return
   结算我方行动回合(状态.当前回合)
 }
 
@@ -181,6 +185,12 @@ export function 重置我方行动监控() {
 }
 
 export function 更新我方行动监控UI() {
+  if (!功能已启用('我方行动监控')) {
+    状态.我方行动监控面板?.remove()
+    状态.我方行动监控面板 = null
+    已请求更新我方行动监控UI = false
+    return
+  }
   if (已请求更新我方行动监控UI) return
   已请求更新我方行动监控UI = true
   requestAnimationFrame(() => {
@@ -190,6 +200,7 @@ export function 更新我方行动监控UI() {
 }
 
 function 同步我方行动监控UI() {
+  if (!功能已启用('我方行动监控')) return
   if (!document.body) return
   if (!document.querySelector('#game-page #gameMap')) {
     状态.我方行动监控面板?.remove()

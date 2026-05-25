@@ -4,6 +4,7 @@
 // 作用范围:
 // 只在 50 turn 边界采样数据，并维护一个 ECharts 折线图。
 import { 大回合turn数, 我方蓝色, 样式编号 } from '../配置.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 取得战场数据表格 } from './战场表格.js'
@@ -22,6 +23,7 @@ let 正在等待ECharts = false
 let 图表渲染签名 = ''
 
 export function 记录游戏数据进展(数据包) {
+  if (!功能已启用('游戏数据进展图表')) return
   const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
   if (!是统计回合(回合)) return
   if (状态.游戏数据进展上次统计回合 === 回合) return
@@ -57,6 +59,14 @@ export function 重置游戏数据进展() {
 }
 
 export function 更新游戏数据进展图表() {
+  if (!功能已启用('游戏数据进展图表')) {
+    状态.游戏数据进展面板?.remove()
+    状态.游戏数据进展面板 = null
+    图表实例?.dispose()
+    图表实例 = null
+    图表渲染签名 = ''
+    return
+  }
   if (!document.body) return
 
   安装样式()

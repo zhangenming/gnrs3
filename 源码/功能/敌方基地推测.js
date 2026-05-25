@@ -4,9 +4,15 @@
 // 作用范围:
 // 只使用当前地图缓存、已到达视野、已知障碍物、塔和基地记忆，维护候选格列表供覆盖层过滤红底。
 import { 是我方或队友 } from '../游戏.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 状态 } from '../状态.js'
 
 export function 更新敌方基地推测(数据包, 请求渲染) {
+  if (!功能已启用('敌方基地推测')) {
+    重置敌方基地推测()
+    if (typeof 请求渲染 === 'function') 请求渲染()
+    return
+  }
   const 当前回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
   const 旧签名 = 取得签名()
 

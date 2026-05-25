@@ -9,12 +9,18 @@
 // 作用范围:
 // 只改写排行榜/战场数据表的 Player 表头格内容和样式，不参与地图状态计算。
 import { 战场塔信息类名 } from '../配置.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 同步我方玩家索引 } from '../游戏.js'
+import { 状态 } from '../状态.js'
 import { 读取冻结战场塔信息, 记录战场塔信息快照 } from './战场数据冻结.js'
 import { 取得战场数据表格 } from './战场表格.js'
 import { 统计塔数 } from './塔数统计.js'
 
 export function 更新战场塔信息() {
+  if (!功能已启用('战场塔信息')) {
+    恢复战场塔信息()
+    return
+  }
   if (!document.body) return
   同步我方玩家索引()
 
@@ -45,6 +51,7 @@ export function 更新战场塔信息() {
   )
     return
 
+  记录原始战场节点(玩家表头格)
   玩家表头格.classList.add(战场塔信息类名)
   玩家表头格.dataset.gioBattlePlayerColumn = 'true'
   玩家表头格.dataset.gioTowerSummary = 文本
@@ -110,4 +117,37 @@ export function 更新战场塔信息() {
       return (单元格.textContent ?? '').trim() === 'Player'
     })
   }
+}
+
+export function 恢复战场塔信息() {
+  document.querySelectorAll(`.${战场塔信息类名}`).forEach((单元格) => {
+    恢复原始战场节点(单元格)
+    单元格.classList.remove(战场塔信息类名)
+    delete 单元格.dataset.gioTowerSummary
+    delete 单元格.dataset.gioTowerDiff
+  })
+}
+
+function 记录原始战场节点(节点) {
+  if (!节点 || 状态.原始战场节点快照.has(节点)) return
+  状态.原始战场节点快照.set(节点, {
+    innerHTML: 节点.innerHTML,
+    title: 节点.title,
+    backgroundColor: 节点.style.backgroundColor,
+    color: 节点.style.color,
+    fontWeight: 节点.style.fontWeight,
+    textShadow: 节点.style.textShadow,
+  })
+}
+
+function 恢复原始战场节点(节点) {
+  const 快照 = 状态.原始战场节点快照.get(节点)
+  if (!快照) return
+  节点.innerHTML = 快照.innerHTML
+  节点.title = 快照.title
+  节点.style.backgroundColor = 快照.backgroundColor
+  节点.style.color = 快照.color
+  节点.style.fontWeight = 快照.fontWeight
+  节点.style.textShadow = 快照.textShadow
+  状态.原始战场节点快照.delete(节点)
 }

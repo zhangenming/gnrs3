@@ -6,9 +6,11 @@
 // 颜色统一后，排行榜识别、地图显示和战场数据差功能都能用稳定的敌我颜色规则。
 import { 敌方红色索引, 我方蓝色索引 } from '../配置.js'
 import { 读取玩家信息, 是我方或队友 } from '../游戏.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 状态 } from '../状态.js'
 
 export function 重构玩家颜色(数据包) {
+  if (!功能已启用('玩家颜色统一')) return
   if (!数据包) return
   if (typeof 数据包 === 'object' && 状态.已处理颜色数据包) {
     if (状态.已处理颜色数据包.has(数据包)) return

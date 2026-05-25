@@ -9,6 +9,7 @@
 // 作用范围:
 // 只读取战场数据快照、scores、当前塔记忆和回合数，只维护一个页面提示。
 import { 敌方红色, 样式编号 } from '../配置.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 统计塔数 } from './塔数统计.js'
@@ -19,6 +20,10 @@ const 敌方开塔提示持续毫秒 = 1800
 const 开塔最小净损失 = 3
 
 export function 更新敌方开塔提示(数据包) {
+  if (!功能已启用('敌方开塔提示')) {
+    清除敌方开塔提示()
+    return
+  }
   同步敌方开塔提示元素()
   if (状态.战场数据已冻结) return
 
@@ -62,6 +67,11 @@ export function 清除敌方开塔提示() {
 }
 
 export function 同步敌方开塔提示元素() {
+  if (!功能已启用('敌方开塔提示')) {
+    document.getElementById(敌方开塔提示元素编号)?.remove()
+    状态.敌方开塔提示 = null
+    return
+  }
   const 提示 = 状态.敌方开塔提示
   if (!提示?.记录时间) return
 

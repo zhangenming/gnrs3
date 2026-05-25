@@ -8,12 +8,17 @@
 // 只改写排行榜/战场数据表的表头格内容和样式，不参与地图状态计算。
 // 会优先根据玩家索引和用户名识别我方与敌方行，并给差值格写入数据属性，供样式层区分优势和劣势。
 import { 我方蓝色, 战场数据差类名, 敌方红色 } from '../配置.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 应用战场数据冻结 } from './战场数据冻结.js'
 import { 取得战场数据表格 } from './战场表格.js'
 
 export function 更新战场数据差() {
+  if (!功能已启用('战场数据差')) {
+    恢复战场数据差()
+    return
+  }
   if (!document.body) return
   同步我方玩家索引()
 
@@ -170,6 +175,7 @@ export function 更新战场数据差() {
 
   function 更新差值格(单元格, 差值, 类型) {
     if (!单元格 || !Number.isFinite(差值)) return
+    记录原始战场节点(单元格)
     const 文本 = 差值 > 0 ? `+${差值}` : String(差值)
     const 差值状态 = 差值 >= 0 ? 'advantage' : 'disadvantage'
     if (
@@ -190,4 +196,41 @@ export function 更新战场数据差() {
     单元格.dataset.gioBattleKind = 类型
     单元格.dataset.gioBattleDiff = 差值状态
   }
+}
+
+export function 恢复战场数据差() {
+  document.querySelectorAll(`.${战场数据差类名}`).forEach((单元格) => {
+    恢复原始战场节点(单元格)
+    单元格.classList.remove(战场数据差类名)
+    delete 单元格.dataset.gioBattleKind
+    delete 单元格.dataset.gioBattleDiff
+    单元格.style.backgroundColor = ''
+    单元格.style.color = ''
+    单元格.style.fontWeight = ''
+    单元格.style.textShadow = ''
+  })
+}
+
+function 记录原始战场节点(节点) {
+  if (!节点 || 状态.原始战场节点快照.has(节点)) return
+  状态.原始战场节点快照.set(节点, {
+    innerHTML: 节点.innerHTML,
+    title: 节点.title,
+    backgroundColor: 节点.style.backgroundColor,
+    color: 节点.style.color,
+    fontWeight: 节点.style.fontWeight,
+    textShadow: 节点.style.textShadow,
+  })
+}
+
+function 恢复原始战场节点(节点) {
+  const 快照 = 状态.原始战场节点快照.get(节点)
+  if (!快照) return
+  节点.innerHTML = 快照.innerHTML
+  节点.title = 快照.title
+  节点.style.backgroundColor = 快照.backgroundColor
+  节点.style.color = 快照.color
+  节点.style.fontWeight = 快照.fontWeight
+  节点.style.textShadow = 快照.textShadow
+  状态.原始战场节点快照.delete(节点)
 }

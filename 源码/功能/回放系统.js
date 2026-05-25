@@ -5,6 +5,7 @@
 // 每次 game_start/game_update 处理完后，保存一份状态快照。
 // 复盘时恢复快照，让既有覆盖层渲染逻辑直接读取历史状态；地图底图按快照地图即时绘制。
 import { 样式编号, 我方蓝色, 敌方红色 } from '../配置.js'
+import { 功能已启用 } from '../功能开关.js'
 import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 
@@ -60,6 +61,7 @@ const 快照字段列表 = [
 ]
 
 export function 记录回放帧(事件名, 数据包) {
+  if (!功能已启用('回放系统')) return
   if (状态.回放已结束) return
   if (!Array.isArray(状态.地图数组) || !状态.宽度 || !状态.高度) return
 
@@ -74,6 +76,7 @@ export function 记录回放帧(事件名, 数据包) {
 }
 
 export function 结束回放(_事件名, _数据包, 请求渲染) {
+  if (!功能已启用('回放系统')) return
   if (状态.回放已结束) return
   if (!状态.回放帧列表.length) return
 
@@ -97,6 +100,7 @@ export function 重置回放() {
 }
 
 export function 安装回放快捷键(请求渲染) {
+  if (!功能已启用('回放系统')) return
   if (状态.回放已安装) return
   状态.回放已安装 = true
   window.addEventListener(
@@ -120,6 +124,11 @@ export function 安装回放快捷键(请求渲染) {
 }
 
 export function 同步回放元素() {
+  if (!功能已启用('回放系统')) {
+    移除回放元素()
+    移除回放面板()
+    return
+  }
   同步回放面板()
   if (!状态.回放正在显示) {
     移除回放元素()
