@@ -6,6 +6,7 @@
 import { 大回合turn数, 我方蓝色, 样式编号 } from '../配置.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
+import { 取得战场数据表格 } from './战场表格.js'
 
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
@@ -215,33 +216,6 @@ function 取得右侧挂载点() {
   const 宿主 = 表格.parentElement
   if (!宿主 || 宿主 === document.body) return null
   return { 宿主, 表格 }
-}
-
-function 取得战场数据表格() {
-  const 表格列表 = document.body.querySelectorAll(
-    'table, .leaderboard, #leaderboard',
-  )
-  for (const 表格 of 表格列表) {
-    const 文本 = 表格.textContent ?? ''
-    if (
-      (文本.includes('Player') ||
-        表格.querySelector('[data-gio-battle-player-column="true"]')) &&
-      是战场数据表格(表格)
-    ) {
-      return 表格
-    }
-  }
-  return null
-}
-
-function 是战场数据表格(表格) {
-  const 文本 = 表格.textContent ?? ''
-  if (文本.includes('Army') && 文本.includes('Land')) return true
-  return Boolean(
-    表格.querySelector(
-      '[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]',
-    ),
-  )
 }
 
 function 更新面板状态(面板) {

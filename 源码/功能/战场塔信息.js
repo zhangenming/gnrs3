@@ -11,6 +11,7 @@
 import { 战场塔信息类名 } from '../配置.js'
 import { 同步我方玩家索引 } from '../游戏.js'
 import { 读取冻结战场塔信息, 记录战场塔信息快照 } from './战场数据冻结.js'
+import { 取得战场数据表格 } from './战场表格.js'
 import { 统计塔数 } from './塔数统计.js'
 
 export function 更新战场塔信息() {
@@ -64,23 +65,6 @@ export function 更新战场塔信息() {
     `</span>`
   记录战场塔信息快照(玩家表头格, 文本, 差值状态)
 
-  function 取得战场数据表格() {
-    const 表格列表 = document.body.querySelectorAll(
-      'table, .leaderboard, #leaderboard',
-    )
-    for (const 当前表格 of 表格列表) {
-      const 文本 = 当前表格.textContent ?? ''
-      if (
-        (文本.includes('Player') ||
-          当前表格.querySelector('[data-gio-battle-player-column="true"]')) &&
-        是战场数据表格(当前表格)
-      ) {
-        return 当前表格
-      }
-    }
-    return null
-  }
-
   function 取得表头行(表格元素) {
     const 行列表 = 表格元素.querySelectorAll('tr')
     for (const 行 of 行列表) {
@@ -125,15 +109,5 @@ export function 更新战场塔信息() {
       if (单元格.dataset.gioBattlePlayerColumn === 'true') return true
       return (单元格.textContent ?? '').trim() === 'Player'
     })
-  }
-
-  function 是战场数据表格(表格元素) {
-    const 文本 = 表格元素.textContent ?? ''
-    if (文本.includes('Army') && 文本.includes('Land')) return true
-    return Boolean(
-      表格元素.querySelector(
-        '[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]',
-      ),
-    )
   }
 }

@@ -38,8 +38,9 @@ function 启动() {
       setTimeout(安装页面观察器, 100)
       return
     }
-    状态.页面观察器 = new MutationObserver(() => {
-      请求页面同步()
+    状态.页面观察器 = new MutationObserver((变动列表) => {
+      if (状态.页面同步中) return
+      if (页面变化需要同步(变动列表)) 请求页面同步()
     })
     状态.页面观察器.observe(document.body, {
       childList: true,
@@ -50,6 +51,7 @@ function 启动() {
     window.addEventListener(
       'resize',
       () => {
+        状态.自适应棋盘待同步 = true
         同步自适应棋盘()
         请求渲染()
       },
@@ -57,10 +59,6 @@ function 启动() {
     )
     window.addEventListener('wheel', 禁止滚轮缩放, {
       passive: false,
-      capture: true,
-    })
-    window.addEventListener('keydown', 请求渲染, {
-      passive: true,
       capture: true,
     })
     window.addEventListener('resize', 更新大回合倒计时, { passive: true })
@@ -79,15 +77,77 @@ function 启动() {
       已请求页面同步 = true
       requestAnimationFrame(() => {
         已请求页面同步 = false
-        更新大回合倒计时()
-        更新我方行动监控UI()
-        更新战场塔信息()
-        更新战场数据差()
-        更新游戏数据进展图表()
-        同步回放元素()
-        同步自适应棋盘()
-        请求渲染()
+        状态.页面同步中 = true
+        try {
+          状态.自适应棋盘待同步 = true
+          更新大回合倒计时()
+          更新我方行动监控UI()
+          更新战场塔信息()
+          更新战场数据差()
+          更新游戏数据进展图表()
+          同步回放元素()
+          同步自适应棋盘()
+          请求渲染()
+        } finally {
+          状态.页面同步中 = false
+        }
       })
+    }
+
+    function 页面变化需要同步(变动列表) {
+      return 变动列表.some((变动) => {
+        if (节点需要同步(变动.target)) return true
+        return [...变动.addedNodes, ...变动.removedNodes].some(节点需要同步)
+      })
+    }
+
+    function 节点需要同步(节点) {
+      const 元素 = 取得元素节点(节点)
+      if (!元素 || 是插件节点(元素)) return false
+      if (是相关区域节点(元素)) return true
+      return Array.from(元素.children ?? []).some((子元素) => {
+        return !是插件节点(子元素) && 是相关区域节点(子元素)
+      })
+    }
+
+    function 取得元素节点(节点) {
+      if (节点 instanceof Element) return 节点
+      return 节点?.parentElement ?? null
+    }
+
+    function 是插件节点(元素) {
+      if (!元素) return false
+      if (typeof 元素.id === 'string' && 元素.id.startsWith('gio-')) return true
+      return Array.from(元素.classList ?? []).some((类名) => {
+        return 类名.startsWith('gio-')
+      })
+    }
+
+    function 是相关区域节点(元素) {
+      return Boolean(
+        元素.matches?.(
+          [
+            '#game-page',
+            '#game-page #gameMap',
+            '#gameMap',
+            '.game-map-canvas',
+            '#game-leaderboard-container',
+            '#game-leaderboard',
+            '#leaderboard',
+            '.leaderboard',
+            '#game-pass-turn-button',
+          ].join(','),
+        ) ||
+        元素.closest?.(
+          [
+            '#game-page',
+            '#game-leaderboard-container',
+            '#game-leaderboard',
+            '#leaderboard',
+            '.leaderboard',
+          ].join(','),
+        ),
+      )
     }
   }
 }

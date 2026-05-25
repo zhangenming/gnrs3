@@ -36,6 +36,8 @@ let 选中格子索引 = null
 let 已同步移动队列长度 = 0
 let 已安装选中监听 = false
 let 自适应棋盘尺寸缓存 = null
+let 当前自适应棋盘元素 = null
+let 当前自适应宿主元素 = null
 
 export function 同步自适应棋盘() {
   安装自适应样式()
@@ -76,6 +78,7 @@ export function 同步自适应棋盘() {
   记录自适应棋盘尺寸(地图元素, 尺寸, 缩放)
   同步战场面板位置(尺寸, 缩放)
   同步地图大小标签(地图元素)
+  状态.自适应棋盘待同步 = false
 
   function 取得地图可用宽() {
     const 视口宽 = Math.max(1, window.innerWidth)
@@ -106,6 +109,9 @@ function 记录自适应棋盘尺寸(地图元素, 尺寸, 缩放) {
 
 export function 重置自适应棋盘尺寸() {
   自适应棋盘尺寸缓存 = null
+  当前自适应棋盘元素 = null
+  当前自适应宿主元素 = null
+  状态.自适应棋盘待同步 = true
   document
     .querySelectorAll('#game-page #gameMap.gio-adaptive-map')
     .forEach((地图元素) => {
@@ -134,7 +140,9 @@ export function 渲染() {
     清理敌方移动高亮()
     清理抢塔提示()
   }
-  同步自适应棋盘()
+  if (状态.自适应棋盘待同步) {
+    同步自适应棋盘()
+  }
 
   if (
     !状态.已知塔集合.size &&
@@ -215,20 +223,11 @@ export function 渲染() {
 
   if (
     !状态.回放正在显示 &&
-    (状态.敌方移动高亮列表.length ||
-      状态.抢塔提示列表.length ||
-      有已占领塔 ||
-      Number.isInteger(取得选中棋子索引()))
+    (状态.敌方移动高亮列表.length || 状态.抢塔提示列表.length)
   ) {
     requestAnimationFrame(() => {
-      const 仍有已占领塔 = Array.from(状态.已知塔类型.values()).some((类型) => {
-        return 类型 === '敌方塔' || 类型 === '我方塔'
-      })
       if (
-        (!状态.敌方移动高亮列表.length &&
-          !状态.抢塔提示列表.length &&
-          !仍有已占领塔 &&
-          !Number.isInteger(取得选中棋子索引())) ||
+        (!状态.敌方移动高亮列表.length && !状态.抢塔提示列表.length) ||
         状态.已请求渲染
       ) {
         return
@@ -1772,17 +1771,21 @@ function 确保地图大小标签() {
 }
 
 function 标记当前棋盘(地图元素, 宿主) {
-  document.querySelectorAll('.gio-adaptive-map').forEach((元素) => {
-    if (元素 !== 地图元素) 元素.classList.remove('gio-adaptive-map')
-  })
-  document.querySelectorAll('.gio-adaptive-map-host').forEach((元素) => {
-    if (元素 !== 地图元素 && 元素 !== 宿主) {
-      元素.classList.remove('gio-adaptive-map-host')
-    }
-  })
+  if (当前自适应棋盘元素 && 当前自适应棋盘元素 !== 地图元素) {
+    当前自适应棋盘元素.classList.remove('gio-adaptive-map')
+  }
+  if (
+    当前自适应宿主元素 &&
+    当前自适应宿主元素 !== 宿主 &&
+    当前自适应宿主元素 !== 地图元素
+  ) {
+    当前自适应宿主元素.classList.remove('gio-adaptive-map-host')
+  }
 
   地图元素.classList.add('gio-adaptive-map')
   宿主.classList.add('gio-adaptive-map-host')
+  当前自适应棋盘元素 = 地图元素
+  当前自适应宿主元素 = 宿主
 }
 
 function 取得地图原始尺寸(地图元素, 画布) {

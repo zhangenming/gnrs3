@@ -59,8 +59,11 @@ export const 状态 = {
   玩家名列表: null,
   队伍: null,
   已请求渲染: false,
+  自适应棋盘待同步: true,
   socket已挂钩: false,
   页面观察器: null,
+  页面同步中: false,
+  战场表格缓存: null,
   已处理颜色数据包: new WeakSet(),
   原始兵力文本待渲染: false,
 }

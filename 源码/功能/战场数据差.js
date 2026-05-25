@@ -11,6 +11,7 @@ import { 我方蓝色, 战场数据差类名, 敌方红色 } from '../配置.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 应用战场数据冻结 } from './战场数据冻结.js'
+import { 取得战场数据表格 } from './战场表格.js'
 
 export function 更新战场数据差() {
   if (!document.body) return
@@ -67,23 +68,6 @@ export function 更新战场数据差() {
     'land',
   )
 
-  function 取得战场数据表格() {
-    const 表格列表 = document.body.querySelectorAll(
-      'table, .leaderboard, #leaderboard',
-    )
-    for (const 当前表格 of 表格列表) {
-      const 文本 = 当前表格.textContent ?? ''
-      if (
-        (文本.includes('Player') ||
-          当前表格.querySelector('[data-gio-battle-player-column="true"]')) &&
-        是战场数据表格(当前表格)
-      ) {
-        return 当前表格
-      }
-    }
-    return null
-  }
-
   function 取得表头行(表格元素) {
     const 行列表 = 表格元素.querySelectorAll('tr')
     for (const 行 of 行列表) {
@@ -102,17 +86,6 @@ export function 更新战场数据差() {
     }
     return null
   }
-
-  function 是战场数据表格(表格元素) {
-    const 文本 = 表格元素.textContent ?? ''
-    if (文本.includes('Army') && 文本.includes('Land')) return true
-    return Boolean(
-      表格元素.querySelector(
-        `[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]`,
-      ),
-    )
-  }
-
   function 是战场数据行(行) {
     const 文本列表 = 取得单元格列表(行).map((单元格) =>
       (单元格.textContent ?? '').trim(),
