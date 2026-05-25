@@ -637,10 +637,9 @@ export function 渲染() {
     function 画占领塔旋转框() {
       const 中心X = x + 大小 / 2
       const 中心Y = y + 大小 / 2
-      const 扩张 = Math.max(3, 大小 * 0.14)
-      const 框大小 = 大小 + 扩张 * 2
-      const 角长 = Math.max(8, 大小 * 0.34)
-      const 线宽 = Math.max(3, 大小 * 0.1)
+      const 框大小 = Math.max(1, 大小 * 0.62)
+      const 角长 = Math.max(5, 大小 * 0.2)
+      const 线宽 = Math.max(2, 大小 * 0.06)
       const 左 = 中心X - 框大小 / 2
       const 上 = 中心Y - 框大小 / 2
       const 右 = 左 + 框大小
@@ -686,47 +685,39 @@ export function 渲染() {
 
   function 画基地标记(ctx, x, y, 大小) {
     const 主色 = '#f6c945'
-    const 外扩 = Math.max(6, 大小 * 0.18)
-    const 外框左 = x - 外扩
-    const 外框上 = y - 外扩
-    const 外框大小 = 大小 + 外扩 * 2
-    const 外边线宽 = Math.max(3, 大小 * 0.08)
-    const 高光边距 = Math.max(2, 外扩 * 0.36)
-    const 高光左 = 外框左 + 高光边距
-    const 高光上 = 外框上 + 高光边距
-    const 高光大小 = Math.max(1, 外框大小 - 高光边距 * 2)
+    const 外边线宽 = Math.max(2, 大小 * 0.07)
+    const 外偏移 = Math.max(2, 外边线宽 / 2 + 1)
+    const 内偏移 = Math.max(5, 大小 * 0.16)
+    const 标记大小 = Math.max(1, 大小 - 外偏移 * 2)
+    const 高光大小 = Math.max(1, 大小 - 内偏移 * 2)
 
     ctx.save()
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.28)'
-    ctx.shadowBlur = Math.max(2, 大小 * 0.06)
-    ctx.shadowOffsetX = 0
-    ctx.shadowOffsetY = Math.max(1, 大小 * 0.03)
 
     画基地旋转框()
 
+    ctx.globalAlpha = 0.22
     ctx.fillStyle = 主色
-    ctx.fillRect(外框左, 外框上, 外框大小, 外框大小)
+    ctx.fillRect(x + 外偏移, y + 外偏移, 标记大小, 标记大小)
 
-    ctx.shadowColor = 'transparent'
+    ctx.globalAlpha = 1
     ctx.strokeStyle = '#9a7720'
     ctx.lineWidth = 外边线宽
-    ctx.strokeRect(外框左, 外框上, 外框大小, 外框大小)
+    ctx.strokeRect(x + 外偏移, y + 外偏移, 标记大小, 标记大小)
 
     ctx.strokeStyle = 'rgba(255, 241, 181, 0.95)'
     ctx.lineWidth = Math.max(2, 大小 * 0.04)
-    ctx.strokeRect(高光左, 高光上, 高光大小, 高光大小)
+    ctx.strokeRect(x + 内偏移, y + 内偏移, 高光大小, 高光大小)
 
     ctx.restore()
 
     function 画基地旋转框() {
       const 中心X = x + 大小 / 2
       const 中心Y = y + 大小 / 2
-      const 扩张 = Math.max(3, 大小 * 0.14)
-      const 框大小 = 大小 + 扩张 * 2
-      const 角长 = Math.max(8, 大小 * 0.34)
-      const 线宽 = Math.max(3, 大小 * 0.1)
+      const 框大小 = Math.max(1, 大小 * 0.62)
+      const 角长 = Math.max(5, 大小 * 0.2)
+      const 线宽 = Math.max(2, 大小 * 0.06)
       const 左 = 中心X - 框大小 / 2
       const 上 = 中心Y - 框大小 / 2
       const 右 = 左 + 框大小
