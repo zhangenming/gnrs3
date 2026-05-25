@@ -22,6 +22,7 @@ import {
 } from './配置.js'
 import { 是我方或队友 } from './游戏.js'
 import { 状态 } from './状态.js'
+import { 取得大回合倒计时 } from './工具.js'
 import { 清理敌方移动高亮 } from './功能/敌方移动高亮.js'
 import { 清理抢塔提示 } from './功能/抢塔提示.js'
 import { 有未到达视野标记 } from './功能/视野.js'
@@ -1439,12 +1440,64 @@ html.${基地危险类名}, body.${基地危险类名} {
     ctx.strokeStyle = '#ffffff'
     画圆环(Math.max(2, 半径 - 外线宽 * 0.95))
 
+    画选中倒计时()
     ctx.restore()
 
     function 画圆环(半径) {
       ctx.beginPath()
       ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
       ctx.stroke()
+    }
+
+    function 画选中倒计时() {
+      const 倒计时 = 取得大回合倒计时(状态.当前回合)
+      if (!Number.isInteger(倒计时)) return
+
+      const 文本 = String(倒计时)
+      const 徽标高 = Math.max(14, 大小 * 0.34)
+      const 字号 = Math.max(10, 徽标高 * 0.68)
+      ctx.font = `900 ${字号}px Arial, sans-serif`
+      const 徽标宽 = Math.max(
+        徽标高,
+        ctx.measureText(文本).width + 徽标高 * 0.44,
+      )
+      const x = Math.min(
+        中心x + 半径 * 0.45,
+        列 * 格宽 + 格宽 - 徽标宽 - Math.max(1, 大小 * 0.04),
+      )
+      const y = Math.min(
+        中心y + 半径 * 0.45,
+        行 * 格高 + 格高 - 徽标高 - Math.max(1, 大小 * 0.04),
+      )
+      const 圆角 = Math.max(3, 徽标高 * 0.22)
+
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.72)'
+      ctx.shadowBlur = Math.max(3, 大小 * 0.08)
+      ctx.lineWidth = Math.max(1, 大小 * 0.035)
+      ctx.fillStyle = 取得倒计时背景色(倒计时)
+      ctx.strokeStyle = 取得倒计时边框色(倒计时)
+      ctx.beginPath()
+      ctx.roundRect(x, y, 徽标宽, 徽标高, 圆角)
+      ctx.fill()
+      ctx.stroke()
+
+      ctx.shadowColor = 'transparent'
+      ctx.fillStyle = '#ffffff'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(文本, x + 徽标宽 / 2, y + 徽标高 / 2 + 徽标高 * 0.03)
+    }
+
+    function 取得倒计时背景色(倒计时) {
+      if (倒计时 < 5) return 'rgba(206, 23, 23, 0.96)'
+      if (倒计时 < 10) return 'rgba(214, 163, 0, 0.94)'
+      return 'rgba(16, 18, 22, 0.88)'
+    }
+
+    function 取得倒计时边框色(倒计时) {
+      if (倒计时 < 5) return 'rgba(255, 182, 182, 0.92)'
+      if (倒计时 < 10) return 'rgba(255, 242, 150, 0.9)'
+      return 'rgba(255, 255, 255, 0.72)'
     }
   }
 
