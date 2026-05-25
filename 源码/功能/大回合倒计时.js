@@ -11,6 +11,7 @@ import {
 } from '../配置.js'
 import { 状态 } from '../状态.js'
 import { 取得大回合倒计时 } from '../工具.js'
+import { 更新回合结束提示 } from './回合结束提示.js'
 import { 更新我方行动监控UI, 结算我方行动回合 } from './我方行动监控.js'
 
 export function 记录回合(数据包) {
@@ -28,6 +29,7 @@ export function 记录回合(数据包) {
 export function 更新大回合倒计时() {
   const 倒计时 = 取得大回合倒计时(状态.当前回合)
   const 大回合序号 = 取得大回合序号(状态.当前回合)
+  更新回合结束提示(倒计时)
   if (倒计时 == null) return
 
   移除左上角倒计时()
