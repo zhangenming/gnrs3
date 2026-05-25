@@ -130,15 +130,28 @@ export function 同步回放元素() {
   const 元素 = 确保回放元素(画布)
   if (!帧 || !画布 || !元素) return
 
-  const 画布矩形 = 画布.getBoundingClientRect()
-  const 宿主 = 元素.parentElement
-  const 宿主矩形 = 宿主.getBoundingClientRect()
+  const 尺寸 = 取得回放元素尺寸(画布, 元素.parentElement)
 
-  元素.style.left = `${画布矩形.left - 宿主矩形.left}px`
-  元素.style.top = `${画布矩形.top - 宿主矩形.top}px`
-  元素.style.width = `${画布矩形.width}px`
-  元素.style.height = `${画布矩形.height}px`
-  同步回放底图(元素, 帧, 画布矩形.width, 画布矩形.height)
+  元素.style.left = `${尺寸.左}px`
+  元素.style.top = `${尺寸.上}px`
+  元素.style.width = `${尺寸.宽}px`
+  元素.style.height = `${尺寸.高}px`
+  同步回放底图(元素, 帧, 尺寸.宽, 尺寸.高)
+
+  function 取得回放元素尺寸(画布, 宿主) {
+    const 画布矩形 = 画布.getBoundingClientRect()
+    const 宿主矩形 = 宿主.getBoundingClientRect()
+    const 宽 = Math.max(1, 画布.offsetWidth || 画布矩形.width)
+    const 高 = Math.max(1, 画布.offsetHeight || 画布矩形.height)
+    const 左 =
+      画布.parentElement === 宿主
+        ? 画布.offsetLeft
+        : 画布矩形.left - 宿主矩形.left
+    const 上 =
+      画布.parentElement === 宿主 ? 画布.offsetTop : 画布矩形.top - 宿主矩形.top
+
+    return { 左, 上, 宽, 高 }
+  }
 }
 
 function 移动回放帧(步数, 请求渲染) {
