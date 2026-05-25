@@ -9,9 +9,9 @@
 // 作用范围:
 // 只改写排行榜/战场数据表的 Player 表头格内容和样式，不参与地图状态计算。
 import { 战场塔信息类名 } from '../配置.js'
-import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
-import { 状态 } from '../状态.js'
+import { 同步我方玩家索引 } from '../游戏.js'
 import { 读取冻结战场塔信息, 记录战场塔信息快照 } from './战场数据冻结.js'
+import { 统计塔数 } from './塔数统计.js'
 
 export function 更新战场塔信息() {
   if (!document.body) return
@@ -31,11 +31,11 @@ export function 更新战场塔信息() {
   if (!玩家表头格) return
   if (读取冻结战场塔信息(玩家表头格)) return
 
-  const { 我方塔数, 敌方塔数 } = 统计塔数()
+  const { 我方塔数, 敌方塔数, 我方开塔数, 敌方开塔数 } = 统计塔数()
   const 塔差 = 我方塔数 - 敌方塔数
   const 差值状态 = 塔差 > 0 ? 'advantage' : 塔差 < 0 ? 'disadvantage' : 'even'
   const 差值文本 = 塔差 > 0 ? `+${塔差}` : String(塔差)
-  const 文本 = `敌${敌方塔数} 我${我方塔数} 差${差值文本}`
+  const 文本 = `敌${敌方塔数}/${敌方开塔数} 我${我方塔数}/${我方开塔数} 差${差值文本}`
 
   if (
     玩家表头格.classList.contains(战场塔信息类名) &&
@@ -48,11 +48,17 @@ export function 更新战场塔信息() {
   玩家表头格.dataset.gioBattlePlayerColumn = 'true'
   玩家表头格.dataset.gioTowerSummary = 文本
   玩家表头格.dataset.gioTowerDiff = 差值状态
-  玩家表头格.title = '敌方塔数 / 我方塔数 / 塔差（我方减敌方）'
+  玩家表头格.title = '敌方总塔数/开塔数、我方总塔数/开塔数、塔差（我方减敌方）'
   玩家表头格.innerHTML =
     `<span class="gio-battle-tower-pill">` +
-    `<span class="gio-battle-tower-item">敌${敌方塔数}</span>` +
-    `<span class="gio-battle-tower-item">我${我方塔数}</span>` +
+    `<span class="gio-battle-tower-side">` +
+    `<span class="gio-battle-tower-total">敌${敌方塔数}</span>` +
+    `<span class="gio-battle-tower-open">开${敌方开塔数}</span>` +
+    `</span>` +
+    `<span class="gio-battle-tower-side">` +
+    `<span class="gio-battle-tower-total">我${我方塔数}</span>` +
+    `<span class="gio-battle-tower-open">开${我方开塔数}</span>` +
+    `</span>` +
     `<span class="gio-battle-tower-item">差</span>` +
     `<span class="gio-battle-tower-diff">${差值文本}</span>` +
     `</span>`
@@ -121,39 +127,6 @@ export function 更新战场塔信息() {
     })
   }
 
-  function 统计塔数() {
-    const 塔索引集合 = new Set()
-    if (Array.isArray(状态.塔列表)) {
-      状态.塔列表.forEach((塔索引) => {
-        if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
-      })
-    }
-    状态.已知塔集合.forEach((塔索引) => {
-      if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
-    })
-
-    let 我方塔数 = 0
-    let 敌方塔数 = 0
-    for (const 塔索引 of 塔索引集合) {
-      const 归属 = 读取当前地图归属(塔索引)
-      if (Number.isInteger(归属)) {
-        if (归属 >= 0) {
-          if (是我方或队友(归属)) {
-            我方塔数 += 1
-          } else {
-            敌方塔数 += 1
-          }
-          continue
-        }
-        if (归属 === -1) continue
-      }
-
-      const 塔类型 = 状态.已知塔类型.get(塔索引)
-      if (塔类型 === '敌方塔') 敌方塔数 += 1
-    }
-    return { 我方塔数, 敌方塔数 }
-  }
-
   function 是战场数据表格(表格元素) {
     const 文本 = 表格元素.textContent ?? ''
     if (文本.includes('Army') && 文本.includes('Land')) return true
@@ -162,20 +135,5 @@ export function 更新战场塔信息() {
         '[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]',
       ),
     )
-  }
-
-  function 读取当前地图归属(格子索引) {
-    const 地图数组 = 状态.地图数组
-    if (!Array.isArray(地图数组) || !Number.isInteger(格子索引)) return null
-
-    const 宽度 = 地图数组[0]
-    const 高度 = 地图数组[1]
-    const 格子数 = 宽度 * 高度
-    if (!Number.isFinite(格子数) || 格子索引 < 0 || 格子索引 >= 格子数)
-      return null
-    if (地图数组.length < 2 + 格子数 * 2) return null
-
-    const 归属 = 地图数组[2 + 格子数 + 格子索引]
-    return Number.isInteger(归属) ? 归属 : null
   }
 }

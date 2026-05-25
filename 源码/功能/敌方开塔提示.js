@@ -11,6 +11,7 @@
 import { 敌方红色, 样式编号 } from '../配置.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
+import { 统计塔数 } from './塔数统计.js'
 
 const 敌方开塔提示元素编号 = 'gio-enemy-open-tower-alert'
 const 敌方开塔提示样式编号 = `${样式编号}-enemy-open-tower`
@@ -35,8 +36,13 @@ export function 更新敌方开塔提示(数据包) {
     我方变化: 判断.我方变化,
     敌方变化: 判断.敌方变化,
     是敌方开塔: 判断.是敌方开塔,
+    是敌方完成开塔: 判断.是敌方完成开塔,
   }
   if (!判断.是敌方开塔) return
+  if (判断.是敌方完成开塔) {
+    状态.敌方推断开塔数 += 1
+    状态.敌方开塔战场快照.敌方.塔数 = 统计塔数().敌方塔数
+  }
 
   状态.敌方开塔提示 = {
     回合: 当前快照.回合,
@@ -87,9 +93,11 @@ function 取得敌方开塔判断(上次快照, 当前快照) {
     我方变化.净损失 < 开塔最小净损失 &&
     我方变化.陆地变化 >= 0 &&
     敌方变化.陆地变化 >= 0
+  const 是敌方完成开塔 = 是敌方开塔 && 敌方变化.陆地变化 > 0
 
   return {
     是敌方开塔,
+    是敌方完成开塔,
     我方变化,
     敌方变化,
   }
@@ -167,40 +175,6 @@ function 读取快照玩家数据() {
   return 我方 && 敌方 ? { 我方, 敌方 } : null
 }
 
-function 统计塔数() {
-  const 塔索引集合 = new Set()
-  if (Array.isArray(状态.塔列表)) {
-    状态.塔列表.forEach((塔索引) => {
-      if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
-    })
-  }
-  状态.已知塔集合.forEach((塔索引) => {
-    if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
-  })
-
-  let 我方塔数 = 0
-  let 敌方塔数 = 0
-  for (const 塔索引 of 塔索引集合) {
-    const 归属 = 读取当前地图归属(塔索引)
-    if (Number.isInteger(归属)) {
-      if (归属 >= 0) {
-        if (是我方或队友(归属)) {
-          我方塔数 += 1
-        } else {
-          敌方塔数 += 1
-        }
-        continue
-      }
-      if (归属 === -1) continue
-    }
-
-    const 塔类型 = 状态.已知塔类型.get(塔索引)
-    if (塔类型 === '我方塔') 我方塔数 += 1
-    if (塔类型 === '敌方塔') 敌方塔数 += 1
-  }
-  return { 我方塔数, 敌方塔数 }
-}
-
 function 显示敌方开塔提示() {
   安装敌方开塔提示样式()
 
@@ -267,21 +241,6 @@ function 读取字段数字(对象, 字段列表) {
 function 读取文本数字(文本) {
   const 数字 = Number.parseInt(String(文本 ?? '').trim(), 10)
   return Number.isInteger(数字) ? 数字 : null
-}
-
-function 读取当前地图归属(格子索引) {
-  const 地图数组 = 状态.地图数组
-  if (!Array.isArray(地图数组) || !Number.isInteger(格子索引)) return null
-
-  const 宽度 = 地图数组[0]
-  const 高度 = 地图数组[1]
-  const 格子数 = 宽度 * 高度
-  if (!Number.isFinite(格子数) || 格子索引 < 0 || 格子索引 >= 格子数)
-    return null
-  if (地图数组.length < 2 + 格子数 * 2) return null
-
-  const 归属 = 地图数组[2 + 格子数 + 格子索引]
-  return Number.isInteger(归属) ? 归属 : null
 }
 
 function 安装敌方开塔提示样式() {

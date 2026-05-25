@@ -1103,17 +1103,35 @@ export function 渲染() {
 .${战场塔信息类名} .gio-battle-tower-pill {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     margin: 0 auto;
-    padding: 2px 8px;
+    padding: 2px 7px;
     border-radius: 999px;
     background-color: #d8d8d8;
     color: #000000 !important;
-    font: 700 11px/1.2 Arial, sans-serif;
+    font: 700 10px/1.05 Arial, sans-serif;
     text-shadow: none !important;
+}
+.${战场塔信息类名} .gio-battle-tower-side {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    min-width: 20px;
+    color: #000000 !important;
 }
 .${战场塔信息类名} .gio-battle-tower-item {
     color: #000000 !important;
+}
+.${战场塔信息类名} .gio-battle-tower-total,
+.${战场塔信息类名} .gio-battle-tower-open {
+    display: block;
+    color: #000000 !important;
+    line-height: 1;
+}
+.${战场塔信息类名} .gio-battle-tower-open {
+    font-size: 9px;
+    font-weight: 700;
 }
 .${战场塔信息类名} .gio-battle-tower-diff {
     color: #000000 !important;

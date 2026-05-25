@@ -7,6 +7,8 @@ export const 状态 = {
   中立塔兵力表: new Map(),
   中立塔开塔成本表: new Map(),
   我方开塔增长表: new Map(),
+  敌方推断开塔数: 0,
+  敌方开塔确认集合: new Set(),
   已知基地集合: new Set(),
   已知敌方基地集合: new Map(),
   基地兵力表: new Map(),
