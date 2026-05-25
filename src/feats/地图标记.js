@@ -1,5 +1,6 @@
 const 样式编号 = 'gio-map-marker-style'
 const 标记层类名 = 'gio-map-marker-layer'
+const 塔图片路径 = '/city.png'
 const 未知障碍物 = -4
 const 山 = -2
 
@@ -12,10 +13,12 @@ const 状态 = {
   已请求渲染: false,
   socket已挂钩: false,
   页面观察器: null,
+  塔图片: null,
 }
 
 export function 启动地图标记() {
   安装样式()
+  加载塔图片()
   轮询socket()
   安装页面观察器()
   window.addEventListener('resize', 请求渲染, { passive: true })
@@ -77,6 +80,16 @@ export function 启动地图标记() {
       }
     `
     document.documentElement.appendChild(样式)
+  }
+
+  function 加载塔图片() {
+    if (状态.塔图片) return
+
+    const 图片 = new Image()
+    图片.decoding = 'async'
+    图片.src = 塔图片路径
+    图片.addEventListener('load', 请求渲染)
+    状态.塔图片 = 图片
   }
 
   function 安装页面观察器() {
@@ -348,53 +361,21 @@ function 渲染() {
     ctx.restore()
   }
 
-  function 画山(ctx, x, y, 格宽, 格高, 大小) {
+  function 画山(ctx, x, y, 格宽, 格高) {
     ctx.save()
-    ctx.fillStyle = '#111827'
+    ctx.fillStyle = '#000000'
     ctx.fillRect(x, y, 格宽, 格高)
-    ctx.strokeStyle = 'rgba(226, 232, 240, 0.9)'
-    ctx.lineWidth = Math.max(2, 大小 * 0.08)
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.beginPath()
-    ctx.moveTo(x + 格宽 * 0.16, y + 格高 * 0.72)
-    ctx.lineTo(x + 格宽 * 0.42, y + 格高 * 0.34)
-    ctx.lineTo(x + 格宽 * 0.58, y + 格高 * 0.56)
-    ctx.lineTo(x + 格宽 * 0.72, y + 格高 * 0.4)
-    ctx.lineTo(x + 格宽 * 0.88, y + 格高 * 0.72)
-    ctx.stroke()
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'
-    ctx.lineWidth = Math.max(1, 大小 * 0.04)
-    ctx.strokeRect(x + ctx.lineWidth / 2, y + ctx.lineWidth / 2, 格宽, 格高)
     ctx.restore()
   }
 
-  function 画塔(ctx, x, y, 格宽, 格高, 大小) {
-    const 边距 = Math.max(2, 大小 * 0.1)
-    const 线宽 = Math.max(2, 大小 * 0.08)
-    const 角长 = Math.max(4, 大小 * 0.24)
+  function 画塔(ctx, x, y, 格宽, 格高) {
+    const 图片 = 状态.塔图片
+    if (!图片?.complete || 图片.naturalWidth <= 0 || 图片.naturalHeight <= 0) {
+      return
+    }
 
     ctx.save()
-    ctx.strokeStyle = 'rgba(255, 210, 77, 0.95)'
-    ctx.lineWidth = 线宽
-    ctx.lineJoin = 'round'
-    ctx.strokeRect(
-      x + 边距,
-      y + 边距,
-      Math.max(1, 格宽 - 边距 * 2),
-      Math.max(1, 格高 - 边距 * 2),
-    )
-
-    ctx.beginPath()
-    ctx.moveTo(x + 边距, y + 边距 + 角长)
-    ctx.lineTo(x + 边距 + 角长, y + 边距)
-    ctx.moveTo(x + 格宽 - 边距 - 角长, y + 边距)
-    ctx.lineTo(x + 格宽 - 边距, y + 边距 + 角长)
-    ctx.moveTo(x + 边距, y + 格高 - 边距 - 角长)
-    ctx.lineTo(x + 边距 + 角长, y + 格高 - 边距)
-    ctx.moveTo(x + 格宽 - 边距 - 角长, y + 格高 - 边距)
-    ctx.lineTo(x + 格宽 - 边距, y + 格高 - 边距 - 角长)
-    ctx.stroke()
+    ctx.drawImage(图片, x, y, 格宽, 格高)
     ctx.restore()
   }
 }
