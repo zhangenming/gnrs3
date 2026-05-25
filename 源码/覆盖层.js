@@ -36,6 +36,7 @@ const 战场面板预留宽 = 440
 let 选中格子索引 = null
 let 已同步移动队列长度 = 0
 let 已安装选中监听 = false
+let 覆盖层动画帧 = null
 let 自适应棋盘尺寸缓存 = null
 let 当前自适应棋盘元素 = null
 let 当前自适应宿主元素 = null
@@ -233,25 +234,7 @@ export function 渲染() {
     画选中棋子(ctx, 格宽, 格高, 大小, 当前动画时间)
   }
 
-  if (
-    !状态.回放正在显示 &&
-    ((功能已启用('敌方移动高亮') && 状态.敌方移动高亮列表.length) ||
-      (功能已启用('抢塔提示') && 状态.抢塔提示列表.length))
-  ) {
-    requestAnimationFrame(() => {
-      if (
-        (((功能已启用('敌方移动高亮') && !状态.敌方移动高亮列表.length) ||
-          !功能已启用('敌方移动高亮')) &&
-          ((功能已启用('抢塔提示') && !状态.抢塔提示列表.length) ||
-            !功能已启用('抢塔提示'))) ||
-        状态.已请求渲染
-      ) {
-        return
-      }
-      状态.已请求渲染 = true
-      渲染()
-    })
-  }
+  if (需要连续动画()) 请求连续动画帧()
 
   function 画未到达视野背景() {
     if (!有未到达视野标记()) return
@@ -1583,6 +1566,44 @@ html.${基地危险类名}, body.${基地危险类名} {
     ctx.strokeRect(方形x, 方形y, 方形边长, 方形边长)
 
     ctx.restore()
+  }
+}
+
+function 请求连续动画帧() {
+  if (覆盖层动画帧 !== null) return
+  覆盖层动画帧 = requestAnimationFrame(() => {
+    覆盖层动画帧 = null
+    if (!需要连续动画()) return
+    if (状态.已请求渲染) {
+      请求连续动画帧()
+      return
+    }
+    状态.已请求渲染 = true
+    渲染()
+  })
+}
+
+function 需要连续动画() {
+  if (状态.回放正在显示) return false
+  if (功能已启用('敌方移动高亮') && 状态.敌方移动高亮列表.length) return true
+  if (功能已启用('抢塔提示') && 状态.抢塔提示列表.length) return true
+  if (功能已启用('基地记忆标记') && 有基地动画()) return true
+  if (功能已启用('塔记忆标记') && 有占领塔动画()) return true
+  return 功能已启用('选中棋子提示') && Number.isInteger(取得选中棋子索引())
+
+  function 有基地动画() {
+    return (
+      状态.已知敌方基地集合.size > 0 ||
+      (Number.isInteger(状态.我方基地索引) && 状态.我方基地索引 >= 0)
+    )
+  }
+
+  function 有占领塔动画() {
+    for (const 塔索引 of 状态.已知塔集合) {
+      const 类型 = 状态.已知塔类型.get(塔索引)
+      if (类型 === '敌方塔' || 类型 === '我方塔') return true
+    }
+    return false
   }
 }
 
