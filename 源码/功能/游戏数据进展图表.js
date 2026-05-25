@@ -194,12 +194,10 @@ function 确保面板() {
     } else if (面板.parentElement !== 挂载点.宿主) {
       挂载点.宿主.appendChild(面板)
     }
-  } else if (!状态.游戏数据进展列表.length) {
-    面板.remove()
-    return null
   } else {
-    面板.classList.add('gio-data-progress-floating')
-    if (面板.parentElement !== document.body) document.body.appendChild(面板)
+    面板.remove()
+    状态.游戏数据进展面板 = null
+    return null
   }
 
   状态.游戏数据进展面板 = 面板

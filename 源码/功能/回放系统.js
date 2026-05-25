@@ -78,10 +78,12 @@ export function 结束回放(_事件名, _数据包, 请求渲染) {
   if (!状态.回放帧列表.length) return
 
   状态.回放已结束 = true
-  状态.回放正在显示 = true
+  状态.回放正在显示 = false
   状态.回放当前帧索引 = 状态.回放帧列表.length - 1
   状态.战场数据已冻结 = true
-  应用当前回放帧(请求渲染)
+  移除回放元素()
+  移除回放面板()
+  if (typeof 请求渲染 === 'function') 请求渲染()
 }
 
 export function 重置回放() {
