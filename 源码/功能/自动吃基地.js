@@ -36,15 +36,21 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
 
   function 取得吃基地计划() {
     const 格子数 = 状态.宽度 * 状态.高度
-    for (const 基地索引 of 状态.已知敌方基地集合.keys()) {
+    for (const [基地索引, 基地记忆] of 状态.已知敌方基地集合) {
       if (!Number.isInteger(基地索引) || 基地索引 < 0 || 基地索引 >= 格子数) {
         continue
       }
 
-      const 基地兵力 = 状态.地图数组[2 + 基地索引]
+      const 基地兵力 = 取得基地兵力(基地索引)
       const 基地归属 = 状态.地图数组[2 + 格子数 + 基地索引]
       if (!Number.isInteger(基地兵力) || 基地兵力 < 0) continue
-      if (!Number.isInteger(基地归属) || 是我方或队友(基地归属)) continue
+      if (
+        Number.isInteger(基地归属)
+          ? 是我方或队友(基地归属)
+          : !是已知敌方基地(基地记忆)
+      ) {
+        continue
+      }
 
       const 相邻我方地块列表 = 取得相邻我方地块(基地索引)
       if (!相邻我方地块列表.length) continue
@@ -55,6 +61,35 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
       }
     }
     return null
+  }
+
+  function 取得基地兵力(基地索引) {
+    const 实时兵力 = 状态.地图数组[2 + 基地索引]
+    if (Number.isInteger(实时兵力) && 实时兵力 >= 0) return 实时兵力
+
+    const 记忆 = 状态.基地兵力表.get(基地索引)
+    if (!记忆 || !Number.isInteger(记忆.兵力) || !Number.isInteger(记忆.回合)) {
+      return null
+    }
+    if (!Number.isInteger(状态.当前回合) || 状态.当前回合 < 记忆.回合) {
+      return 记忆.兵力
+    }
+
+    const 基地自然增长 = 取得周期增长次数(
+      记忆.回合,
+      状态.当前回合,
+      基地自然增长turn数,
+    )
+    const 大回合增长 = 取得周期增长次数(记忆.回合, 状态.当前回合, 大回合turn数)
+    return 记忆.兵力 + 基地自然增长 + 大回合增长
+  }
+
+  function 是已知敌方基地(基地记忆) {
+    return (
+      基地记忆 &&
+      Number.isInteger(基地记忆.玩家索引) &&
+      !是我方或队友(基地记忆.玩家索引)
+    )
   }
 
   function 取得相邻我方地块(基地索引) {
