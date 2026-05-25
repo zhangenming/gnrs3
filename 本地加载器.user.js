@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         generals.io 塔记忆标记
+// @name         generals.io 地图标记
 // @namespace    https://generals.io/
-// @description  发现塔和敌方基地后固定标记该位置，丢失视野后仍保留标记。
+// @description  标记未知障碍物，发现塔和山后保留地图标记。
 // @author       Codex
 // @match        https://generals.io/*
 // @match        http://generals.io/*
@@ -27,8 +27,8 @@ window.addEventListener('mousewheel', 禁止滚轮缩放, {
   capture: true,
 })
 
-void import('http://127.0.0.1:48291/源码/主程序.js').catch((错误) => {
-  console.error('generals.io 塔记忆标记加载失败', 错误)
+void import('http://127.0.0.1:48291/src/main.js').catch((错误) => {
+  console.error('generals.io 地图标记加载失败', 错误)
 })
 
 function 禁止滚轮缩放(事件) {
