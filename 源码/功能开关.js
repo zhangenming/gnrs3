@@ -112,7 +112,7 @@ export function 统计已开启功能数() {
 function 读取功能配置() {
   const 默认功能开关 = Object.fromEntries(
     功能列表.map((功能) => {
-      return [功能.id, 取得默认开启状态(功能)]
+      return [功能.id, 功能.分类 !== '自动操作']
     }),
   )
 
@@ -133,14 +133,14 @@ function 读取功能配置() {
       总开关: 原配置?.总开关 !== false,
       功能开关: Object.fromEntries(
         功能列表.map((功能) => {
-          if (!已迁移自动操作默认关闭 && 是自动操作功能(功能)) {
+          if (!已迁移自动操作默认关闭 && 功能.分类 === '自动操作') {
             return [功能.id, false]
           }
           return [
             功能.id,
             Object.hasOwn(原功能开关 ?? {}, 功能.id)
               ? 原功能开关[功能.id] !== false
-              : 取得默认开启状态(功能),
+              : 功能.分类 !== '自动操作',
           ]
         }),
       ),
@@ -151,14 +151,6 @@ function 读取功能配置() {
       功能开关: 默认功能开关,
     }
   }
-}
-
-function 取得默认开启状态(功能) {
-  return !是自动操作功能(功能)
-}
-
-function 是自动操作功能(功能) {
-  return 功能?.分类 === '自动操作'
 }
 
 function 保存功能配置() {
