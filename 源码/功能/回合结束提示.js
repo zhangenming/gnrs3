@@ -117,7 +117,7 @@ export function 更新回合结束提示(倒计时) {
     min-width: 36px;
     height: 30px;
     padding: 0 8px;
-    border: 1px solid rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(255, 64, 64, 0.95);
     border-radius: 4px;
     background: rgba(16, 18, 22, 0.88);
     color: #ffffff;
@@ -132,13 +132,13 @@ export function 更新回合结束提示(倒计时) {
 #${回合结束提示元素编号}[data-level='warning'] {
     background: rgba(214, 163, 0, 0.94);
     color: #fff4a8;
-    border-color: rgba(255, 242, 150, 0.9);
+    border-color: rgba(255, 64, 64, 0.95);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.36), 0 0 12px rgba(255, 211, 0, 0.45);
 }
 #${回合结束提示元素编号}[data-level='danger'] {
     background: rgba(206, 23, 23, 0.96);
     color: #ffffff;
-    border-color: rgba(255, 182, 182, 0.92);
+    border-color: rgba(255, 64, 64, 0.95);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 14px rgba(255, 35, 35, 0.58);
 }`,
     )
