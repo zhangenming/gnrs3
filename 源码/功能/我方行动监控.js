@@ -491,7 +491,7 @@ function 同步我方行动监控UI() {
         return { 背景: '#247448', 文字: '#effff5' }
       }
       if (行动类型 === '抢地(抢塔)') {
-        return { 背景: '#b4481e', 文字: '#fff4ec' }
+        return { 背景: '#247448', 文字: '#effff5' }
       }
       return {
         背景: 'rgba(124, 148, 176, 0.24)',
@@ -580,8 +580,8 @@ function 安装样式() {
     color: #effff5;
 }
 .gio-action-watch-legend [data-gio-action-watch-kind="fight"] {
-    background: rgba(180, 72, 30, 0.88);
-    color: #fff4ec;
+    background: rgba(36, 116, 72, 0.82);
+    color: #effff5;
 }
 .gio-action-watch-list {
     max-height: 220px;
