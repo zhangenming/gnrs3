@@ -1,5 +1,10 @@
 import { 状态 } from '../状态.js'
-import { 取得本次塔列表 } from '../游戏.js'
+import {
+  取得地图格子数,
+  取得本次塔列表,
+  地图可读,
+  读取地图归属,
+} from '../游戏.js'
 
 export const 功能定义 = {
   id: '障碍物标记',
@@ -44,9 +49,7 @@ export function 画障碍物({ ctx, 格宽, 格高, 大小 }) {
   ctx.save()
   ctx.fillStyle = '#000000'
   状态.已知障碍物集合.forEach((障碍物索引) => {
-    const 当前地形 = Array.isArray(地图数组)
-      ? 地图数组[2 + 格子数 + 障碍物索引]
-      : null
+    const 当前地形 = 读取地图归属(地图数组, 障碍物索引)
     if (
       !Number.isInteger(障碍物索引) ||
       障碍物索引 < 0 ||
@@ -55,7 +58,7 @@ export function 画障碍物({ ctx, 格宽, 格高, 大小 }) {
     ) {
       return
     }
-    if (Array.isArray(地图数组)) {
+    if (地图可读(地图数组)) {
       if (Number.isInteger(当前地形) && 当前地形 >= -1) return
     }
     const 行 = Math.floor(障碍物索引 / 状态.宽度)
@@ -93,10 +96,9 @@ export function 画障碍物({ ctx, 格宽, 格高, 大小 }) {
 
 export function 记录已知障碍物(数据包) {
   const 地图数组 = 状态.地图数组
-  if (!Array.isArray(地图数组) || !状态.宽度 || !状态.高度) return
+  if (!地图可读(地图数组)) return
 
-  const 格子数 = 状态.宽度 * 状态.高度
-  if (地图数组.length < 2 + 格子数 * 2) return
+  const 格子数 = 取得地图格子数(地图数组)
 
   const 塔索引集合 = new Set(状态.已知塔集合)
   const 当前塔信息 = 取得本次塔列表(数据包)
@@ -106,7 +108,7 @@ export function 记录已知障碍物(数据包) {
     })
   }
   for (let idx = 0; idx < 格子数; idx += 1) {
-    const 地形 = 地图数组[2 + 格子数 + idx]
+    const 地形 = 读取地图归属(地图数组, idx)
     if (塔索引集合.has(idx)) {
       状态.已知障碍物集合.delete(idx)
     } else if (地形 === -2 || 地形 === -4) {

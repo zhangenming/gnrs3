@@ -183,10 +183,7 @@ function 处理数据包(数据包) {
   }
 
   function 读取地形(格子索引) {
-    if (!地图可读()) return null
-    const 格子数 = 状态.宽度 * 状态.高度
-    if (格子索引 < 0 || 格子索引 >= 格子数) return null
-    return 状态.地图数组[2 + 格子数 + 格子索引]
+    return 读取地图地块(格子索引)?.地形 ?? null
   }
 
   function 取得完整地图数组() {
@@ -197,15 +194,7 @@ function 处理数据包(数据包) {
       地图数组 = 应用增量([], 数据包.map_diff)
     }
 
-    if (!Array.isArray(地图数组) || 地图数组.length < 2) return null
-    const 宽度 = 地图数组[0]
-    const 高度 = 地图数组[1]
-    const 格子数 = 宽度 * 高度
-    if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) {
-      return null
-    }
-    if (地图数组.length < 2 + 格子数 * 2) return null
-    return 地图数组
+    return 地图数组可读(地图数组) ? 地图数组 : null
   }
 
   function 应用增量(旧数组, 增量) {
@@ -231,6 +220,18 @@ function 处理数据包(数据包) {
     }
 
     return 新数组
+  }
+}
+
+function 读取地图地块(格子索引) {
+  if (!地图可读()) return null
+  const 格子数 = 状态.宽度 * 状态.高度
+  if (!Number.isInteger(格子索引) || 格子索引 < 0 || 格子索引 >= 格子数) {
+    return null
+  }
+  return {
+    兵力: 状态.地图数组[2 + 格子索引],
+    地形: 状态.地图数组[2 + 格子数 + 格子索引],
   }
 }
 
@@ -381,7 +382,16 @@ function 渲染() {
 }
 
 function 地图可读() {
-  if (!Array.isArray(状态.地图数组)) return false
-  if (!状态.宽度 || !状态.高度) return false
-  return 状态.地图数组.length >= 2 + 状态.宽度 * 状态.高度 * 2
+  return 地图数组可读(状态.地图数组)
+}
+
+function 地图数组可读(地图数组) {
+  if (!Array.isArray(地图数组) || 地图数组.length < 2) return false
+  const 宽度 = 地图数组[0]
+  const 高度 = 地图数组[1]
+  const 格子数 = 宽度 * 高度
+  if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) {
+    return false
+  }
+  return 地图数组.length >= 2 + 格子数 * 2
 }

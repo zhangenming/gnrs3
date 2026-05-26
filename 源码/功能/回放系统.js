@@ -6,7 +6,7 @@
 // 复盘时恢复快照，让既有覆盖层渲染逻辑直接读取历史状态；地图底图按快照地图即时绘制。
 import { 样式编号, 我方蓝色, 敌方红色 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 是我方或队友 } from '../游戏.js'
+import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 结算当前我方行动回合 } from './我方行动监控.js'
 import { 是战场数据冻结事件 } from './战场数据冻结.js'
@@ -375,7 +375,7 @@ function 同步回放底图(元素, 帧, css宽, css高) {
 
 function 绘制备用地图(画布, css宽, css高) {
   const 地图数组 = 状态.地图数组
-  if (!Array.isArray(地图数组) || !状态.宽度 || !状态.高度) return
+  if (!地图可读(地图数组)) return
 
   const dpr = window.devicePixelRatio ?? 1
   const 像素宽 = Math.max(1, Math.round(css宽 * dpr))
@@ -387,8 +387,6 @@ function 绘制备用地图(画布, css宽, css高) {
   if (!ctx) return
 
   const 格子数 = 状态.宽度 * 状态.高度
-  if (地图数组.length < 2 + 格子数 * 2) return
-
   const 格宽 = css宽 / 状态.宽度
   const 格高 = css高 / 状态.高度
   const 大小 = Math.min(格宽, 格高)
@@ -400,8 +398,9 @@ function 绘制备用地图(画布, css宽, css高) {
     const 列 = idx % 状态.宽度
     const x = 列 * 格宽
     const y = 行 * 格高
-    const 兵力 = 地图数组[2 + idx]
-    const 地形 = 地图数组[2 + 格子数 + idx]
+    const 地块 = 读取地图地块(地图数组, idx)
+    const 兵力 = 地块?.兵力
+    const 地形 = 地块?.归属
     ctx.fillStyle = 取得地块颜色(地形)
     ctx.fillRect(x, y, 格宽 + 0.5, 格高 + 0.5)
     if (Number.isInteger(兵力) && 兵力 > 0 && 地形 !== -3) {

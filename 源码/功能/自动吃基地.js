@@ -5,7 +5,13 @@
 // 只处理敌方基地已经可见、且基地旁我方连通兵力足够的 1v1 收尾场景。
 import { 大回合turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 是我方或队友 } from '../游戏.js'
+import {
+  地图可读,
+  是我方或队友,
+  读取地图兵力,
+  读取地图地块,
+  读取地图归属,
+} from '../游戏.js'
 import { 状态 } from '../状态.js'
 
 const 最大集结步数 = 6
@@ -36,7 +42,7 @@ export const socket功能 = {
 export function 尝试自动吃敌方基地(socket, 请求渲染) {
   if (!socket || typeof socket.emit !== 'function') return
   if (globalThis.location?.pathname?.startsWith('/replays/')) return
-  if (!Array.isArray(状态.地图数组) || !状态.宽度 || !状态.高度) return
+  if (!地图可读(状态.地图数组)) return
   if (!状态.已知敌方基地集合.size) return
   if (接管冷却中()) return
 
@@ -65,7 +71,7 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
       }
 
       const 基地兵力 = 取得基地兵力(基地索引)
-      const 基地归属 = 状态.地图数组[2 + 格子数 + 基地索引]
+      const 基地归属 = 读取地图归属(状态.地图数组, 基地索引)
       if (!Number.isInteger(基地兵力) || 基地兵力 < 0) continue
       if (
         Number.isInteger(基地归属)
@@ -87,7 +93,7 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
   }
 
   function 取得基地兵力(基地索引) {
-    const 实时兵力 = 状态.地图数组[2 + 基地索引]
+    const 实时兵力 = 读取地图兵力(状态.地图数组, 基地索引)
     if (Number.isInteger(实时兵力) && 实时兵力 >= 0) return 实时兵力
 
     const 记忆 = 状态.基地兵力表.get(基地索引)
@@ -121,8 +127,9 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
     const 地块列表 = []
     for (const 索引 of 相邻索引列表) {
       if (索引 < 0 || 索引 >= 格子数) continue
-      const 兵力 = 状态.地图数组[2 + 索引]
-      const 归属 = 状态.地图数组[2 + 格子数 + 索引]
+      const 地块 = 读取地图地块(状态.地图数组, 索引)
+      const 兵力 = 地块?.兵力
+      const 归属 = 地块?.归属
       if (!Number.isInteger(兵力) || 兵力 <= 1) continue
       if (!是我方或队友(归属)) continue
       地块列表.push({
@@ -173,7 +180,7 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
             索引: 攻击点索引,
             父级索引: null,
             深度: 0,
-            兵力: 状态.地图数组[2 + 攻击点索引],
+            兵力: 读取地图兵力(状态.地图数组, 攻击点索引),
           },
         ],
       ])
@@ -192,7 +199,7 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
             索引: 相邻索引,
             父级索引: 当前.索引,
             深度,
-            兵力: 状态.地图数组[2 + 相邻索引],
+            兵力: 读取地图兵力(状态.地图数组, 相邻索引),
           })
           队列.push({
             索引: 相邻索引,
@@ -328,10 +335,9 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
   }
 
   function 是我方地块(索引) {
-    const 格子数 = 状态.宽度 * 状态.高度
-    if (!Number.isInteger(索引) || 索引 < 0 || 索引 >= 格子数) return false
-    const 兵力 = 状态.地图数组[2 + 索引]
-    const 归属 = 状态.地图数组[2 + 格子数 + 索引]
+    const 地块 = 读取地图地块(状态.地图数组, 索引)
+    const 兵力 = 地块?.兵力
+    const 归属 = 地块?.归属
     return Number.isInteger(兵力) && 兵力 > 0 && 是我方或队友(归属)
   }
 

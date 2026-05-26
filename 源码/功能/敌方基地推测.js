@@ -3,7 +3,12 @@
 //
 // 作用范围:
 // 只使用当前地图缓存、已到达视野、已知障碍物、塔和基地记忆，维护候选格列表供覆盖层过滤红底。
-import { 是我方或队友 } from '../游戏.js'
+import {
+  取得地图格子数,
+  地图可读,
+  是我方或队友,
+  读取地图归属,
+} from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 
@@ -71,7 +76,7 @@ export function 更新敌方基地推测(数据包, 请求渲染) {
 
     const 敌方索引列表 = []
     for (let idx = 0; idx < 地图信息.格子数; idx += 1) {
-      const 归属 = 地图信息.地图数组[地图信息.归属偏移 + idx]
+      const 归属 = 读取地图归属(地图信息.地图数组, idx)
       if (是敌方格(归属)) 敌方索引列表.push(idx)
     }
 
@@ -157,7 +162,7 @@ export function 更新敌方基地推测(数据包, 请求渲染) {
     if (状态.已知基地集合.has(idx)) return false
     if (状态.已知敌方基地集合.has(idx)) return false
 
-    const 地形 = 地图信息.地图数组[地图信息.归属偏移 + idx]
+    const 地形 = 读取地图归属(地图信息.地图数组, idx)
     return 地形 !== -2 && 地形 !== -4
   }
 
@@ -174,15 +179,11 @@ export function 更新敌方基地推测(数据包, 请求渲染) {
 
   function 取得地图信息() {
     const 地图数组 = 状态.地图数组
-    if (!Array.isArray(地图数组) || !状态.宽度 || !状态.高度) return null
-
-    const 格子数 = 状态.宽度 * 状态.高度
-    if (地图数组.length < 2 + 格子数 * 2) return null
+    if (!地图可读(地图数组)) return null
 
     return {
       地图数组,
-      格子数,
-      归属偏移: 2 + 格子数,
+      格子数: 取得地图格子数(地图数组),
     }
   }
 

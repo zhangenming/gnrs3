@@ -1,6 +1,6 @@
 // 功能目的:
 // 给战场表头和敌方开塔判断提供统一的 1v1 塔数口径。
-import { 是我方或队友 } from '../游戏.js'
+import { 是我方或队友, 读取地图归属 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 
 export function 统计塔数() {
@@ -65,16 +65,5 @@ export function 统计塔数() {
 }
 
 function 读取当前地图归属(格子索引) {
-  const 地图数组 = 状态.地图数组
-  if (!Array.isArray(地图数组) || !Number.isInteger(格子索引)) return null
-
-  const 宽度 = 地图数组[0]
-  const 高度 = 地图数组[1]
-  const 格子数 = 宽度 * 高度
-  if (!Number.isFinite(格子数) || 格子索引 < 0 || 格子索引 >= 格子数)
-    return null
-  if (地图数组.length < 2 + 格子数 * 2) return null
-
-  const 归属 = 地图数组[2 + 格子数 + 格子索引]
-  return Number.isInteger(归属) ? 归属 : null
+  return 读取地图归属(状态.地图数组, 格子索引)
 }

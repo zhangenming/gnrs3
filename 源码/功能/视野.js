@@ -5,7 +5,12 @@
 // 根据我方/队友地块和基地安全范围推导已到达视野集合。
 // 覆盖层会把未到达视野的区域铺上背景色，帮助 1v1 中判断哪些方向仍缺少侦察信息。
 import { 玩家最小距离 } from '../配置.js'
-import { 是我方或队友 } from '../游戏.js'
+import {
+  取得地图格子数,
+  地图可读,
+  是我方或队友,
+  读取地图归属,
+} from '../游戏.js'
 import { 任一功能已启用 } from '../功能状态.js'
 import { 未到达视野背景色 } from '../配置.js'
 import { 状态 } from '../状态.js'
@@ -85,9 +90,10 @@ export function 记录已到达视野(数据包) {
   if (!任一功能已启用('未到达视野', '敌方基地推测')) return
   if (!状态.宽度 || !状态.高度) return
 
-  const 格子数 = 状态.宽度 * 状态.高度
   const 地图数组 = 状态.地图数组
-  if (!Array.isArray(地图数组) || 地图数组.length < 2 + 格子数 * 2) return
+  if (!地图可读(地图数组)) return
+
+  const 格子数 = 取得地图格子数(地图数组)
 
   if (Array.isArray(数据包?.generals)) {
     for (let 玩家索引 = 0; 玩家索引 < 数据包.generals.length; 玩家索引 += 1) {
@@ -99,7 +105,7 @@ export function 记录已到达视野(数据包) {
   }
 
   for (let idx = 0; idx < 格子数; idx += 1) {
-    const 归属 = 地图数组[2 + 格子数 + idx]
+    const 归属 = 读取地图归属(地图数组, idx)
     if (是我方或队友(归属)) 记录周围视野(idx)
   }
 

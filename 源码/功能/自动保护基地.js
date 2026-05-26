@@ -5,7 +5,7 @@
 // 只处理 1v1 中我方基地已经可见、敌方威胁已经贴脸的场景。
 import { 大回合turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 是我方或队友 } from '../游戏.js'
+import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 
 const 基地自然增长turn数 = 2
@@ -36,7 +36,7 @@ export function 尝试自动保护基地(socket, 请求渲染) {
   if (!socket || typeof socket.emit !== 'function') return false
   if (globalThis.location?.pathname?.startsWith('/replays/')) return false
   if (接管冷却中()) return true
-  if (!Array.isArray(状态.地图数组) || !状态.宽度 || !状态.高度) return false
+  if (!地图可读(状态.地图数组)) return false
   if (!Number.isInteger(状态.我方基地索引)) return false
 
   const 计划 = 取得保护计划()
@@ -66,10 +66,10 @@ export function 尝试自动保护基地(socket, 请求渲染) {
     const 格子数 = 状态.宽度 * 状态.高度
     const 基地索引 = 状态.我方基地索引
     if (基地索引 < 0 || 基地索引 >= 格子数) return null
-    if (状态.地图数组.length < 2 + 格子数 * 2) return null
 
-    const 基地兵力 = 状态.地图数组[2 + 基地索引]
-    const 基地归属 = 状态.地图数组[2 + 格子数 + 基地索引]
+    const 基地地块 = 读取地图地块(状态.地图数组, 基地索引)
+    const 基地兵力 = 基地地块?.兵力
+    const 基地归属 = 基地地块?.归属
     if (!Number.isInteger(基地兵力) || 基地兵力 < 0) return null
     if (!是我方或队友(基地归属)) return null
 
@@ -87,8 +87,9 @@ export function 尝试自动保护基地(socket, 请求渲染) {
     const 格子数 = 状态.宽度 * 状态.高度
     const 列表 = []
     for (const 索引 of 取得相邻索引列表(基地索引)) {
-      const 兵力 = 状态.地图数组[2 + 索引]
-      const 归属 = 状态.地图数组[2 + 格子数 + 索引]
+      const 地块 = 读取地图地块(状态.地图数组, 索引)
+      const 兵力 = 地块?.兵力
+      const 归属 = 地块?.归属
       if (!Number.isInteger(兵力) || 兵力 <= 1) continue
       if (!是敌方格(归属)) continue
 
@@ -113,8 +114,9 @@ export function 尝试自动保护基地(socket, 请求渲染) {
     const 格子数 = 状态.宽度 * 状态.高度
     const 候选列表 = []
     for (const 索引 of 取得相邻索引列表(基地索引)) {
-      const 兵力 = 状态.地图数组[2 + 索引]
-      const 归属 = 状态.地图数组[2 + 格子数 + 索引]
+      const 地块 = 读取地图地块(状态.地图数组, 索引)
+      const 兵力 = 地块?.兵力
+      const 归属 = 地块?.归属
       if (!Number.isInteger(兵力) || 兵力 <= 1) continue
       if (!是我方或队友(归属)) continue
 
@@ -195,8 +197,9 @@ export function 尝试自动保护基地(socket, 请求渲染) {
     const 格子数 = 状态.宽度 * 状态.高度
     const 列表 = []
     for (const 索引 of 取得相邻索引列表(威胁索引)) {
-      const 兵力 = 状态.地图数组[2 + 索引]
-      const 归属 = 状态.地图数组[2 + 格子数 + 索引]
+      const 地块 = 读取地图地块(状态.地图数组, 索引)
+      const 兵力 = 地块?.兵力
+      const 归属 = 地块?.归属
       if (!Number.isInteger(兵力) || 兵力 <= 1) continue
       if (!是我方或队友(归属)) continue
       列表.push({ 索引, 兵力 })

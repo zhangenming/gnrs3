@@ -6,7 +6,7 @@
 // 只维护本地行动记录与页面面板，真实游戏操作队列由原 socket 流程处理。
 import { 大回合turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 是我方或队友 } from '../游戏.js'
+import { 地图可读, 是我方或队友, 读取地图地块, 读取地图归属 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 取得战场数据表格 } from './战场表格.js'
 
@@ -66,16 +66,9 @@ export function 更新我方行动地图判断(
   if (!功能已启用('我方行动监控')) return
   const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn - 1 : 状态.当前回合
   if (!Number.isInteger(回合) || 回合 < 监控起始回合) return
-  if (!Array.isArray(旧地图数组) || !Array.isArray(新地图数组)) return
-  if (!状态.宽度 || !状态.高度) return
+  if (!地图可读(旧地图数组) || !地图可读(新地图数组)) return
 
   const 格子数 = 状态.宽度 * 状态.高度
-  if (
-    旧地图数组.length < 2 + 格子数 * 2 ||
-    新地图数组.length < 2 + 格子数 * 2
-  ) {
-    return
-  }
 
   const 真实行动类型 = 取得已处理移动行动类型()
   if (真实行动类型) {
@@ -84,8 +77,8 @@ export function 更新我方行动地图判断(
   }
 
   for (let idx = 0; idx < 格子数; idx += 1) {
-    const 旧归属 = 旧地图数组[2 + 格子数 + idx]
-    const 新归属 = 新地图数组[2 + 格子数 + idx]
+    const 旧归属 = 读取地图归属(旧地图数组, idx)
+    const 新归属 = 读取地图归属(新地图数组, idx)
     if (旧归属 === 新归属 || !是我方格(新归属)) continue
 
     if (是敌方格(旧归属)) {
@@ -131,10 +124,12 @@ export function 更新我方行动地图判断(
         return false
       }
 
-      const 旧兵力 = 旧地图数组[2 + 格子索引]
-      const 新兵力 = 新地图数组[2 + 格子索引]
-      const 旧归属 = 旧地图数组[2 + 格子数 + 格子索引]
-      const 新归属 = 新地图数组[2 + 格子数 + 格子索引]
+      const 旧地块 = 读取地图地块(旧地图数组, 格子索引)
+      const 新地块 = 读取地图地块(新地图数组, 格子索引)
+      const 旧兵力 = 旧地块?.兵力
+      const 新兵力 = 新地块?.兵力
+      const 旧归属 = 旧地块?.归属
+      const 新归属 = 新地块?.归属
       if (旧归属 !== 新归属) return true
       if (!Number.isInteger(旧兵力) || !Number.isInteger(新兵力)) {
         return 旧兵力 !== 新兵力
@@ -148,8 +143,9 @@ export function 更新我方行动地图判断(
     const 起点 = 移动?.起点
     if (!Number.isInteger(起点) || 起点 < 0 || 起点 >= 格子数) return 0
 
-    const 起点兵力 = 旧地图数组[2 + 起点]
-    const 起点归属 = 旧地图数组[2 + 格子数 + 起点]
+    const 起点地块 = 读取地图地块(旧地图数组, 起点)
+    const 起点兵力 = 起点地块?.兵力
+    const 起点归属 = 起点地块?.归属
     if (!Number.isInteger(起点兵力) || !是我方格(起点归属)) return 0
 
     const 留守兵力 = 移动.是否半兵 ? Math.ceil(起点兵力 / 2) : 1
@@ -180,7 +176,7 @@ export function 更新我方行动地图判断(
 
     if (目标索引 >= 格子数) return '集兵'
 
-    const 旧归属 = 旧地图数组[2 + 格子数 + 目标索引]
+    const 旧归属 = 读取地图归属(旧地图数组, 目标索引)
     if (是中立或迷雾地(旧归属)) return '扩地(开塔)'
     if (Number.isInteger(旧归属) && 旧归属 >= 0 && !是我方或队友(旧归属)) {
       return '抢地(抢塔)'

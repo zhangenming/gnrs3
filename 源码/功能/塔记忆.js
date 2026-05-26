@@ -9,8 +9,9 @@
 // 从 game_start/game_update 数据包中读取 cities/towers 信息，写入全局塔集合和塔类型表。
 // 覆盖层会根据这些记忆继续标出离开视野后的塔，帮助 1v1 中判断据点和威胁位置。
 import {
-  取得完整地图数组,
+  读取地图兵力,
   读取可见地块归属,
+  读取可见地块兵力,
   读取玩家信息,
   取得本次塔列表,
   尝试从地图读取尺寸,
@@ -288,14 +289,7 @@ function 画兵力文本(ctx, 文本, x, y, 大小, 颜色) {
 }
 
 function 取得可见地块兵力(索引) {
-  if (!Array.isArray(状态.地图数组) || !状态.宽度 || !状态.高度) return null
-  if (!Number.isInteger(索引)) return null
-
-  const 格子数 = 状态.宽度 * 状态.高度
-  if (索引 < 0 || 索引 >= 格子数) return null
-
-  const 兵力 = 状态.地图数组[2 + 索引]
-  return Number.isInteger(兵力) ? 兵力 : null
+  return 读取地图兵力(状态.地图数组, 索引)
 }
 
 function 取得我方开塔增长(塔索引) {
@@ -388,44 +382,5 @@ export function 更新塔类型(数据包, 塔索引) {
     if (兵力 > 0 && (!Number.isInteger(已记成本) || 兵力 > 已记成本)) {
       状态.中立塔开塔成本表.set(塔索引, 兵力)
     }
-  }
-
-  function 读取可见地块兵力(数据包, 格子索引) {
-    const 地图数组 = 取得完整地图数组(数据包)
-    if (地图数组 && Number.isInteger(格子索引)) {
-      const 宽度 = 地图数组[0]
-      const 高度 = 地图数组[1]
-      const 格子数 = 宽度 * 高度
-      if (格子索引 >= 0 && 格子索引 < 格子数) {
-        const 地块值 = 地图数组[2 + 格子索引]
-        return Number.isInteger(地块值) ? 地块值 : null
-      }
-    }
-
-    if (!Array.isArray(数据包?.map_diff)) return null
-    if (!状态.宽度 || !状态.高度 || !Number.isInteger(格子索引)) return null
-
-    const 目标位置 = 2 + 格子索引
-    let 输出位置 = 0
-    for (let idx = 0; idx < 数据包.map_diff.length; ) {
-      const 保留数量 = 数据包.map_diff[idx] ?? 0
-      if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 保留数量) return null
-      输出位置 += 保留数量
-
-      idx += 1
-      if (idx < 数据包.map_diff.length) {
-        const 插入数量 = 数据包.map_diff[idx] ?? 0
-        if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 插入数量) {
-          const 地块增量值 = 数据包.map_diff[idx + 1 + (目标位置 - 输出位置)]
-          return Number.isInteger(地块增量值) ? 地块增量值 : null
-        }
-        输出位置 += 插入数量
-        idx += 插入数量
-      }
-
-      idx += 1
-    }
-
-    return null
   }
 }

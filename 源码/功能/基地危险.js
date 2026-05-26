@@ -5,7 +5,7 @@
 // 读取当前地图数组、我方基地索引和玩家归属信息，只维护“基地被敌发现”状态。
 // 一旦发现敌方贴近基地周围九宫格，就给页面根节点和 body 添加危险类名，让样式层做醒目提示。
 import { 基地危险类名 } from '../配置.js'
-import { 是我方或队友 } from '../游戏.js'
+import { 是我方或队友, 地图可读, 读取地图归属 } from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 
@@ -55,18 +55,7 @@ export function 更新基地危险状态() {
     更新基地危险背景()
     return
   }
-  if (
-    !Number.isInteger(状态.我方基地索引) ||
-    !状态.宽度 ||
-    !状态.高度 ||
-    !Array.isArray(状态.地图数组)
-  ) {
-    更新基地危险背景()
-    return
-  }
-
-  const 格子数 = 状态.宽度 * 状态.高度
-  if (状态.地图数组.length < 2 + 格子数 * 2) {
+  if (!Number.isInteger(状态.我方基地索引) || !地图可读(状态.地图数组)) {
     更新基地危险背景()
     return
   }
@@ -80,7 +69,7 @@ export function 更新基地危险状态() {
       const 列 = 基地列 + 列偏移
       if (列 < 0 || 列 >= 状态.宽度) continue
       const idx = 行 * 状态.宽度 + 列
-      const 归属 = 状态.地图数组[2 + 格子数 + idx]
+      const 归属 = 读取地图归属(状态.地图数组, idx)
       if (Number.isInteger(归属) && 归属 >= 0 && !是我方或队友(归属)) {
         状态.基地被敌发现 = true
         状态.基地被敌发现回合 = 取得当前回合()

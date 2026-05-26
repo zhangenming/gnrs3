@@ -170,33 +170,81 @@ export function 取得本次塔列表(数据包) {
 }
 
 export function 读取可见地块归属(数据包, 格子索引) {
+  return 读取可见地图值(数据包, 格子索引, '归属')
+}
+
+export function 读取可见地块兵力(数据包, 格子索引) {
+  return 读取可见地图值(数据包, 格子索引, '兵力')
+}
+
+export function 读取地图兵力(地图数组, 格子索引) {
+  return 读取地图地块(地图数组, 格子索引)?.兵力 ?? null
+}
+
+export function 读取地图归属(地图数组, 格子索引) {
+  return 读取地图地块(地图数组, 格子索引)?.归属 ?? null
+}
+
+export function 读取地图地块(地图数组, 格子索引) {
+  const 格子数 = 取得地图格子数(地图数组)
+  if (格子数 == null || !Number.isInteger(格子索引)) return null
+  if (格子索引 < 0 || 格子索引 >= 格子数) return null
+
+  const 兵力 = 地图数组[2 + 格子索引]
+  const 归属 = 地图数组[2 + 格子数 + 格子索引]
+  return {
+    兵力: Number.isInteger(兵力) ? 兵力 : null,
+    归属: Number.isInteger(归属) ? 归属 : null,
+  }
+}
+
+export function 地图可读(地图数组) {
+  return 取得地图格子数(地图数组) != null
+}
+
+export function 取得地图格子数(地图数组) {
+  if (!Array.isArray(地图数组) || 地图数组.length < 2) return null
+  const 宽度 = 地图数组[0]
+  const 高度 = 地图数组[1]
+  const 格子数 = 宽度 * 高度
+  if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) {
+    return null
+  }
+  if (地图数组.length < 2 + 格子数 * 2) return null
+  return 格子数
+}
+
+function 读取可见地图值(数据包, 格子索引, 类型) {
   const 地图数组 = 取得完整地图数组(数据包)
-  if (地图数组 && Number.isInteger(格子索引)) {
-    const 宽度 = 地图数组[0]
-    const 高度 = 地图数组[1]
-    const 格子数 = 宽度 * 高度
-    if (格子索引 >= 0 && 格子索引 < 格子数) {
-      const 地块值 = 地图数组[2 + 格子数 + 格子索引]
-      return Number.isInteger(地块值) ? 地块值 : null
-    }
+  if (地图数组) {
+    const 地块 = 读取地图地块(地图数组, 格子索引)
+    return 地块?.[类型] ?? null
   }
 
   if (!Array.isArray(数据包?.map_diff)) return null
   if (!状态.宽度 || !状态.高度 || !Number.isInteger(格子索引)) return null
 
-  const 目标位置 = 2 + 状态.宽度 * 状态.高度 + 格子索引
+  const 格子数 = 状态.宽度 * 状态.高度
+  if (格子索引 < 0 || 格子索引 >= 格子数) return null
+
+  const 目标位置 = 类型 === '归属' ? 2 + 格子数 + 格子索引 : 2 + 格子索引
+  return 读取增量位置值(数据包.map_diff, 目标位置)
+}
+
+function 读取增量位置值(增量, 目标位置) {
+  if (!Array.isArray(增量) || !Number.isInteger(目标位置)) return null
   let 输出位置 = 0
-  for (let idx = 0; idx < 数据包.map_diff.length; ) {
-    const 保留数量 = 数据包.map_diff[idx] ?? 0
+  for (let idx = 0; idx < 增量.length; ) {
+    const 保留数量 = 增量[idx] ?? 0
     if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 保留数量) return null
     输出位置 += 保留数量
 
     idx += 1
-    if (idx < 数据包.map_diff.length) {
-      const 插入数量 = 数据包.map_diff[idx] ?? 0
+    if (idx < 增量.length) {
+      const 插入数量 = 增量[idx] ?? 0
       if (目标位置 >= 输出位置 && 目标位置 < 输出位置 + 插入数量) {
-        const 地块增量值 = 数据包.map_diff[idx + 1 + (目标位置 - 输出位置)]
-        return Number.isInteger(地块增量值) ? 地块增量值 : null
+        const 增量值 = 增量[idx + 1 + (目标位置 - 输出位置)]
+        return Number.isInteger(增量值) ? 增量值 : null
       }
       输出位置 += 插入数量
       idx += 插入数量
@@ -220,14 +268,7 @@ export function 取得完整地图数组(数据包) {
     地图数组 = 应用增量([], 数据包.map_diff)
   }
 
-  if (!Array.isArray(地图数组) || 地图数组.length < 2) return null
-  const 宽度 = 地图数组[0]
-  const 高度 = 地图数组[1]
-  const 格子数 = 宽度 * 高度
-  if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0)
-    return null
-  if (地图数组.length < 2 + 格子数 * 2) return null
-  return 地图数组
+  return 地图可读(地图数组) ? 地图数组 : null
 }
 
 export function 应用增量(旧数组, 增量) {
