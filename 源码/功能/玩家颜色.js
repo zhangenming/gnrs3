@@ -37,6 +37,12 @@ export const 功能样式 = `
 }
 `
 
+export const 主程序功能 = {
+  id: 功能定义.id,
+  启动: 同步地图颜色变量,
+  页面同步: 同步地图颜色变量,
+}
+
 export const socket功能 = {
   id: 功能定义.id,
   入站预处理({ 事件名, 数据包 }) {
@@ -57,6 +63,8 @@ export function 重构玩家颜色(数据包) {
   }
 
   读取玩家信息(数据包)
+  同步本局我方索引(数据包)
+  同步地图颜色变量()
 
   if (!Array.isArray(数据包.playerColors)) {
     return
@@ -75,5 +83,22 @@ export function 重构玩家颜色(数据包) {
   }
 }
 
+function 同步本局我方索引(数据包) {
+  if (Number.isInteger(数据包.playerIndex) && 数据包.playerIndex >= 0) {
+    状态.我方索引 = 数据包.playerIndex
+  }
+}
+
+function 同步地图颜色变量() {
+  if (!功能已启用('玩家颜色统一')) return
+  const 样式 = document.body?.style
+  if (!样式) return
+
+  样式.setProperty('--map-rgb-p1', '255,0,0')
+  样式.setProperty('--map-color-p1', '#ff0000')
+  样式.setProperty('--map-rgb-p2', '39,146,255')
+  样式.setProperty('--map-color-p2', '#2792ff')
+}
+
 import { 注册功能 } from '../注册中心.js'
-注册功能({ 功能定义, socket功能, 功能样式 })
+注册功能({ 功能定义, 主程序功能, socket功能, 功能样式 })
