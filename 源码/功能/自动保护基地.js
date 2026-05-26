@@ -4,10 +4,33 @@
 // 作用范围:
 // 只处理 1v1 中我方基地已经可见、敌方威胁已经贴脸的场景。
 import { 大回合turn数 } from '../配置.js'
+import { 功能已启用 } from '../功能状态.js'
 import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 
 const 基地自然增长turn数 = 2
+
+export const 功能定义 = {
+  id: '自动保护基地',
+  名称: '自动保护基地',
+  分类: '自动操作',
+  描述: '敌方下一步能吃基地时自动接管保命',
+}
+
+export const 功能恢复 = {
+  id: 功能定义.id,
+  关闭: 重置自动保护基地,
+}
+
+export const socket功能 = {
+  id: 功能定义.id,
+  新局重置: 重置自动保护基地,
+  game_update(上下文) {
+    上下文.已自动保护 = 功能已启用('自动保护基地')
+      ? 尝试自动保护基地(上下文.socket, 上下文.请求渲染)
+      : false
+  },
+}
 
 export function 尝试自动保护基地(socket, 请求渲染) {
   if (!socket || typeof socket.emit !== 'function') return false

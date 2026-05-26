@@ -1,4 +1,4 @@
-// 功能目的:
+﻿// 功能目的:
 // 记住已进入视野的塔位置，并持续更新每座塔当前属于中立、我方还是敌方。
 //
 // 实现原理:
@@ -16,8 +16,54 @@ import {
   尝试从地图读取尺寸,
   是我方或队友,
 } from '../游戏.js'
-import { 功能已启用 } from '../功能开关.js'
+import { 中立黄色 } from '../配置.js'
+import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
+
+export const 功能定义 = {
+  id: '塔记忆标记',
+  名称: '塔记忆标记',
+  分类: '地图覆盖',
+  描述: '持续标记中立塔、我方塔和敌方塔',
+}
+
+export const 功能恢复 = {
+  id: 功能定义.id,
+  关闭后需要清空覆盖层: true,
+}
+
+export const socket功能 = {
+  id: 功能定义.id,
+  新局重置() {
+    状态.塔列表 = null
+    状态.已知塔集合.clear()
+    状态.已知塔类型.clear()
+    状态.中立塔兵力表.clear()
+    状态.中立塔开塔成本表.clear()
+    状态.我方开塔增长表.clear()
+  },
+  game_start({ 数据包, 请求渲染 }) {
+    处理塔位置(数据包 ?? {}, 请求渲染)
+  },
+  game_update({ 数据包, 请求渲染 }) {
+    处理塔位置(数据包 ?? {}, 请求渲染)
+  },
+}
+
+export const 覆盖层功能 = {
+  id: 功能定义.id,
+  需要绘制() {
+    return 状态.已知塔集合.size > 0
+  },
+  需要连续动画() {
+    for (const 塔索引 of 状态.已知塔集合) {
+      const 类型 = 状态.已知塔类型.get(塔索引)
+      if (类型 === '敌方塔' || 类型 === '我方塔') return true
+    }
+    return false
+  },
+  绘制: 画塔记忆,
+}
 
 export function 处理塔位置(数据包, 请求渲染) {
   if (!功能已启用('塔记忆标记')) {
@@ -52,6 +98,225 @@ export function 处理塔位置(数据包, 请求渲染) {
   }
 
   请求渲染()
+}
+
+function 画塔记忆({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
+  状态.已知塔集合.forEach((塔索引) => {
+    const 行 = Math.floor(塔索引 / 状态.宽度)
+    const 列 = 塔索引 % 状态.宽度
+    const 类型 = 状态.已知塔类型.get(塔索引)
+    const x = 列 * 格宽
+    const y = 行 * 格高
+
+    画塔标记(ctx, x, y, 大小, 类型, 当前动画时间)
+    if (类型 === '中立塔') {
+      画中立塔兵力(ctx, 塔索引, x, y, 大小)
+    } else if (类型 === '我方塔') {
+      画我方塔兵力(ctx, 塔索引, x, y, 大小)
+      画我方开塔增长(ctx, 塔索引, x, y, 大小)
+    }
+  })
+}
+
+function 画塔标记(ctx, x, y, 大小, 类型, 当前动画时间) {
+  const 是敌方塔 = 类型 === '敌方塔'
+  const 是我方塔 = 类型 === '我方塔'
+  const 是已占领塔 = 是敌方塔 || 是我方塔
+  const 外线宽 = Math.max(2, 大小 * 0.09)
+  const 内线宽 = Math.max(1.5, 大小 * (是敌方塔 ? 0.065 : 0.05))
+  const 外偏移 = 外线宽 / 2 + 1
+  const 内偏移 = 外偏移 + 外线宽 / 2 + 内线宽 / 2
+  const 主色 = 是敌方塔 ? '#ff1010' : 是我方塔 ? '#00a8ff' : 中立黄色
+
+  ctx.save()
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+
+  if (是我方塔) {
+    画我方塔背景()
+  }
+
+  if (是已占领塔) {
+    画占领塔旋转框()
+  }
+
+  ctx.lineWidth = 外线宽
+  ctx.strokeStyle = 主色
+  ctx.strokeRect(
+    x + 外偏移,
+    y + 外偏移,
+    Math.max(1, 大小 - 外偏移 * 2),
+    Math.max(1, 大小 - 外偏移 * 2),
+  )
+
+  ctx.lineWidth = 内线宽
+  ctx.strokeStyle = 主色
+  ctx.strokeRect(
+    x + 内偏移,
+    y + 内偏移,
+    Math.max(1, 大小 - 内偏移 * 2),
+    Math.max(1, 大小 - 内偏移 * 2),
+  )
+
+  if (是已占领塔) {
+    const 角长 = Math.max(5, 大小 * 0.24)
+    const 角偏移 = Math.max(3, 大小 * 0.12)
+    ctx.globalAlpha = 1
+    ctx.lineWidth = Math.max(2, 大小 * 0.055)
+    ctx.strokeStyle = 主色
+    ctx.beginPath()
+    ctx.moveTo(x + 角偏移, y + 角偏移 + 角长)
+    ctx.lineTo(x + 角偏移, y + 角偏移)
+    ctx.lineTo(x + 角偏移 + 角长, y + 角偏移)
+    ctx.moveTo(x + 大小 - 角偏移 - 角长, y + 角偏移)
+    ctx.lineTo(x + 大小 - 角偏移, y + 角偏移)
+    ctx.lineTo(x + 大小 - 角偏移, y + 角偏移 + 角长)
+    ctx.moveTo(x + 大小 - 角偏移, y + 大小 - 角偏移 - 角长)
+    ctx.lineTo(x + 大小 - 角偏移, y + 大小 - 角偏移)
+    ctx.lineTo(x + 大小 - 角偏移 - 角长, y + 大小 - 角偏移)
+    ctx.moveTo(x + 角偏移 + 角长, y + 大小 - 角偏移)
+    ctx.lineTo(x + 角偏移, y + 大小 - 角偏移)
+    ctx.lineTo(x + 角偏移, y + 大小 - 角偏移 - 角长)
+    ctx.stroke()
+  }
+
+  ctx.restore()
+
+  function 画占领塔旋转框() {
+    const 中心X = x + 大小 / 2
+    const 中心Y = y + 大小 / 2
+    const 框大小 = Math.max(1, 大小 * 0.62)
+    const 角长 = Math.max(5, 大小 * 0.2)
+    const 线宽 = Math.max(2, 大小 * 0.06)
+    const 左 = 中心X - 框大小 / 2
+    const 上 = 中心Y - 框大小 / 2
+    const 右 = 左 + 框大小
+    const 下 = 上 + 框大小
+    const 角度 = (当前动画时间 / 1400) * Math.PI * 2
+
+    ctx.save()
+    ctx.translate(中心X, 中心Y)
+    ctx.rotate(角度)
+    ctx.translate(-中心X, -中心Y)
+    ctx.lineWidth = 线宽
+    ctx.strokeStyle = '#ffffff'
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
+    ctx.shadowBlur = Math.max(2, 大小 * 0.08)
+    ctx.beginPath()
+    ctx.moveTo(左, 上 + 角长)
+    ctx.lineTo(左, 上)
+    ctx.lineTo(左 + 角长, 上)
+    ctx.moveTo(右 - 角长, 上)
+    ctx.lineTo(右, 上)
+    ctx.lineTo(右, 上 + 角长)
+    ctx.moveTo(右, 下 - 角长)
+    ctx.lineTo(右, 下)
+    ctx.lineTo(右 - 角长, 下)
+    ctx.moveTo(左 + 角长, 下)
+    ctx.lineTo(左, 下)
+    ctx.lineTo(左, 下 - 角长)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  function 画我方塔背景() {
+    const 边距 = Math.max(1, 大小 * 0.025)
+    ctx.fillStyle = 'rgba(0, 42, 112, 0.58)'
+    ctx.fillRect(
+      x + 边距,
+      y + 边距,
+      Math.max(1, 大小 - 边距 * 2),
+      Math.max(1, 大小 - 边距 * 2),
+    )
+  }
+}
+
+function 画中立塔兵力(ctx, 塔索引, x, y, 大小) {
+  const 兵力 = 状态.中立塔兵力表.get(塔索引)
+  if (!Number.isInteger(兵力) || 兵力 < 0) return
+
+  画兵力文本(ctx, String(兵力), x, y, 大小, '#ffffff')
+}
+
+function 画我方塔兵力(ctx, 塔索引, x, y, 大小) {
+  const 兵力 = 取得可见地块兵力(塔索引)
+  if (!Number.isInteger(兵力) || 兵力 < 0) return
+
+  画兵力文本(ctx, String(兵力), x, y, 大小, '#ffffff')
+}
+
+function 画我方开塔增长(ctx, 塔索引, x, y, 大小) {
+  const 增长 = 取得我方开塔增长(塔索引)
+  if (!Number.isInteger(增长)) return
+
+  const 文本 = 增长 > 0 ? `+${增长}` : String(增长)
+  const 字号 = Math.max(9, Math.min(16, 大小 * 0.36))
+  const 边距 = Math.max(3, 大小 * 0.1)
+  const 文本x = x + 大小 - 边距
+  const 文本y = y + 大小 - 边距
+
+  ctx.save()
+  ctx.textAlign = 'right'
+  ctx.textBaseline = 'bottom'
+  ctx.lineJoin = 'round'
+  ctx.font = `900 ${字号}px Arial, sans-serif`
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)'
+  ctx.lineWidth = Math.max(2, 大小 * 0.08)
+  ctx.fillStyle = 增长 < 0 ? '#ffe26a' : 增长 > 0 ? '#76ff96' : '#ffffff'
+  ctx.strokeText(文本, 文本x, 文本y)
+  ctx.fillText(文本, 文本x, 文本y)
+  ctx.restore()
+}
+
+function 画兵力文本(ctx, 文本, x, y, 大小, 颜色) {
+  const 字号比例 = 文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
+  const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
+  const 中心x = x + 大小 / 2
+  const 中心y = y + 大小 / 2
+
+  ctx.save()
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.lineJoin = 'round'
+  ctx.font = `900 ${字号}px Arial, sans-serif`
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)'
+  ctx.lineWidth = Math.max(2, 大小 * 0.12)
+  ctx.fillStyle = 颜色
+  ctx.strokeText(文本, 中心x, 中心y)
+  ctx.fillText(文本, 中心x, 中心y)
+  ctx.restore()
+}
+
+function 取得可见地块兵力(索引) {
+  if (!Array.isArray(状态.地图数组) || !状态.宽度 || !状态.高度) return null
+  if (!Number.isInteger(索引)) return null
+
+  const 格子数 = 状态.宽度 * 状态.高度
+  if (索引 < 0 || 索引 >= 格子数) return null
+
+  const 兵力 = 状态.地图数组[2 + 索引]
+  return Number.isInteger(兵力) ? 兵力 : null
+}
+
+function 取得我方开塔增长(塔索引) {
+  const 记忆 = 状态.我方开塔增长表.get(塔索引)
+  if (!记忆 || !Number.isInteger(记忆.开塔耗兵) || 记忆.开塔耗兵 < 0) {
+    return null
+  }
+
+  const 当前回合 = 状态.当前回合
+  const 记录回合 = Number.isInteger(记忆.回合) ? 记忆.回合 : 当前回合
+  if (!Number.isInteger(当前回合) || !Number.isInteger(记录回合)) {
+    return -记忆.开塔耗兵
+  }
+
+  const 回合差 = 当前回合 - 记录回合
+  if (回合差 <= 0) return -记忆.开塔耗兵
+
+  const 塔自然增长 = Math.floor(当前回合 / 2) - Math.floor(记录回合 / 2)
+  const 大回合额外增长 = Math.floor(当前回合 / 50) - Math.floor(记录回合 / 50)
+
+  return -记忆.开塔耗兵 + 塔自然增长 + 大回合额外增长
 }
 
 export function 更新塔类型(数据包, 塔索引) {

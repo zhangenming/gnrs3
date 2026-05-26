@@ -1,12 +1,54 @@
-// 功能目的:
+﻿// 功能目的:
 // 从 game_start/game_update 数据包中记录双方基地位置，尤其是敌方基地首次进入视野时的位置。
 //
 // 作用范围:
 // 负责把 generals 字段同步进全局状态，区分我方/队友与敌方基地。
 // 这些记忆会被覆盖层渲染、调试接口和基地危险判断复用，帮助 1v1 中持续追踪敌方核心目标。
 import { 读取玩家信息, 尝试从地图读取尺寸, 是我方或队友 } from '../游戏.js'
-import { 功能已启用 } from '../功能开关.js'
+import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
+
+export const 功能定义 = {
+  id: '基地记忆标记',
+  名称: '基地记忆标记',
+  分类: '地图覆盖',
+  描述: '持续标记我方基地和已发现的敌方基地',
+}
+
+export const 功能恢复 = {
+  id: 功能定义.id,
+  关闭后需要清空覆盖层: true,
+}
+
+export const socket功能 = {
+  id: 功能定义.id,
+  新局重置() {
+    状态.已知基地集合.clear()
+    状态.已知敌方基地集合.clear()
+    状态.基地兵力表.clear()
+    状态.我方基地索引 = null
+  },
+  game_start({ 数据包, 请求渲染 }) {
+    处理基地位置(数据包 ?? {}, 请求渲染)
+  },
+  game_update({ 数据包, 请求渲染 }) {
+    处理基地位置(数据包 ?? {}, 请求渲染)
+  },
+}
+
+export const 覆盖层功能 = {
+  id: 功能定义.id,
+  需要绘制() {
+    return 状态.已知敌方基地集合.size > 0 || Number.isInteger(状态.我方基地索引)
+  },
+  需要连续动画() {
+    return (
+      状态.已知敌方基地集合.size > 0 ||
+      (Number.isInteger(状态.我方基地索引) && 状态.我方基地索引 >= 0)
+    )
+  },
+  绘制: 画基地记忆,
+}
 
 export function 处理基地位置(数据包, 请求渲染) {
   if (!功能已启用('基地记忆标记')) {
@@ -69,4 +111,129 @@ export function 处理基地位置(数据包, 请求渲染) {
       回合: Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合,
     })
   }
+}
+
+function 画基地记忆({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
+  状态.已知敌方基地集合.forEach((_基地, 基地索引) => {
+    const 行 = Math.floor(基地索引 / 状态.宽度)
+    const 列 = 基地索引 % 状态.宽度
+    画基地(ctx, 列 * 格宽, 行 * 格高, 大小, 当前动画时间)
+    画基地模拟兵力(ctx, 基地索引, 列 * 格宽, 行 * 格高, 大小)
+  })
+
+  if (Number.isInteger(状态.我方基地索引) && 状态.我方基地索引 >= 0) {
+    const 行 = Math.floor(状态.我方基地索引 / 状态.宽度)
+    const 列 = 状态.我方基地索引 % 状态.宽度
+    画基地(ctx, 列 * 格宽, 行 * 格高, 大小, 当前动画时间)
+    画基地模拟兵力(ctx, 状态.我方基地索引, 列 * 格宽, 行 * 格高, 大小)
+  }
+}
+
+function 画基地(ctx, x, y, 大小, 当前动画时间) {
+  const 主色 = '#f6c945'
+  const 外边线宽 = Math.max(2, 大小 * 0.07)
+  const 外偏移 = Math.max(2, 外边线宽 / 2 + 1)
+  const 内偏移 = Math.max(5, 大小 * 0.16)
+  const 标记大小 = Math.max(1, 大小 - 外偏移 * 2)
+  const 高光大小 = Math.max(1, 大小 - 内偏移 * 2)
+
+  ctx.save()
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+
+  画基地旋转框()
+
+  ctx.globalAlpha = 0.22
+  ctx.fillStyle = 主色
+  ctx.fillRect(x + 外偏移, y + 外偏移, 标记大小, 标记大小)
+
+  ctx.globalAlpha = 1
+  ctx.strokeStyle = '#9a7720'
+  ctx.lineWidth = 外边线宽
+  ctx.strokeRect(x + 外偏移, y + 外偏移, 标记大小, 标记大小)
+
+  ctx.strokeStyle = 'rgba(255, 241, 181, 0.95)'
+  ctx.lineWidth = Math.max(2, 大小 * 0.04)
+  ctx.strokeRect(x + 内偏移, y + 内偏移, 高光大小, 高光大小)
+
+  ctx.restore()
+
+  function 画基地旋转框() {
+    const 中心X = x + 大小 / 2
+    const 中心Y = y + 大小 / 2
+    const 框大小 = Math.max(1, 大小 * 0.62)
+    const 角长 = Math.max(5, 大小 * 0.2)
+    const 线宽 = Math.max(2, 大小 * 0.06)
+    const 左 = 中心X - 框大小 / 2
+    const 上 = 中心Y - 框大小 / 2
+    const 右 = 左 + 框大小
+    const 下 = 上 + 框大小
+    const 角度 = (当前动画时间 / 1400) * Math.PI * 2
+
+    ctx.save()
+    ctx.translate(中心X, 中心Y)
+    ctx.rotate(角度)
+    ctx.translate(-中心X, -中心Y)
+    ctx.lineWidth = 线宽
+    ctx.strokeStyle = 主色
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
+    ctx.shadowBlur = Math.max(2, 大小 * 0.08)
+    ctx.beginPath()
+    ctx.moveTo(左, 上 + 角长)
+    ctx.lineTo(左, 上)
+    ctx.lineTo(左 + 角长, 上)
+    ctx.moveTo(右 - 角长, 上)
+    ctx.lineTo(右, 上)
+    ctx.lineTo(右, 上 + 角长)
+    ctx.moveTo(右, 下 - 角长)
+    ctx.lineTo(右, 下)
+    ctx.lineTo(右 - 角长, 下)
+    ctx.moveTo(左 + 角长, 下)
+    ctx.lineTo(左, 下)
+    ctx.lineTo(左, 下 - 角长)
+    ctx.stroke()
+    ctx.restore()
+  }
+}
+
+function 画基地模拟兵力(ctx, 基地索引, x, y, 大小) {
+  const 兵力 = 取得模拟基地兵力(基地索引)
+  if (!Number.isInteger(兵力) || 兵力 < 0) return
+
+  const 文本 = String(兵力)
+  const 字号比例 = 文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
+  const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
+  const 中心x = x + 大小 / 2
+  const 中心y = y + 大小 / 2
+
+  ctx.save()
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.lineJoin = 'round'
+  ctx.font = `900 ${字号}px Arial, sans-serif`
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)'
+  ctx.lineWidth = Math.max(2, 大小 * 0.12)
+  ctx.fillStyle = '#ffffff'
+  ctx.strokeText(文本, 中心x, 中心y)
+  ctx.fillText(文本, 中心x, 中心y)
+  ctx.restore()
+}
+
+function 取得模拟基地兵力(基地索引) {
+  const 记忆 = 状态.基地兵力表.get(基地索引)
+  if (!记忆 || !Number.isInteger(记忆.兵力) || 记忆.兵力 < 0) return null
+
+  const 当前回合 = 状态.当前回合
+  const 记录回合 = Number.isInteger(记忆.回合) ? 记忆.回合 : 当前回合
+  if (!Number.isInteger(当前回合) || !Number.isInteger(记录回合)) {
+    return 记忆.兵力
+  }
+
+  const 回合差 = 当前回合 - 记录回合
+  if (回合差 <= 0) return 记忆.兵力
+
+  const 基地自然增长 = Math.floor(回合差 / 2)
+  const 大回合额外增长 = Math.floor(当前回合 / 50) - Math.floor(记录回合 / 50)
+
+  return 记忆.兵力 + 基地自然增长 + 大回合额外增长
 }

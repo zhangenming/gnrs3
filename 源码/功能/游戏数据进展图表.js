@@ -1,10 +1,10 @@
-// 功能目的:
+﻿// 功能目的:
 // 在右侧战场数据区域展示每个大回合的 Army 差和 Land 差走势。
 //
 // 作用范围:
 // 只在 50 turn 边界采样数据，并维护一个 ECharts 折线图。
 import { 大回合turn数, 我方蓝色, 样式编号 } from '../配置.js'
-import { 功能已启用 } from '../功能开关.js'
+import { 功能已启用 } from '../功能状态.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 取得战场数据表格 } from './战场表格.js'
@@ -21,6 +21,36 @@ let 图表实例 = null
 let ECharts加载Promise = null
 let 正在等待ECharts = false
 let 图表渲染签名 = ''
+
+export const 功能定义 = {
+  id: '游戏数据进展图表',
+  名称: '游戏数据进展图表',
+  分类: '战场面板',
+  描述: '按大回合画出 Army 差和 Land 差走势',
+}
+
+export const 主程序功能 = {
+  id: 功能定义.id,
+  页面同步: 更新游戏数据进展图表,
+  窗口尺寸变化: 更新游戏数据进展图表,
+}
+
+export const 功能恢复 = {
+  id: 功能定义.id,
+  关闭() {
+    重置游戏数据进展()
+    更新游戏数据进展图表()
+  },
+}
+
+export const socket功能 = {
+  id: 功能定义.id,
+  新局重置: 重置游戏数据进展,
+  新局重置后: 更新游戏数据进展图表,
+  game_update({ 数据包 }) {
+    记录游戏数据进展(数据包 ?? {})
+  },
+}
 
 export function 记录游戏数据进展(数据包) {
   if (!功能已启用('游戏数据进展图表')) return

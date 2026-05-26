@@ -1,4 +1,4 @@
-// 功能目的:
+﻿// 功能目的:
 // 记录本局已经到达过视野的地图格子，用于区分从未探索过的区域。
 //
 // 作用范围:
@@ -6,13 +6,79 @@
 // 覆盖层会把未到达视野的区域铺上背景色，帮助 1v1 中判断哪些方向仍缺少侦察信息。
 import { 玩家最小距离 } from '../配置.js'
 import { 是我方或队友 } from '../游戏.js'
-import { 任一功能已启用 } from '../功能开关.js'
+import { 任一功能已启用 } from '../功能状态.js'
+import { 未到达视野背景色 } from '../配置.js'
 import { 状态 } from '../状态.js'
+
+export const 功能定义 = {
+  id: '未到达视野',
+  名称: '未到达视野',
+  分类: '地图覆盖',
+  描述: '给从未到达过的视野区域铺底色',
+}
+
+export const 功能恢复 = {
+  id: 功能定义.id,
+  关闭后需要清空覆盖层: true,
+}
+
+export const socket功能 = {
+  id: 功能定义.id,
+  新局重置() {
+    状态.已到达视野集合.clear()
+  },
+}
+
+export const 地图更新功能 = {
+  id: 功能定义.id,
+  地图更新({ 数据包 }) {
+    记录已到达视野(数据包)
+  },
+}
+
+export const 覆盖层功能 = {
+  id: 功能定义.id,
+  需要绘制: 有未到达视野标记,
+  绘制: 画未到达视野背景,
+}
 
 export function 有未到达视野标记() {
   if (!任一功能已启用('未到达视野', '敌方基地推测')) return false
   if (!状态.宽度 || !状态.高度) return false
   return 状态.已到达视野集合.size < 状态.宽度 * 状态.高度
+}
+
+function 画未到达视野背景({ ctx, 格宽, 格高, 格子数 }) {
+  if (!有未到达视野标记()) return
+  const 敌方基地候选集合 = 取得敌方基地候选集合()
+
+  ctx.save()
+  ctx.fillStyle = 未到达视野背景色
+  for (let idx = 0; idx < 格子数; idx += 1) {
+    if (状态.已到达视野集合.has(idx)) continue
+    if (敌方基地候选集合 && !敌方基地候选集合.has(idx)) continue
+    const 行 = Math.floor(idx / 状态.宽度)
+    const 列 = idx % 状态.宽度
+    ctx.fillRect(列 * 格宽, 行 * 格高, 格宽, 格高)
+  }
+  ctx.restore()
+
+  function 取得敌方基地候选集合() {
+    if (!状态.敌方基地接触列表.length) return null
+    if (状态.已知敌方基地集合.size) return null
+
+    const 候选集合 = new Set()
+    状态.敌方基地候选列表.forEach((候选) => {
+      if (
+        Number.isInteger(候选?.索引) &&
+        候选.索引 >= 0 &&
+        候选.索引 < 格子数
+      ) {
+        候选集合.add(候选.索引)
+      }
+    })
+    return 候选集合
+  }
 }
 
 export function 记录已到达视野(数据包) {

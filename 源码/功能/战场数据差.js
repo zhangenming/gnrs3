@@ -1,4 +1,4 @@
-// 功能目的:
+﻿// 功能目的:
 // 在 generals.io 右侧战场数据表中，把我方与敌方的 Army、Land 显示为差值。
 //
 // 实现原理:
@@ -8,11 +8,48 @@
 // 只改写排行榜/战场数据表的表头格内容和样式，不参与地图状态计算。
 // 会优先根据玩家索引和用户名识别我方与敌方行，并给差值格写入数据属性，供样式层区分优势和劣势。
 import { 我方蓝色, 战场数据差类名, 敌方红色 } from '../配置.js'
-import { 功能已启用 } from '../功能开关.js'
+import { 功能已启用 } from '../功能状态.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 应用战场数据冻结 } from './战场数据冻结.js'
 import { 取得战场数据表格 } from './战场表格.js'
+
+export const 功能定义 = {
+  id: '战场数据差',
+  名称: '战场数据差',
+  分类: '战场面板',
+  描述: '把 Army 和 Land 改写成敌我差值',
+}
+
+export const 主程序功能 = {
+  id: 功能定义.id,
+  页面同步: 更新战场数据差,
+}
+
+export const 功能恢复 = {
+  id: 功能定义.id,
+  关闭: 恢复战场数据差,
+}
+
+export const socket功能 = {
+  id: 功能定义.id,
+  新局重置后: 更新战场数据差,
+  game_update: 更新战场数据差,
+}
+
+export const 功能样式 = `
+.${战场数据差类名} {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85) !important;
+}
+.${战场数据差类名}[data-gio-battle-diff="advantage"] {
+    background-color: ${我方蓝色} !important;
+}
+.${战场数据差类名}[data-gio-battle-diff="disadvantage"] {
+    background-color: ${敌方红色} !important;
+}
+`
 
 export function 更新战场数据差() {
   if (!功能已启用('战场数据差')) {

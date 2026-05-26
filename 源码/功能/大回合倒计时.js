@@ -1,4 +1,4 @@
-// 功能目的:
+﻿// 功能目的:
 // 记录当前 turn，并在排行榜位置显示距离下一次“大回合全图兵力+1”的倒计时。
 //
 // 作用范围:
@@ -9,12 +9,71 @@ import {
   大回合倒计时元素编号,
   大回合倒计时类名,
 } from '../配置.js'
-import { 功能已启用 } from '../功能开关.js'
+import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 取得大回合倒计时 } from '../工具.js'
 import { 更新回合结束提示, 清除回合结束提示 } from './回合结束提示.js'
 import { 更新我方行动监控UI, 结算我方行动回合 } from './我方行动监控.js'
 import { 取得战场数据表格 } from './战场表格.js'
+
+export const 功能定义 = {
+  id: '大回合倒计时',
+  名称: '大回合倒计时',
+  分类: '战场面板',
+  描述: '在右侧战场表显示大回合剩余 turn',
+}
+
+export const 主程序功能 = {
+  id: 功能定义.id,
+  页面同步: 更新大回合倒计时,
+  窗口尺寸变化: 更新大回合倒计时,
+}
+
+export const 功能恢复 = {
+  id: 功能定义.id,
+  关闭() {
+    移除大回合倒计时()
+    清除回合结束提示()
+  },
+}
+
+export const socket功能 = {
+  id: 功能定义.id,
+  入站预处理({ 事件名, 数据包 }) {
+    if (事件名 !== 'game_start' && 事件名 !== 'game_update') return
+    记录回合(数据包 ?? {})
+  },
+  新局重置后: 更新大回合倒计时,
+}
+
+export const 功能样式 = `
+#${大回合倒计时元素编号} {
+    display: none !important;
+}
+.${大回合倒计时类名} {
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    min-width: 38px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+}
+.${大回合倒计时类名} .gio-big-turn-main {
+    display: inline-block;
+    font: 800 18px/1 Arial, sans-serif;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+}
+.${大回合倒计时类名} .gio-big-turn-index {
+    display: inline-block;
+    margin-left: 2px;
+    font: 700 10px/1 Arial, sans-serif;
+    vertical-align: baseline;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+}
+#turn-counter {
+    display: none !important;
+}
+`
 
 export function 记录回合(数据包) {
   if (!Number.isInteger(数据包?.turn)) return

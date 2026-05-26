@@ -1,19 +1,72 @@
-// 功能目的:
+﻿// 功能目的:
 // 游戏结束后用 A/D 按帧复盘整局，并尽量还原每一帧处理完成后的内部状态和地图画面。
 //
 // 实现原理:
 // 每次 game_start/game_update 处理完后，保存一份状态快照。
 // 复盘时恢复快照，让既有覆盖层渲染逻辑直接读取历史状态；地图底图按快照地图即时绘制。
 import { 样式编号, 我方蓝色, 敌方红色 } from '../配置.js'
-import { 功能已启用 } from '../功能开关.js'
+import { 功能已启用 } from '../功能状态.js'
 import { 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
+import { 结算当前我方行动回合 } from './我方行动监控.js'
+import { 是战场数据冻结事件 } from './战场数据冻结.js'
 
 const 元素类名 = 'gio-replay-frame'
 const 面板类名 = 'gio-replay-panel'
 const 样式元素编号 = `${样式编号}-replay-system`
 const 底图层级 = 2147482999
 const 面板层级 = 2147483200
+
+export const 功能定义 = {
+  id: '回放系统',
+  名称: '回放系统',
+  分类: '战场面板',
+  描述: '对局结束后用 A / D 按帧回放',
+}
+
+export const 主程序功能 = {
+  id: 功能定义.id,
+  启动({ 请求渲染 }) {
+    安装回放快捷键(请求渲染)
+  },
+  页面同步: 同步回放元素,
+  窗口尺寸变化: 同步回放元素,
+}
+
+export const 功能恢复 = {
+  id: 功能定义.id,
+  关闭() {
+    重置回放()
+    同步回放元素()
+  },
+}
+
+export const socket功能 = {
+  id: 功能定义.id,
+  阻止出站({ 事件名 }) {
+    if (!功能已启用('回放系统')) return false
+    return 状态.回放已结束 && 是移动操作事件(事件名)
+  },
+  入站预处理({ 事件名, 数据包, 延后执行, 请求渲染 }) {
+    if (!功能已启用('回放系统')) return
+    if (!是战场数据冻结事件(事件名, 数据包)) return
+
+    结算当前我方行动回合()
+    if (事件名 === 'game_update' || 事件名 === 'game_start') return
+    延后执行(`${事件名}回放结束`, () => {
+      结束回放(事件名, 数据包, 请求渲染)
+    })
+  },
+  新局重置: 重置回放,
+  game_start({ 数据包 }) {
+    记录回放帧('game_start', 数据包 ?? {})
+  },
+  game_update({ 数据包, 请求渲染 }) {
+    记录回放帧('game_update', 数据包 ?? {})
+    if (!是战场数据冻结事件('game_update', 数据包 ?? {})) return
+    结束回放('game_update', 数据包 ?? {}, 请求渲染)
+  },
+}
 
 const 快照字段列表 = [
   '宽度',
@@ -162,6 +215,12 @@ export function 同步回放元素() {
 
     return { 左, 上, 宽, 高 }
   }
+}
+
+function 是移动操作事件(事件名) {
+  return (
+    事件名 === 'attack' || 事件名 === 'undo_move' || 事件名 === 'clear_moves'
+  )
 }
 
 function 移动回放帧(步数, 请求渲染) {

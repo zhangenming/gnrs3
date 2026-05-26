@@ -1,4 +1,4 @@
-// 功能目的:
+﻿// 功能目的:
 // 在 generals.io 右侧战场数据表的 Player 列位置显示敌我双方塔数和塔差。
 //
 // 实现原理:
@@ -9,12 +9,85 @@
 // 作用范围:
 // 只改写排行榜/战场数据表的 Player 表头格内容和样式，不参与地图状态计算。
 import { 战场塔信息类名 } from '../配置.js'
-import { 功能已启用 } from '../功能开关.js'
+import { 功能已启用 } from '../功能状态.js'
 import { 同步我方玩家索引 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 读取冻结战场塔信息, 记录战场塔信息快照 } from './战场数据冻结.js'
 import { 取得战场数据表格 } from './战场表格.js'
 import { 统计塔数 } from './塔数统计.js'
+
+export const 功能定义 = {
+  id: '战场塔信息',
+  名称: '战场塔信息',
+  分类: '战场面板',
+  描述: '在 Player 列显示敌我塔数和塔差',
+}
+
+export const 主程序功能 = {
+  id: 功能定义.id,
+  页面同步: 更新战场塔信息,
+}
+
+export const 功能恢复 = {
+  id: 功能定义.id,
+  关闭: 恢复战场塔信息,
+}
+
+export const socket功能 = {
+  id: 功能定义.id,
+  新局重置后: 更新战场塔信息,
+  game_update: 更新战场塔信息,
+}
+
+export const 功能样式 = `
+.${战场塔信息类名} {
+    text-align: center !important;
+    white-space: nowrap !important;
+    color: #000000 !important;
+}
+.${战场塔信息类名} .gio-battle-tower-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 auto;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background-color: #d8d8d8;
+    color: #000000 !important;
+    font: 700 10px/1.05 Arial, sans-serif;
+    text-shadow: none !important;
+}
+.${战场塔信息类名} .gio-battle-tower-side {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    min-width: 20px;
+    color: #000000 !important;
+}
+.${战场塔信息类名} .gio-battle-tower-item {
+    color: #000000 !important;
+}
+.${战场塔信息类名} .gio-battle-tower-total,
+.${战场塔信息类名} .gio-battle-tower-open {
+    display: block;
+    color: #000000 !important;
+    line-height: 1;
+}
+.${战场塔信息类名} .gio-battle-tower-open {
+    font-size: 9px;
+    font-weight: 700;
+}
+.${战场塔信息类名} .gio-battle-tower-diff {
+    color: #000000 !important;
+}
+.${战场塔信息类名}[data-gio-tower-diff="advantage"] .gio-battle-tower-diff {
+    color: #2792ff;
+}
+.${战场塔信息类名}[data-gio-tower-diff="disadvantage"] .gio-battle-tower-diff {
+    color: #ff0000;
+}
+`
 
 export function 更新战场塔信息() {
   if (!功能已启用('战场塔信息')) {
