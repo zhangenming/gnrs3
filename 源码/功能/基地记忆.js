@@ -113,23 +113,28 @@ function 画基地记忆({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
   状态.已知敌方基地集合.forEach((_基地, 基地索引) => {
     const 行 = Math.floor(基地索引 / 状态.宽度)
     const 列 = 基地索引 % 状态.宽度
-    画基地(ctx, 列 * 格宽, 行 * 格高, 大小, 当前动画时间)
+    画基地(ctx, 列 * 格宽, 行 * 格高, 大小, 当前动画时间, '敌方')
     画基地模拟兵力(ctx, 基地索引, 列 * 格宽, 行 * 格高, 大小)
   })
 
   if (Number.isInteger(状态.我方基地索引) && 状态.我方基地索引 >= 0) {
     const 行 = Math.floor(状态.我方基地索引 / 状态.宽度)
     const 列 = 状态.我方基地索引 % 状态.宽度
-    画基地(ctx, 列 * 格宽, 行 * 格高, 大小, 当前动画时间)
+    画基地(ctx, 列 * 格宽, 行 * 格高, 大小, 当前动画时间, '我方')
     画基地模拟兵力(ctx, 状态.我方基地索引, 列 * 格宽, 行 * 格高, 大小)
   }
 }
 
-function 画基地(ctx, x, y, 大小, 当前动画时间) {
-  const 主色 = '#f6c945'
-  const 外边线宽 = Math.max(2, 大小 * 0.07)
+function 画基地(ctx, x, y, 大小, 当前动画时间, 阵营) {
+  const 是敌方 = 阵营 === '敌方'
+  const 主色 = 是敌方 ? '#ff2d2d' : '#f6c945'
+  const 外边线颜色 = 是敌方 ? '#7f0000' : '#9a7720'
+  const 高光颜色 = 是敌方
+    ? 'rgba(255, 224, 214, 0.98)'
+    : 'rgba(255, 241, 181, 0.95)'
+  const 外边线宽 = Math.max(2, 大小 * (是敌方 ? 0.11 : 0.07))
   const 外偏移 = Math.max(2, 外边线宽 / 2 + 1)
-  const 内偏移 = Math.max(5, 大小 * 0.16)
+  const 内偏移 = Math.max(5, 大小 * (是敌方 ? 0.12 : 0.16))
   const 标记大小 = Math.max(1, 大小 - 外偏移 * 2)
   const 高光大小 = Math.max(1, 大小 - 内偏移 * 2)
 
@@ -137,19 +142,40 @@ function 画基地(ctx, x, y, 大小, 当前动画时间) {
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
 
-  画旋转框(ctx, x, y, 大小, 当前动画时间, 旋转框动画毫秒, 主色)
+  if (是敌方) {
+    ctx.globalAlpha = 0.5
+    ctx.fillStyle = '#ff0000'
+    ctx.fillRect(x, y, 大小, 大小)
+    ctx.globalAlpha = 1
+  }
 
-  ctx.globalAlpha = 0.22
+  if (是敌方) {
+    const 旋转框大小 = 大小 * 1.25
+    const 旋转框偏移 = (旋转框大小 - 大小) / 2
+    画旋转框(
+      ctx,
+      x - 旋转框偏移,
+      y - 旋转框偏移,
+      旋转框大小,
+      当前动画时间,
+      旋转框动画毫秒,
+      主色,
+    )
+  } else {
+    画旋转框(ctx, x, y, 大小, 当前动画时间, 旋转框动画毫秒, 主色)
+  }
+
+  ctx.globalAlpha = 是敌方 ? 0.34 : 0.22
   ctx.fillStyle = 主色
   ctx.fillRect(x + 外偏移, y + 外偏移, 标记大小, 标记大小)
 
   ctx.globalAlpha = 1
-  ctx.strokeStyle = '#9a7720'
+  ctx.strokeStyle = 外边线颜色
   ctx.lineWidth = 外边线宽
   ctx.strokeRect(x + 外偏移, y + 外偏移, 标记大小, 标记大小)
 
-  ctx.strokeStyle = 'rgba(255, 241, 181, 0.95)'
-  ctx.lineWidth = Math.max(2, 大小 * 0.04)
+  ctx.strokeStyle = 高光颜色
+  ctx.lineWidth = Math.max(2, 大小 * (是敌方 ? 0.06 : 0.04))
   ctx.strokeRect(x + 内偏移, y + 内偏移, 高光大小, 高光大小)
 
   ctx.restore()
