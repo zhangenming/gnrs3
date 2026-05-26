@@ -4,7 +4,7 @@
 // 实现原理:
 // 每次 game_start/game_update 处理完后，保存一份状态快照。
 // 复盘时恢复快照，让既有覆盖层渲染逻辑直接读取历史状态；地图底图按快照地图即时绘制。
-import { 样式编号, 我方蓝色, 敌方红色 } from '../配置.js'
+import { 样式编号, 我方蓝色, 敌方红色, 回放底图层级, 提示层级 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.js'
 import { 状态 } from '../状态.js'
@@ -14,8 +14,6 @@ import { 是战场数据冻结事件 } from './战场数据冻结.js'
 const 元素类名 = 'gio-replay-frame'
 const 面板类名 = 'gio-replay-panel'
 const 样式元素编号 = `${样式编号}-replay-system`
-const 底图层级 = 2147482999
-const 面板层级 = 2147483200
 
 export const 功能定义 = {
   id: '回放系统',
@@ -503,7 +501,7 @@ function 安装回放样式() {
     left: 0;
     top: 0;
     pointer-events: none;
-    z-index: ${底图层级};
+    z-index: ${回放底图层级};
 }
 .${元素类名} img,
 .${元素类名} canvas {
@@ -520,7 +518,7 @@ function 安装回放样式() {
     position: fixed;
     right: 12px;
     top: 12px;
-    z-index: ${面板层级};
+    z-index: ${提示层级};
     display: flex;
     align-items: center;
     gap: 7px;

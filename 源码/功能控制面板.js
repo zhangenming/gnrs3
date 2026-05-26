@@ -1,4 +1,4 @@
-import { 样式编号 } from './配置.js'
+import { 样式编号, 控制面板层级 } from './配置.js'
 import {
   功能列表,
   监听功能变化,
@@ -255,7 +255,7 @@ function 安装样式() {
     position: fixed;
     right: 12px;
     top: 12px;
-    z-index: 2147483202;
+    z-index: ${控制面板层级};
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -286,7 +286,7 @@ function 安装样式() {
     position: fixed;
     right: 12px;
     top: 56px;
-    z-index: 2147483202;
+    z-index: ${控制面板层级};
     box-sizing: border-box;
     width: min(380px, calc(100vw - 24px));
     max-height: min(78vh, 920px);

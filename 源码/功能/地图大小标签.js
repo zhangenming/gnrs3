@@ -1,4 +1,5 @@
 ﻿import { 功能已启用 } from '../功能状态.js'
+import { 地图标签层级 } from '../配置.js'
 import { 状态 } from '../状态.js'
 
 const 地图大小元素编号 = 'gio-tower-memory-style-map-size'
@@ -73,7 +74,7 @@ function 安装地图大小标签样式() {
 #${地图大小元素编号} {
     position: fixed !important;
     pointer-events: none !important;
-    z-index: 2147483001 !important;
+    z-index: ${地图标签层级} !important;
     display: none;
     padding: 5px 8px !important;
     border-radius: 4px !important;

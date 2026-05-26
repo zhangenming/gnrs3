@@ -6,11 +6,11 @@
 import {
   取得地图格子数,
   地图可读,
-  是我方或队友,
   读取地图归属,
 } from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
+import { 取得相邻索引列表, 是敌方格 } from '../游戏工具.js'
 
 export const 功能定义 = {
   id: '敌方基地推测',
@@ -144,7 +144,7 @@ export function 更新敌方基地推测(数据包, 请求渲染) {
       const 当前距离 = 距离表[当前索引]
       if (当前距离 >= 接触.回合) continue
 
-      for (const 相邻索引 of 取得相邻索引列表(当前索引, 地图信息)) {
+      for (const 相邻索引 of 取得相邻索引列表(当前索引)) {
         if (距离表[相邻索引] >= 0) continue
         if (状态.已知障碍物集合.has(相邻索引)) continue
         距离表[相邻索引] = 当前距离 + 1
@@ -166,17 +166,6 @@ export function 更新敌方基地推测(数据包, 请求渲染) {
     return 地形 !== -2 && 地形 !== -4
   }
 
-  function 取得相邻索引列表(索引, 地图信息) {
-    const 行 = Math.floor(索引 / 状态.宽度)
-    const 列 = 索引 % 状态.宽度
-    const 相邻索引列表 = []
-    if (行 > 0) 相邻索引列表.push(索引 - 状态.宽度)
-    if (行 + 1 < 状态.高度) 相邻索引列表.push(索引 + 状态.宽度)
-    if (列 > 0) 相邻索引列表.push(索引 - 1)
-    if (列 + 1 < 状态.宽度) 相邻索引列表.push(索引 + 1)
-    return 相邻索引列表
-  }
-
   function 取得地图信息() {
     const 地图数组 = 状态.地图数组
     if (!地图可读(地图数组)) return null
@@ -185,10 +174,6 @@ export function 更新敌方基地推测(数据包, 请求渲染) {
       地图数组,
       格子数: 取得地图格子数(地图数组),
     }
-  }
-
-  function 是敌方格(归属) {
-    return Number.isInteger(归属) && 归属 >= 0 && !是我方或队友(归属)
   }
 
   function 清空推测(原因, 请求渲染, 旧签名) {

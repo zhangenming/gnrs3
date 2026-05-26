@@ -4,16 +4,16 @@
 // 作用范围:
 // 读取服务器确认的本地移动、当前回合、地图归属差分和塔记忆。
 // 只维护本地行动记录与页面面板，真实游戏操作队列由原 socket 流程处理。
-import { 大回合turn数 } from '../配置.js'
+import { 大回合turn数, 监控起始回合 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 地图可读, 是我方或队友, 读取地图地块, 读取地图归属 } from '../游戏.js'
 import { 状态 } from '../状态.js'
+import { 是敌方格, 取得周期增长次数 } from '../游戏工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
 
 const 面板类名 = 'gio-action-watch-panel'
 const 画布类名 = 'gio-action-watch-canvas'
 const 样式编号 = 'gio-action-watch-style'
-const 监控起始回合 = 50
 const 每行回合数 = 25
 const 塔基地自然增长turn数 = 2
 const 阻挡地形集合 = new Set([-2, -4, -5, -6])
@@ -94,10 +94,6 @@ export function 更新我方行动地图判断(
     return Number.isInteger(归属) && 归属 >= 0 && 是我方或队友(归属)
   }
 
-  function 是敌方格(归属) {
-    return Number.isInteger(归属) && 归属 >= 0 && !是我方或队友(归属)
-  }
-
   function 是中立或迷雾地(归属) {
     return Number.isInteger(归属) && 归属 < 0 && !阻挡地形集合.has(归属)
   }
@@ -161,10 +157,6 @@ export function 更新我方行动地图判断(
     }
     增长 += 取得周期增长次数(回合, 回合 + 1, 大回合turn数)
     return 增长
-  }
-
-  function 取得周期增长次数(起始回合, 目标回合, 周期) {
-    return Math.floor(目标回合 / 周期) - Math.floor(起始回合 / 周期)
   }
 
   function 取得移动行动类型(目标索引) {

@@ -12,6 +12,14 @@ import { 战场塔信息类名 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 同步我方玩家索引 } from '../游戏.js'
 import { 状态 } from '../状态.js'
+import {
+  记录原始战场节点,
+  恢复原始战场节点,
+  取得表头行,
+  是战场数据行,
+  取得单元格列表,
+  取得玩家列索引,
+} from '../战场DOM工具.js'
 import { 读取冻结战场塔信息, 记录战场塔信息快照 } from './战场数据冻结.js'
 import { 取得战场数据表格 } from './战场表格.js'
 import { 统计塔数 } from './塔数统计.js'
@@ -144,52 +152,6 @@ export function 更新战场塔信息() {
     `<span class="gio-battle-tower-diff">${差值文本}</span>` +
     `</span>`
   记录战场塔信息快照(玩家表头格, 文本, 差值状态)
-
-  function 取得表头行(表格元素) {
-    const 行列表 = 表格元素.querySelectorAll('tr')
-    for (const 行 of 行列表) {
-      if (
-        行.querySelector('[data-gio-battle-player-column="true"]') &&
-        是战场数据行(行)
-      ) {
-        return 行
-      }
-
-      const 文本列表 = 取得单元格列表(行).map((单元格) =>
-        (单元格.textContent ?? '').trim(),
-      )
-      if (文本列表.includes('Player') && 是战场数据行(行)) {
-        return 行
-      }
-    }
-    return null
-  }
-
-  function 是战场数据行(行) {
-    const 文本列表 = 取得单元格列表(行).map((单元格) =>
-      (单元格.textContent ?? '').trim(),
-    )
-    if (文本列表.includes('Army') && 文本列表.includes('Land')) return true
-    return Boolean(
-      行.querySelector(
-        '[data-gio-battle-kind="army"], [data-gio-battle-kind="land"]',
-      ),
-    )
-  }
-
-  function 取得单元格列表(行) {
-    return Array.from(行.children).filter((单元格) => {
-      const 标签名 = 单元格.tagName?.toLowerCase() ?? ''
-      return 标签名 === 'td' || 标签名 === 'th'
-    })
-  }
-
-  function 取得玩家列索引(单元格列表) {
-    return 单元格列表.findIndex((单元格) => {
-      if (单元格.dataset.gioBattlePlayerColumn === 'true') return true
-      return (单元格.textContent ?? '').trim() === 'Player'
-    })
-  }
 }
 
 export function 恢复战场塔信息() {
@@ -199,30 +161,6 @@ export function 恢复战场塔信息() {
     delete 单元格.dataset.gioTowerSummary
     delete 单元格.dataset.gioTowerDiff
   })
-}
-
-function 记录原始战场节点(节点) {
-  if (!节点 || 状态.原始战场节点快照.has(节点)) return
-  状态.原始战场节点快照.set(节点, {
-    innerHTML: 节点.innerHTML,
-    title: 节点.title,
-    backgroundColor: 节点.style.backgroundColor,
-    color: 节点.style.color,
-    fontWeight: 节点.style.fontWeight,
-    textShadow: 节点.style.textShadow,
-  })
-}
-
-function 恢复原始战场节点(节点) {
-  const 快照 = 状态.原始战场节点快照.get(节点)
-  if (!快照) return
-  节点.innerHTML = 快照.innerHTML
-  节点.title = 快照.title
-  节点.style.backgroundColor = 快照.backgroundColor
-  节点.style.color = 快照.color
-  节点.style.fontWeight = 快照.fontWeight
-  节点.style.textShadow = 快照.textShadow
-  状态.原始战场节点快照.delete(节点)
 }
 
 import { 注册功能 } from '../注册中心.js'

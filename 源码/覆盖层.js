@@ -4,10 +4,11 @@
 // 作用范围:
 // 只负责创建覆盖层、同步尺寸、安装基础样式和调度绘制。
 // 具体功能的判断、绘制和动画状态放在对应功能文件里。
-import { 样式编号, 覆盖层类名 } from './配置.js'
+import { 样式编号, 覆盖层类名, 覆盖层层级 } from './配置.js'
 import { 功能已启用 } from './功能状态.js'
 import { 覆盖层功能列表, 功能样式列表 } from './功能注册.js'
 import { 状态 } from './状态.js'
+import { 取游戏画布 } from './游戏工具.js'
 
 let 覆盖层动画帧 = null
 
@@ -171,7 +172,7 @@ function 安装样式() {
     left: 0;
     top: 0;
     pointer-events: none;
-    z-index: 2147483000;
+    z-index: ${覆盖层层级};
 }
 .gio-tower-memory-host {
     position: relative !important;
@@ -179,10 +180,6 @@ function 安装样式() {
 ${功能样式列表.join('\n')}
 `.trim()
   document.documentElement.appendChild(样式)
-}
-
-function 取游戏画布() {
-  return document.querySelector('#game-page #gameMap .game-map-canvas')
 }
 
 function 取宿主(画布) {

@@ -3,7 +3,7 @@
 //
 // 作用范围:
 // 只读取当前大回合倒计时并维护一个页面提示，不影响游戏数据和操作队列。
-import { 样式编号 } from '../配置.js'
+import { 样式编号, 回合结束提示层级 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 
 const 回合结束提示元素编号 = 'gio-turn-end-alert'
@@ -114,7 +114,7 @@ export function 更新回合结束提示(倒计时) {
     position: fixed;
     top: 0;
     left: 0;
-    z-index: 2147483201;
+    z-index: ${回合结束提示层级};
     display: flex;
     align-items: center;
     justify-content: center;

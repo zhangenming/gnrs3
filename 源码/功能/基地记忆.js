@@ -10,6 +10,7 @@ import {
   是我方或队友,
   读取地图兵力,
 } from '../游戏.js'
+import { 旋转框动画毫秒 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 
@@ -161,7 +162,7 @@ function 画基地(ctx, x, y, 大小, 当前动画时间) {
     const 上 = 中心Y - 框大小 / 2
     const 右 = 左 + 框大小
     const 下 = 上 + 框大小
-    const 角度 = (当前动画时间 / 1400) * Math.PI * 2
+    const 角度 = (当前动画时间 / 旋转框动画毫秒) * Math.PI * 2
 
     ctx.save()
     ctx.translate(中心X, 中心Y)

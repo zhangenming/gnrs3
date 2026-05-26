@@ -1,5 +1,6 @@
 ﻿import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
+import { 取游戏画布 } from '../游戏工具.js'
 import { 同步地图大小标签 } from './地图大小标签.js'
 import { 安装选中棋子监听 } from './选中棋子提示.js'
 
@@ -246,10 +247,6 @@ function 同步战场面板位置(尺寸, 缩放) {
   根元素.style.setProperty('--gio-battle-panel-left', `${面板左侧}px`)
   根元素.style.setProperty('--gio-battle-panel-top', `${面板上侧}px`)
   根元素.style.setProperty('--gio-battle-panel-width', `${面板宽}px`)
-}
-
-function 取游戏画布() {
-  return document.querySelector('#game-page #gameMap .game-map-canvas')
 }
 
 function 标记当前棋盘(地图元素, 宿主) {

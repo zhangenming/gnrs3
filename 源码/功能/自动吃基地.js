@@ -13,6 +13,7 @@ import {
   读取地图归属,
 } from '../游戏.js'
 import { 状态 } from '../状态.js'
+import { 取得相邻索引列表, 取得周期增长次数 } from '../游戏工具.js'
 
 const 最大集结步数 = 6
 const 基地自然增长turn数 = 2
@@ -330,26 +331,11 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
     return 基地自然增长 + 大回合增长
   }
 
-  function 取得周期增长次数(起始回合, 目标回合, 周期) {
-    return Math.floor(目标回合 / 周期) - Math.floor(起始回合 / 周期)
-  }
-
   function 是我方地块(索引) {
     const 地块 = 读取地图地块(状态.地图数组, 索引)
     const 兵力 = 地块?.兵力
     const 归属 = 地块?.归属
     return Number.isInteger(兵力) && 兵力 > 0 && 是我方或队友(归属)
-  }
-
-  function 取得相邻索引列表(索引) {
-    const 行 = Math.floor(索引 / 状态.宽度)
-    const 列 = 索引 % 状态.宽度
-    const 列表 = []
-    if (行 > 0) 列表.push(索引 - 状态.宽度)
-    if (行 < 状态.高度 - 1) 列表.push(索引 + 状态.宽度)
-    if (列 > 0) 列表.push(索引 - 1)
-    if (列 < 状态.宽度 - 1) 列表.push(索引 + 1)
-    return 列表
   }
 
   function 接管冷却中() {
