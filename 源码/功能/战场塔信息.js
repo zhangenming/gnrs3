@@ -55,39 +55,40 @@ export const 功能样式 = `
 }
 .${战场塔信息类名} .gio-battle-tower-pill {
     display: inline-flex;
-    align-items: center;
-    gap: 5px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
     margin: 0 auto;
-    padding: 2px 7px;
+    padding: 2px 8px;
     border-radius: 999px;
     background-color: #d8d8d8;
     color: #000000 !important;
     font: 700 10px/1.05 Arial, sans-serif;
     text-shadow: none !important;
 }
-.${战场塔信息类名} .gio-battle-tower-side {
+.${战场塔信息类名} .gio-battle-tower-row {
     display: inline-flex;
-    flex-direction: column;
     align-items: center;
-    gap: 1px;
-    min-width: 20px;
+    gap: 8px;
     color: #000000 !important;
+}
+.${战场塔信息类名} .gio-battle-tower-row + .gio-battle-tower-row {
+    gap: 6px;
 }
 .${战场塔信息类名} .gio-battle-tower-item {
     color: #000000 !important;
 }
 .${战场塔信息类名} .gio-battle-tower-total,
-.${战场塔信息类名} .gio-battle-tower-open {
-    display: block;
+.${战场塔信息类名} .gio-battle-tower-open,
+.${战场塔信息类名} .gio-battle-tower-diff {
+    display: inline-block;
     color: #000000 !important;
-    line-height: 1;
 }
 .${战场塔信息类名} .gio-battle-tower-open {
-    font-size: 9px;
     font-weight: 700;
 }
 .${战场塔信息类名} .gio-battle-tower-diff {
-    color: #000000 !important;
+    font-weight: 800;
 }
 .${战场塔信息类名}[data-gio-tower-diff="advantage"] .gio-battle-tower-diff {
     color: #2792ff;
@@ -137,19 +138,19 @@ export function 更新战场塔信息() {
   玩家表头格.dataset.gioBattlePlayerColumn = 'true'
   玩家表头格.dataset.gioTowerSummary = 文本
   玩家表头格.dataset.gioTowerDiff = 差值状态
-  玩家表头格.title = '敌方总塔数/开塔数、我方总塔数/开塔数、塔差（我方减敌方）'
+  玩家表头格.title = '我方总塔数/开塔数、敌方总塔数/开塔数、塔差（我方减敌方）'
   玩家表头格.innerHTML =
     `<span class="gio-battle-tower-pill">` +
-    `<span class="gio-battle-tower-side">` +
-    `<span class="gio-battle-tower-total">敌${敌方塔数}</span>` +
-    `<span class="gio-battle-tower-open">开${敌方开塔数}</span>` +
-    `</span>` +
-    `<span class="gio-battle-tower-side">` +
-    `<span class="gio-battle-tower-total">我${我方塔数}</span>` +
-    `<span class="gio-battle-tower-open">开${我方开塔数}</span>` +
-    `</span>` +
+    `<span class="gio-battle-tower-row">` +
+    `<span class="gio-battle-tower-total">我 总塔${我方塔数}</span>` +
+    `<span class="gio-battle-tower-total">敌 总塔${敌方塔数}</span>` +
     `<span class="gio-battle-tower-item">差</span>` +
+    `</span>` +
+    `<span class="gio-battle-tower-row">` +
+    `<span class="gio-battle-tower-open">开塔${我方开塔数}</span>` +
+    `<span class="gio-battle-tower-open">开塔${敌方开塔数}</span>` +
     `<span class="gio-battle-tower-diff">${差值文本}</span>` +
+    `</span>` +
     `</span>`
   记录战场塔信息快照(玩家表头格, 文本, 差值状态)
 }
