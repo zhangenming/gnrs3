@@ -2,13 +2,9 @@
 // 记录当前 turn，并在排行榜位置显示距离下一次“大回合全图兵力+1”的倒计时。
 //
 // 作用范围:
-// 根据 50 turn 一个大回合的规则，把当前回合转换成倒计时和大回合序号。
+// 根据 50 turn 一个大回合的规则，把当前回合转换成倒计时。
 // 只更新页面中的倒计时展示，不影响游戏数据，用于 1v1 中把握全图涨兵节奏。
-import {
-  大回合turn数,
-  大回合倒计时元素编号,
-  大回合倒计时类名,
-} from '../配置.js'
+import { 大回合倒计时元素编号, 大回合倒计时类名 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 取得大回合倒计时 } from '../工具.js'
@@ -94,12 +90,12 @@ export function 更新大回合倒计时() {
     return
   }
   const 倒计时 = 取得大回合倒计时(状态.当前回合)
-  const 大回合序号 = 取得大回合序号(状态.当前回合)
+  const 总回合 = 状态.当前回合
   更新回合结束提示(倒计时)
-  if (倒计时 == null) return
+  if (倒计时 == null || !Number.isInteger(总回合)) return
 
   移除左上角倒计时()
-  const 文本 = `${String(倒计时)}.${大回合序号}`
+  const 文本 = `${String(倒计时)}.${总回合}`
   let 目标元素 = 状态.大回合倒计时元素
   if (!目标元素 || !document.documentElement.contains(目标元素)) {
     目标元素 = 取得大回合倒计时元素()
@@ -110,18 +106,13 @@ export function 更新大回合倒计时() {
     状态.上次大回合倒计时文本 !== 文本 ||
     !目标元素.classList.contains(大回合倒计时类名)
   ) {
-    目标元素.innerHTML = `<span class="gio-big-turn-main">${倒计时}</span><span class="gio-big-turn-index">${大回合序号}</span>`
+    目标元素.innerHTML = `<span class="gio-big-turn-main">${倒计时}</span><span class="gio-big-turn-index">${总回合}</span>`
   }
   目标元素.classList.add(大回合倒计时类名)
-  if (目标元素.title !== '距离所有兵力+1的大回合；小号数字是当前大回合') {
-    目标元素.title = '距离所有兵力+1的大回合；小号数字是当前大回合'
+  if (目标元素.title !== '距离所有兵力+1的大回合；小号数字是总回合') {
+    目标元素.title = '距离所有兵力+1的大回合；小号数字是总回合'
   }
   状态.上次大回合倒计时文本 = 文本
-
-  function 取得大回合序号(回合) {
-    if (!Number.isInteger(回合) || 回合 < 0) return null
-    return Math.floor(回合 / 大回合turn数) + 1
-  }
 
   function 取得大回合倒计时元素() {
     const 排行榜标识元素 = 取得排行榜标识元素()
