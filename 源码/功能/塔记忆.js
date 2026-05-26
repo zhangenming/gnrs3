@@ -201,14 +201,14 @@ function 画中立塔兵力(ctx, 塔索引, x, y, 大小) {
   const 兵力 = 状态.中立塔兵力表.get(塔索引)
   if (!Number.isInteger(兵力) || 兵力 < 0) return
 
-  画兵力文本(ctx, String(兵力), x, y, 大小, '#ffffff')
+  画兵力文本(ctx, x, y, 大小, String(兵力), '#ffffff')
 }
 
 function 画我方塔兵力(ctx, 塔索引, x, y, 大小) {
   const 兵力 = 取得可见地块兵力(塔索引)
   if (!Number.isInteger(兵力) || 兵力 < 0) return
 
-  画兵力文本(ctx, String(兵力), x, y, 大小, '#ffffff')
+  画兵力文本(ctx, x, y, 大小, String(兵力), '#ffffff')
 }
 
 function 画我方开塔增长(ctx, 塔索引, x, y, 大小) {

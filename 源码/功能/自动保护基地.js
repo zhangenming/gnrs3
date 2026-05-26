@@ -7,7 +7,12 @@ import { 大回合turn数, 基地自然增长turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.js'
 import { 状态 } from '../状态.js'
-import { 取得相邻索引列表, 是敌方格, 取得周期增长次数, 取得回合间增长 } from '../游戏工具.js'
+import {
+  取得相邻索引列表,
+  是敌方格,
+  取得周期增长次数,
+  取得回合间增长,
+} from '../游戏工具.js'
 
 export const 功能定义 = {
   id: '自动保护基地',
@@ -72,7 +77,8 @@ export function 尝试自动保护基地(socket, 请求渲染) {
     if (!Number.isInteger(基地兵力) || 基地兵力 < 0) return null
     if (!是我方或队友(基地归属)) return null
 
-    const 基地战力 = 基地兵力 + (取得回合间增长(状态.当前回合, 状态.当前回合 + 1) ?? 0)
+    const 基地战力 =
+      基地兵力 + (取得回合间增长(状态.当前回合, 状态.当前回合 + 1) ?? 0)
     const 威胁列表 = 取得威胁列表(基地索引, 基地战力)
     if (!威胁列表.length) return null
 
@@ -189,7 +195,7 @@ export function 尝试自动保护基地(socket, 请求渲染) {
       if (右.来源兵力 !== 左.来源兵力) return 右.来源兵力 - 左.来源兵力
       return 左.起点 - 右.起点
     })
-    return 候选列表[0]
+    return 候选列表.find((计划) => 计划.最大危险差 <= 0) ?? null
   }
 
   function 取得可攻击威胁的我方列表(威胁索引) {

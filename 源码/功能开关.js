@@ -112,7 +112,7 @@ export function 统计已开启功能数() {
 function 读取功能配置() {
   const 默认功能开关 = Object.fromEntries(
     功能列表.map((功能) => {
-      return [功能.id, true]
+      return [功能.id, 取得默认开启状态(功能)]
     }),
   )
 
@@ -128,11 +128,20 @@ function 读取功能配置() {
     const 原配置 = JSON.parse(原文)
     const 原功能开关 =
       原配置 && typeof 原配置 === 'object' ? 原配置.功能开关 : null
+    const 已迁移自动操作默认关闭 = 原配置?.自动操作默认关闭已迁移 === true
     return {
       总开关: 原配置?.总开关 !== false,
       功能开关: Object.fromEntries(
         功能列表.map((功能) => {
-          return [功能.id, 原功能开关?.[功能.id] !== false]
+          if (!已迁移自动操作默认关闭 && 是自动操作功能(功能)) {
+            return [功能.id, false]
+          }
+          return [
+            功能.id,
+            Object.hasOwn(原功能开关 ?? {}, 功能.id)
+              ? 原功能开关[功能.id] !== false
+              : 取得默认开启状态(功能),
+          ]
         }),
       ),
     }
@@ -144,6 +153,14 @@ function 读取功能配置() {
   }
 }
 
+function 取得默认开启状态(功能) {
+  return !是自动操作功能(功能)
+}
+
+function 是自动操作功能(功能) {
+  return 功能?.分类 === '自动操作'
+}
+
 function 保存功能配置() {
   try {
     globalThis.localStorage?.setItem(
@@ -151,6 +168,7 @@ function 保存功能配置() {
       JSON.stringify({
         总开关: 状态.功能总开关,
         功能开关: 状态.功能开关,
+        自动操作默认关闭已迁移: true,
       }),
     )
   } catch {}
