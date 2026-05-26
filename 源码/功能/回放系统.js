@@ -580,3 +580,6 @@ function 是输入中(元素) {
     元素?.isContentEditable === true
   )
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 主程序功能, 功能恢复, socket功能 })

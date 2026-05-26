@@ -271,3 +271,6 @@ function 恢复原始战场节点(节点) {
   节点.style.textShadow = 快照.textShadow
   状态.原始战场节点快照.delete(节点)
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 主程序功能, 功能恢复, socket功能, 功能样式 })

@@ -173,3 +173,6 @@ export function 移除大回合倒计时() {
   const 旧元素 = document.getElementById(大回合倒计时元素编号)
   旧元素?.remove()
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 主程序功能, 功能恢复, socket功能, 功能样式 })

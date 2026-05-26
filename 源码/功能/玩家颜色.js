@@ -74,3 +74,6 @@ export function 重构玩家颜色(数据包) {
     }
   }
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, socket功能, 功能样式 })

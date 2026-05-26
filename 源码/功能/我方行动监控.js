@@ -624,3 +624,6 @@ function 安装样式() {
 `.trim()
   document.documentElement.appendChild(样式)
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 主程序功能, 功能恢复, socket功能, 地图更新功能 })

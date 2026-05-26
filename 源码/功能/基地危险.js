@@ -109,3 +109,6 @@ export function 更新基地危险背景() {
 function 取得当前回合() {
   return Number.isInteger(状态.当前回合) ? 状态.当前回合 : null
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 功能恢复, socket功能, 功能样式 })

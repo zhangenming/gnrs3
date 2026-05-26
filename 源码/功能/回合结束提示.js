@@ -155,3 +155,6 @@ export function 更新回合结束提示(倒计时) {
 export function 清除回合结束提示() {
   document.getElementById(回合结束提示元素编号)?.remove()
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 功能恢复 })

@@ -316,3 +316,6 @@ function 读取数字(值, 默认值) {
   const 数值 = Number.parseFloat(值)
   return Number.isFinite(数值) ? 数值 : 默认值
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 主程序功能, 功能恢复, socket功能, 覆盖层功能 })

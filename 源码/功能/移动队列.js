@@ -266,3 +266,6 @@ function 画当前移动位置(ctx, 格子索引, 格宽, 格高, 大小) {
 
   ctx.restore()
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 功能恢复, socket功能, 覆盖层功能 })

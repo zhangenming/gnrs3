@@ -86,3 +86,6 @@ function 安装地图大小标签样式() {
 `.trim()
   document.documentElement.appendChild(样式)
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 功能恢复 })

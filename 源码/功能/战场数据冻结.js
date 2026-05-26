@@ -143,3 +143,6 @@ function 写入冻结文本(单元格, 文本) {
   if (!单元格 || !文本 || 单元格.textContent === 文本) return
   单元格.textContent = 文本
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ socket功能 })

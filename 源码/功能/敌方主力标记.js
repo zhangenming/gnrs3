@@ -127,3 +127,6 @@ function 画敌方最强兵力标记({ ctx, 格宽, 格高, 大小 }) {
   ctx.fillText(文本, 中心x, 中心y + 半径 * 0.04)
   ctx.restore()
 }
+
+import { 注册功能 } from '../注册中心.js'
+注册功能({ 功能定义, 功能恢复, socket功能, 覆盖层功能, 地图更新功能 })
