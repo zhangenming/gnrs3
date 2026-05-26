@@ -69,6 +69,7 @@ function 启动() {
             状态.在主页面 = 在主页面
             if (在主页面) {
               document.body.classList.add('gio-离开游戏')
+              清理游戏页面状态()
               清空覆盖层()
             } else {
               document.body.classList.remove('gio-离开游戏')
@@ -156,6 +157,17 @@ function 清除插件内联隐藏() {
   document.querySelectorAll('[id^="gio-"]').forEach((元素) => {
     if (元素.style.display === 'none') 元素.style.display = ''
   })
+}
+
+function 清理游戏页面状态() {
+  for (const 类名 of Array.from(document.documentElement.classList)) {
+    if (类名.startsWith('gio-')) document.documentElement.classList.remove(类名)
+  }
+  for (const 类名 of Array.from(document.body.classList)) {
+    if (类名.startsWith('gio-') && 类名 !== 'gio-离开游戏') {
+      document.body.classList.remove(类名)
+    }
+  }
 }
 
 function 执行主程序Hook(hook名) {
