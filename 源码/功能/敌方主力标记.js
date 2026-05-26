@@ -68,7 +68,10 @@ export function 更新敌方最强兵力位置() {
     }
   }
 
-  if (!本次最强) return
+  if (!本次最强) {
+    状态.敌方最强兵力位置 = null
+    return
+  }
 
   const 旧记录 = 状态.敌方最强兵力位置
   if (旧记录 && Number.isInteger(旧记录.兵力) && 旧记录.兵力 >= 本次最强.兵力) {
