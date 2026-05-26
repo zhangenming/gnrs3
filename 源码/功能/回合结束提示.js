@@ -15,6 +15,7 @@ const 鼠标偏移像素 = 14
 let 鼠标X = 24
 let 鼠标Y = 24
 let 已安装鼠标监听 = false
+let 鼠标移动处理函数 = null
 
 export const 功能定义 = {
   id: '回合结束提示',
@@ -82,16 +83,13 @@ export function 更新回合结束提示(倒计时) {
   function 安装鼠标监听() {
     if (已安装鼠标监听) return
     已安装鼠标监听 = true
-    window.addEventListener(
-      'pointermove',
-      (事件) => {
-        鼠标X = 事件.clientX
-        鼠标Y = 事件.clientY
-        const 元素 = document.getElementById(回合结束提示元素编号)
-        if (元素) 更新提示位置(元素)
-      },
-      { passive: true },
-    )
+    鼠标移动处理函数 = (事件) => {
+      鼠标X = 事件.clientX
+      鼠标Y = 事件.clientY
+      const 元素 = document.getElementById(回合结束提示元素编号)
+      if (元素) 更新提示位置(元素)
+    }
+    window.addEventListener('pointermove', 鼠标移动处理函数, { passive: true })
   }
 
   function 更新提示位置(元素) {
@@ -154,6 +152,11 @@ export function 更新回合结束提示(倒计时) {
 
 export function 清除回合结束提示() {
   document.getElementById(回合结束提示元素编号)?.remove()
+  if (已安装鼠标监听 && 鼠标移动处理函数) {
+    已安装鼠标监听 = false
+    window.removeEventListener('pointermove', 鼠标移动处理函数)
+    鼠标移动处理函数 = null
+  }
 }
 
 import { 注册功能 } from '../注册中心.js'
