@@ -24,3 +24,4 @@ export const 回合结束提示层级 = 2147483201
 export const 控制面板层级 = 2147483202
 export const 旋转框动画毫秒 = 1400
 export const 监控起始回合 = 50
+export const 基地自然增长turn数 = 2

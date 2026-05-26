@@ -8,6 +8,7 @@ import { 基地危险类名 } from '../配置.js'
 import { 是我方或队友, 地图可读, 读取地图归属 } from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
+import { 读取当前回合 } from '../游戏工具.js'
 
 const 死亡前基地刚暴露turn数 = 6
 
@@ -72,7 +73,7 @@ export function 更新基地危险状态() {
       const 归属 = 读取地图归属(状态.地图数组, idx)
       if (Number.isInteger(归属) && 归属 >= 0 && !是我方或队友(归属)) {
         状态.基地被敌发现 = true
-        状态.基地被敌发现回合 = 取得当前回合()
+        状态.基地被敌发现回合 = 读取当前回合(null)
         更新基地危险背景()
         return
       }
@@ -88,7 +89,7 @@ export function 处理死亡时基地危险状态() {
     return
   }
   if (!状态.基地被敌发现) return
-  const 当前回合 = 取得当前回合()
+  const 当前回合 = 读取当前回合(null)
   if (!Number.isInteger(当前回合) || !Number.isInteger(状态.基地被敌发现回合)) {
     更新基地危险背景()
     return
@@ -104,10 +105,6 @@ export function 更新基地危险背景() {
     功能已启用('基地危险提醒') && 状态.基地被敌发现 && !状态.基地危险背景豁免
   document.documentElement?.classList.toggle(基地危险类名, 显示危险背景)
   document.body?.classList.toggle(基地危险类名, 显示危险背景)
-}
-
-function 取得当前回合() {
-  return Number.isInteger(状态.当前回合) ? 状态.当前回合 : null
 }
 
 import { 注册功能 } from '../注册中心.js'

@@ -21,6 +21,7 @@ import { 取得周期增长次数, 读取当前回合 } from '../游戏工具.js
 import { 中立黄色, 旋转框动画毫秒 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
+import { 画兵力文本, 画旋转框 } from '../覆盖层工具.js'
 
 export const 功能定义 = {
   id: '塔记忆标记',
@@ -139,7 +140,7 @@ function 画塔标记(ctx, x, y, 大小, 类型, 当前动画时间) {
   }
 
   if (是已占领塔) {
-    画占领塔旋转框()
+    画旋转框(ctx, x, y, 大小, 当前动画时间, 旋转框动画毫秒, '#ffffff')
   }
 
   ctx.lineWidth = 外线宽
@@ -183,43 +184,6 @@ function 画塔标记(ctx, x, y, 大小, 类型, 当前动画时间) {
   }
 
   ctx.restore()
-
-  function 画占领塔旋转框() {
-    const 中心X = x + 大小 / 2
-    const 中心Y = y + 大小 / 2
-    const 框大小 = Math.max(1, 大小 * 0.62)
-    const 角长 = Math.max(5, 大小 * 0.2)
-    const 线宽 = Math.max(2, 大小 * 0.06)
-    const 左 = 中心X - 框大小 / 2
-    const 上 = 中心Y - 框大小 / 2
-    const 右 = 左 + 框大小
-    const 下 = 上 + 框大小
-    const 角度 = (当前动画时间 / 旋转框动画毫秒) * Math.PI * 2
-
-    ctx.save()
-    ctx.translate(中心X, 中心Y)
-    ctx.rotate(角度)
-    ctx.translate(-中心X, -中心Y)
-    ctx.lineWidth = 线宽
-    ctx.strokeStyle = '#ffffff'
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
-    ctx.shadowBlur = Math.max(2, 大小 * 0.08)
-    ctx.beginPath()
-    ctx.moveTo(左, 上 + 角长)
-    ctx.lineTo(左, 上)
-    ctx.lineTo(左 + 角长, 上)
-    ctx.moveTo(右 - 角长, 上)
-    ctx.lineTo(右, 上)
-    ctx.lineTo(右, 上 + 角长)
-    ctx.moveTo(右, 下 - 角长)
-    ctx.lineTo(右, 下)
-    ctx.lineTo(右 - 角长, 下)
-    ctx.moveTo(左 + 角长, 下)
-    ctx.lineTo(左, 下)
-    ctx.lineTo(左, 下 - 角长)
-    ctx.stroke()
-    ctx.restore()
-  }
 
   function 画我方塔背景() {
     const 边距 = Math.max(1, 大小 * 0.025)
@@ -267,25 +231,6 @@ function 画我方开塔增长(ctx, 塔索引, x, y, 大小) {
   ctx.fillStyle = 增长 < 0 ? '#ffe26a' : 增长 > 0 ? '#76ff96' : '#ffffff'
   ctx.strokeText(文本, 文本x, 文本y)
   ctx.fillText(文本, 文本x, 文本y)
-  ctx.restore()
-}
-
-function 画兵力文本(ctx, 文本, x, y, 大小, 颜色) {
-  const 字号比例 = 文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
-  const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
-  const 中心x = x + 大小 / 2
-  const 中心y = y + 大小 / 2
-
-  ctx.save()
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.lineJoin = 'round'
-  ctx.font = `900 ${字号}px Arial, sans-serif`
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.92)'
-  ctx.lineWidth = Math.max(2, 大小 * 0.12)
-  ctx.fillStyle = 颜色
-  ctx.strokeText(文本, 中心x, 中心y)
-  ctx.fillText(文本, 中心x, 中心y)
   ctx.restore()
 }
 

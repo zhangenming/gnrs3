@@ -3,13 +3,11 @@
 //
 // 作用范围:
 // 只处理 1v1 中我方基地已经可见、敌方威胁已经贴脸的场景。
-import { 大回合turn数 } from '../配置.js'
+import { 大回合turn数, 基地自然增长turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.js'
 import { 状态 } from '../状态.js'
-import { 取得相邻索引列表, 是敌方格, 取得周期增长次数 } from '../游戏工具.js'
-
-const 基地自然增长turn数 = 2
+import { 取得相邻索引列表, 是敌方格, 取得周期增长次数, 取得回合间增长 } from '../游戏工具.js'
 
 export const 功能定义 = {
   id: '自动保护基地',
@@ -74,7 +72,7 @@ export function 尝试自动保护基地(socket, 请求渲染) {
     if (!Number.isInteger(基地兵力) || 基地兵力 < 0) return null
     if (!是我方或队友(基地归属)) return null
 
-    const 基地战力 = 基地兵力 + 取得基地预估增长(1)
+    const 基地战力 = 基地兵力 + (取得回合间增长(状态.当前回合, 状态.当前回合 + 1) ?? 0)
     const 威胁列表 = 取得威胁列表(基地索引, 基地战力)
     if (!威胁列表.length) return null
 
@@ -219,26 +217,6 @@ export function 尝试自动保护基地(socket, 请求渲染) {
       if (危险差 > 最大危险差) 最大危险差 = 危险差
     }
     return 最大危险差 === -Infinity ? -基地战力 : 最大危险差
-  }
-
-  function 取得基地预估增长(移动数量) {
-    const 当前回合 = 状态.当前回合
-    if (
-      !Number.isInteger(当前回合) ||
-      !Number.isInteger(移动数量) ||
-      移动数量 <= 0
-    ) {
-      return 0
-    }
-
-    const 目标回合 = 当前回合 + 移动数量
-    const 基地自然增长 = 取得周期增长次数(
-      当前回合,
-      目标回合,
-      基地自然增长turn数,
-    )
-    const 大回合增长 = 取得周期增长次数(当前回合, 目标回合, 大回合turn数)
-    return 基地自然增长 + 大回合增长
   }
 
   function 接管冷却中() {

@@ -3,7 +3,7 @@
 //
 // 作用范围:
 // 只处理敌方基地已经可见、且基地旁我方连通兵力足够的 1v1 收尾场景。
-import { 大回合turn数 } from '../配置.js'
+import { 大回合turn数, 基地自然增长turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import {
   地图可读,
@@ -13,10 +13,9 @@ import {
   读取地图归属,
 } from '../游戏.js'
 import { 状态 } from '../状态.js'
-import { 取得相邻索引列表, 取得周期增长次数 } from '../游戏工具.js'
+import { 取得相邻索引列表, 取得周期增长次数, 取得回合间增长 } from '../游戏工具.js'
 
 const 最大集结步数 = 6
-const 基地自然增长turn数 = 2
 
 export const 功能定义 = {
   id: '自动吃基地',
@@ -307,28 +306,8 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
   }
 
   function 足够吃掉基地(伤害合计, 基地兵力, 移动数量) {
-    const 基地预估增长 = 取得基地预估增长(移动数量)
+    const 基地预估增长 = 取得回合间增长(状态.当前回合, 状态.当前回合 + 移动数量) ?? Infinity
     return 伤害合计 > 基地兵力 + 基地预估增长
-  }
-
-  function 取得基地预估增长(移动数量) {
-    const 当前回合 = 状态.当前回合
-    if (
-      !Number.isInteger(当前回合) ||
-      !Number.isInteger(移动数量) ||
-      移动数量 <= 0
-    ) {
-      return Infinity
-    }
-
-    const 目标回合 = 当前回合 + 移动数量
-    const 基地自然增长 = 取得周期增长次数(
-      当前回合,
-      目标回合,
-      基地自然增长turn数,
-    )
-    const 大回合增长 = 取得周期增长次数(当前回合, 目标回合, 大回合turn数)
-    return 基地自然增长 + 大回合增长
   }
 
   function 是我方地块(索引) {

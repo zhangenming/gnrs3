@@ -14,6 +14,7 @@ import { 取得周期增长次数, 读取当前回合 } from '../游戏工具.js
 import { 旋转框动画毫秒 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
+import { 画兵力文本, 画旋转框 } from '../覆盖层工具.js'
 
 export const 功能定义 = {
   id: '基地记忆标记',
@@ -136,7 +137,7 @@ function 画基地(ctx, x, y, 大小, 当前动画时间) {
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
 
-  画基地旋转框()
+  画旋转框(ctx, x, y, 大小, 当前动画时间, 旋转框动画毫秒, 主色)
 
   ctx.globalAlpha = 0.22
   ctx.fillStyle = 主色
@@ -152,66 +153,12 @@ function 画基地(ctx, x, y, 大小, 当前动画时间) {
   ctx.strokeRect(x + 内偏移, y + 内偏移, 高光大小, 高光大小)
 
   ctx.restore()
-
-  function 画基地旋转框() {
-    const 中心X = x + 大小 / 2
-    const 中心Y = y + 大小 / 2
-    const 框大小 = Math.max(1, 大小 * 0.62)
-    const 角长 = Math.max(5, 大小 * 0.2)
-    const 线宽 = Math.max(2, 大小 * 0.06)
-    const 左 = 中心X - 框大小 / 2
-    const 上 = 中心Y - 框大小 / 2
-    const 右 = 左 + 框大小
-    const 下 = 上 + 框大小
-    const 角度 = (当前动画时间 / 旋转框动画毫秒) * Math.PI * 2
-
-    ctx.save()
-    ctx.translate(中心X, 中心Y)
-    ctx.rotate(角度)
-    ctx.translate(-中心X, -中心Y)
-    ctx.lineWidth = 线宽
-    ctx.strokeStyle = 主色
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)'
-    ctx.shadowBlur = Math.max(2, 大小 * 0.08)
-    ctx.beginPath()
-    ctx.moveTo(左, 上 + 角长)
-    ctx.lineTo(左, 上)
-    ctx.lineTo(左 + 角长, 上)
-    ctx.moveTo(右 - 角长, 上)
-    ctx.lineTo(右, 上)
-    ctx.lineTo(右, 上 + 角长)
-    ctx.moveTo(右, 下 - 角长)
-    ctx.lineTo(右, 下)
-    ctx.lineTo(右 - 角长, 下)
-    ctx.moveTo(左 + 角长, 下)
-    ctx.lineTo(左, 下)
-    ctx.lineTo(左, 下 - 角长)
-    ctx.stroke()
-    ctx.restore()
-  }
 }
 
 function 画基地模拟兵力(ctx, 基地索引, x, y, 大小) {
   const 兵力 = 取得模拟基地兵力(基地索引)
   if (!Number.isInteger(兵力) || 兵力 < 0) return
-
-  const 文本 = String(兵力)
-  const 字号比例 = 文本.length >= 3 ? 0.46 : 文本.length >= 2 ? 0.54 : 0.64
-  const 字号 = Math.max(12, Math.min(24, 大小 * 字号比例))
-  const 中心x = x + 大小 / 2
-  const 中心y = y + 大小 / 2
-
-  ctx.save()
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.lineJoin = 'round'
-  ctx.font = `900 ${字号}px Arial, sans-serif`
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)'
-  ctx.lineWidth = Math.max(2, 大小 * 0.12)
-  ctx.fillStyle = '#ffffff'
-  ctx.strokeText(文本, 中心x, 中心y)
-  ctx.fillText(文本, 中心x, 中心y)
-  ctx.restore()
+  画兵力文本(ctx, x, y, 大小, String(兵力), '#ffffff')
 }
 
 function 取得模拟基地兵力(基地索引) {

@@ -1,5 +1,6 @@
 import { 状态 } from './状态.js'
 import { 是我方或队友 } from './游戏.js'
+import { 大回合turn数, 基地自然增长turn数 } from './配置.js'
 
 export function 取得相邻索引列表(索引) {
   const 行 = Math.floor(索引 / 状态.宽度)
@@ -41,4 +42,12 @@ export function 取宿主(画布) {
 
 export function 读取当前回合(数据包) {
   return Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
+}
+
+export function 取得回合间增长(起始回合, 目标回合) {
+  if (!Number.isInteger(起始回合) || !Number.isInteger(目标回合)) return null
+  return (
+    取得周期增长次数(起始回合, 目标回合, 基地自然增长turn数) +
+    取得周期增长次数(起始回合, 目标回合, 大回合turn数)
+  )
 }

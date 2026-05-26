@@ -4,7 +4,7 @@
 // 作用范围:
 // 读取服务器确认的本地移动、当前回合、地图归属差分和塔记忆。
 // 只维护本地行动记录与页面面板，真实游戏操作队列由原 socket 流程处理。
-import { 大回合turn数, 监控起始回合 } from '../配置.js'
+import { 大回合turn数, 监控起始回合, 基地自然增长turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 地图可读, 是我方或队友, 读取地图地块, 读取地图归属 } from '../游戏.js'
 import { 状态 } from '../状态.js'
@@ -16,7 +16,6 @@ const 面板类名 = 'gio-action-watch-panel'
 const 画布类名 = 'gio-action-watch-canvas'
 const 样式编号 = 'gio-action-watch-style'
 const 每行回合数 = 25
-const 塔基地自然增长turn数 = 2
 const 阻挡地形集合 = new Set([-2, -4, -5, -6])
 const 行动类型列表 = ['空闲', '集兵', '扩地(开塔)', '抢地(抢塔)']
 const 行动优先级表 = new Map(
@@ -154,7 +153,7 @@ export function 更新我方行动地图判断(
 
     let 增长 = 0
     if (状态.已知塔集合.has(格子索引) || 状态.已知基地集合.has(格子索引)) {
-      增长 += 取得周期增长次数(回合, 回合 + 1, 塔基地自然增长turn数)
+      增长 += 取得周期增长次数(回合, 回合 + 1, 基地自然增长turn数)
     }
     增长 += 取得周期增长次数(回合, 回合 + 1, 大回合turn数)
     return 增长
