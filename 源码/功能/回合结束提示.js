@@ -1,5 +1,5 @@
 ﻿// 功能目的:
-// 在鼠标右下角显示大回合倒计时，避免战斗中错过全图兵力+1的时机。
+// 在鼠标左上角显示大回合倒计时，避免战斗中错过全图兵力+1的时机。
 //
 // 作用范围:
 // 只读取当前大回合倒计时并维护一个页面提示，不影响游戏数据和操作队列。
@@ -96,15 +96,15 @@ export function 更新回合结束提示(倒计时) {
   function 更新提示位置(元素) {
     const 宽 = 元素.offsetWidth || 44
     const 高 = 元素.offsetHeight || 32
-    const 最大X = Math.max(0, window.innerWidth - 宽 - 4)
-    const 最大Y = Math.max(0, window.innerHeight - 高 - 4)
-    const 左 = Math.min(鼠标X + 鼠标偏移像素, 最大X)
-    const 上 = Math.min(鼠标Y + 鼠标偏移像素, 最大Y)
+    const 左 = Math.max(4, 鼠标X - 宽 - 鼠标偏移像素)
+    const 上 = Math.max(4, 鼠标Y - 高 - 鼠标偏移像素)
     元素.style.transform = `translate(${左}px, ${上}px)`
   }
 
   function 安装样式() {
-    注入样式(回合结束提示样式编号, `
+    注入样式(
+      回合结束提示样式编号,
+      `
 #${回合结束提示元素编号} {
     box-sizing: border-box;
     position: fixed;
@@ -140,7 +140,8 @@ export function 更新回合结束提示(倒计时) {
     color: #ffffff;
     border-color: rgba(255, 182, 182, 0.92);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 14px rgba(255, 35, 35, 0.58);
-}`)
+}`,
+    )
   }
 }
 
