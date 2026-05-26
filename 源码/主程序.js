@@ -64,21 +64,18 @@ function 启动() {
         已请求页面同步 = false
         状态.页面同步中 = true
         try {
-          const 当前在游戏中 = Boolean(
-            document.querySelector('#game-page') ||
-              document.querySelector('.game-map-canvas'),
-          )
-          if (当前在游戏中 !== 状态.游戏中) {
-            状态.游戏中 = 当前在游戏中
-            if (当前在游戏中) {
-              document.body.classList.remove('gio-离开游戏')
-              清除插件内联隐藏()
-            } else {
+          const 在主页面 = Boolean(document.querySelector('#main-menu'))
+          if (在主页面 !== 状态.在主页面) {
+            状态.在主页面 = 在主页面
+            if (在主页面) {
               document.body.classList.add('gio-离开游戏')
               清空覆盖层()
+            } else {
+              document.body.classList.remove('gio-离开游戏')
+              清除插件内联隐藏()
             }
           }
-          if (当前在游戏中) {
+          if (!在主页面) {
             执行主程序Hook('页面同步')
             请求渲染()
           }
