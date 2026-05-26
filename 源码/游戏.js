@@ -16,11 +16,13 @@ export function 读取玩家信息(数据包) {
     状态.玩家名列表 = 数据包.usernames.slice()
   }
 
-  const 本地玩家索引 = 取得本地玩家索引()
-  if (Number.isInteger(本地玩家索引)) {
-    状态.我方索引 = 本地玩家索引
-  } else if (Number.isInteger(数据包.playerIndex)) {
-    状态.我方索引 = 数据包.playerIndex
+  if (!Number.isInteger(状态.我方索引)) {
+    const 本地玩家索引 = 取得本地玩家索引()
+    if (Number.isInteger(本地玩家索引)) {
+      状态.我方索引 = 本地玩家索引
+    } else if (Number.isInteger(数据包.playerIndex)) {
+      状态.我方索引 = 数据包.playerIndex
+    }
   }
 
   if (Array.isArray(数据包.teams)) {
