@@ -225,7 +225,7 @@ function 取得模拟基地兵力(基地索引) {
   const 回合差 = 当前回合 - 记录回合
   if (回合差 <= 0) return 记忆.兵力
 
-  const 基地自然增长 = Math.floor(回合差 / 2)
+  const 基地自然增长 = Math.floor(当前回合 / 2) - Math.floor(记录回合 / 2)
   const 大回合额外增长 = Math.floor(当前回合 / 50) - Math.floor(记录回合 / 50)
 
   return 记忆.兵力 + 基地自然增长 + 大回合额外增长
