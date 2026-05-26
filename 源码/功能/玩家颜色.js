@@ -66,7 +66,7 @@ export function 重构玩家颜色(数据包) {
 
   读取玩家信息(数据包)
   同步本局我方索引(数据包)
-  同步页面颜色()
+  请求同步页面颜色()
 
   if (!Array.isArray(数据包.playerColors)) {
     return
@@ -100,6 +100,17 @@ function 同步地图颜色变量() {
   样式.setProperty('--map-color-p1', '#ff0000')
   样式.setProperty('--map-rgb-p2', '39,146,255')
   样式.setProperty('--map-color-p2', '#2792ff')
+}
+
+let 已请求同步页面颜色 = false
+
+function 请求同步页面颜色() {
+  if (已请求同步页面颜色) return
+  已请求同步页面颜色 = true
+  requestAnimationFrame(() => {
+    已请求同步页面颜色 = false
+    同步页面颜色()
+  })
 }
 
 function 同步页面颜色() {

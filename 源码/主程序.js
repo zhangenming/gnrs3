@@ -40,7 +40,9 @@ function 启动() {
     }
     状态.页面观察器 = new MutationObserver((变动列表) => {
       if (状态.页面同步中) return
-      if (页面变化需要同步(变动列表)) 请求页面同步()
+      const 观察结果 = 取得页面变化同步原因(变动列表)
+      记录页面观察(观察结果, 变动列表)
+      if (观察结果.需要同步) 请求页面同步(观察结果.原因)
     })
     状态.页面观察器.observe(document.body, {
       childList: true,
@@ -57,10 +59,11 @@ function 启动() {
       { passive: true },
     )
 
-    function 请求页面同步() {
+    function 请求页面同步(原因) {
       if (已请求页面同步) return
       已请求页面同步 = true
       requestAnimationFrame(() => {
+        const 开始时间 = performance.now()
         已请求页面同步 = false
         状态.页面同步中 = true
         try {
@@ -81,20 +84,31 @@ function 启动() {
             请求渲染()
           }
         } finally {
+          记录页面同步(开始时间, 原因)
           状态.页面同步中 = false
         }
       })
     }
 
-    function 页面变化需要同步(变动列表) {
+    function 取得页面变化同步原因(变动列表) {
+      let 原因 = null
       return 变动列表.some((变动) => {
         const 变动节点列表 = [...变动.addedNodes, ...变动.removedNodes]
         if (变动节点列表.length) {
-          if (变动节点列表.some(节点需要同步)) return true
+          if (变动节点列表.some(节点需要同步)) {
+            原因 = '节点变化'
+            return true
+          }
           if (变动节点列表.every(节点属于插件)) return false
         }
-        return 节点需要同步(变动.target)
+        if (节点需要同步(变动.target)) {
+          原因 = '目标变化'
+          return true
+        }
+        return false
       })
+        ? { 需要同步: true, 原因 }
+        : { 需要同步: false, 原因: null }
     }
 
     function 节点需要同步(节点) {
@@ -133,22 +147,42 @@ function 启动() {
             '#gameMap',
             '.game-map-canvas',
             '#game-leaderboard-container',
-            '#game-leaderboard',
-            '#leaderboard',
-            '.leaderboard',
             '#game-pass-turn-button',
-          ].join(','),
-        ) ||
-        元素.closest?.(
-          [
-            '#game-page',
-            '#game-leaderboard-container',
-            '#game-leaderboard',
-            '#leaderboard',
-            '.leaderboard',
           ].join(','),
         ),
       )
+    }
+
+    function 记录页面观察(观察结果, 变动列表) {
+      const 旧记录 = 状态.性能诊断.页面观察
+      const 新记录 = 旧记录 ?? {
+        回调次数: 0,
+        同步请求次数: 0,
+        变动总数: 0,
+      }
+      状态.性能诊断.页面观察 = {
+        ...新记录,
+        回调次数: 新记录.回调次数 + 1,
+        同步请求次数: 新记录.同步请求次数 + (观察结果.需要同步 ? 1 : 0),
+        变动总数: 新记录.变动总数 + 变动列表.length,
+        最近变动数: 变动列表.length,
+        最近需要同步: 观察结果.需要同步,
+        最近原因: 观察结果.原因,
+        回合: 状态.当前回合,
+        时间: Math.round(performance.now()),
+      }
+    }
+
+    function 记录页面同步(开始时间, 原因) {
+      const 旧记录 = 状态.性能诊断.页面同步
+      const 次数 = (旧记录?.次数 ?? 0) + 1
+      状态.性能诊断.页面同步 = {
+        次数,
+        原因,
+        耗时: Math.round((performance.now() - 开始时间) * 100) / 100,
+        回合: 状态.当前回合,
+        时间: Math.round(开始时间),
+      }
     }
   }
 }

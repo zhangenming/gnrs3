@@ -67,6 +67,8 @@ export const 状态 = {
   性能诊断: {
     地图更新: null,
     覆盖层渲染: null,
+    页面观察: null,
+    页面同步: null,
   },
   自适应棋盘待同步: true,
   socket已挂钩: false,
