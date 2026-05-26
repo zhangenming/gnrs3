@@ -12,6 +12,7 @@ export function 更新地图缓存和兵力分布(
   来源事件,
   已处理我方移动列表 = [],
 ) {
+  const 开始时间 = performance.now()
   const 完整地图数组 = 取得完整地图数组(数据包)
   const 旧地图数组 = Array.isArray(状态.地图数组) ? 状态.地图数组.slice() : null
   if (完整地图数组) {
@@ -33,7 +34,22 @@ export function 更新地图缓存和兵力分布(
     来源事件,
     已处理我方移动列表,
   }
+  const 功能耗时 = []
   for (const 功能 of 地图更新功能列表) {
+    const 功能开始时间 = performance.now()
     功能.地图更新?.(上下文)
+    功能耗时.push({
+      id: 功能.id,
+      耗时: Math.round((performance.now() - 功能开始时间) * 100) / 100,
+    })
+  }
+  状态.性能诊断.地图更新 = {
+    耗时: Math.round((performance.now() - 开始时间) * 100) / 100,
+    功能数量: 地图更新功能列表.length,
+    功能耗时: 功能耗时.filter((记录) => 记录.耗时 > 0),
+    来源事件,
+    回合: Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合,
+    地图长度: 状态.地图数组?.length ?? null,
+    时间: Math.round(开始时间),
   }
 }

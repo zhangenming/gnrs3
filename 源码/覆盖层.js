@@ -12,6 +12,8 @@ import { 安装样式 as 注入样式 } from './工具.js'
 import { 取游戏画布, 取宿主 } from './游戏工具.js'
 
 let 覆盖层动画帧 = null
+let 上次连续动画时间 = 0
+const 连续动画间隔毫秒 = 1000 / 30
 
 export function 清空覆盖层() {
   const 覆盖层 = document.querySelector(`.${覆盖层类名}`)
@@ -21,6 +23,7 @@ export function 清空覆盖层() {
 }
 
 export function 渲染() {
+  const 开始时间 = performance.now()
   状态.已请求渲染 = false
   安装样式()
 
@@ -31,17 +34,27 @@ export function 渲染() {
   const 可绘制功能列表 = 取得可绘制功能列表()
   if (!可绘制功能列表.length) {
     清空覆盖层()
+    记录渲染耗时(开始时间, 可绘制功能列表, [])
     return
   }
 
-  if (!状态.宽度 || !状态.高度) return
+  if (!状态.宽度 || !状态.高度) {
+    记录渲染耗时(开始时间, 可绘制功能列表, [])
+    return
+  }
 
   const 部件 = 确保覆盖层()
-  if (!部件) return
+  if (!部件) {
+    记录渲染耗时(开始时间, 可绘制功能列表, [])
+    return
+  }
 
   const 尺寸 = 调整覆盖层(部件)
   const ctx = 部件.覆盖层.getContext('2d')
-  if (!ctx) return
+  if (!ctx) {
+    记录渲染耗时(开始时间, 可绘制功能列表, [])
+    return
+  }
 
   ctx.setTransform(尺寸.dpr, 0, 0, 尺寸.dpr, 0, 0)
   ctx.clearRect(0, 0, 尺寸.css宽, 尺寸.css高)
@@ -63,11 +76,18 @@ export function 渲染() {
     部件,
   }
 
+  const 功能耗时 = []
   for (const 功能 of 可绘制功能列表) {
+    const 功能开始时间 = performance.now()
     功能.绘制?.(上下文)
+    功能耗时.push({
+      id: 功能.id,
+      耗时: Math.round((performance.now() - 功能开始时间) * 100) / 100,
+    })
   }
 
   if (需要连续动画()) 请求连续动画帧()
+  记录渲染耗时(开始时间, 可绘制功能列表, 功能耗时)
 }
 
 export function 请求覆盖层重绘() {
@@ -104,6 +124,12 @@ function 请求连续动画帧() {
   覆盖层动画帧 = requestAnimationFrame(() => {
     覆盖层动画帧 = null
     if (!需要连续动画()) return
+    const 当前时间 = performance.now()
+    if (当前时间 - 上次连续动画时间 < 连续动画间隔毫秒) {
+      请求连续动画帧()
+      return
+    }
+    上次连续动画时间 = 当前时间
     if (状态.已请求渲染) {
       请求连续动画帧()
       return
@@ -162,8 +188,21 @@ function 调整覆盖层(部件) {
   return { dpr, css宽, css高 }
 }
 
+function 记录渲染耗时(开始时间, 可绘制功能列表, 功能耗时) {
+  状态.性能诊断.覆盖层渲染 = {
+    耗时: Math.round((performance.now() - 开始时间) * 100) / 100,
+    功能数量: 可绘制功能列表.length,
+    功能: 可绘制功能列表.map((功能) => 功能.id),
+    功能耗时: 功能耗时.filter((记录) => 记录.耗时 > 0),
+    回合: 状态.当前回合,
+    时间: Math.round(开始时间),
+  }
+}
+
 function 安装样式() {
-  注入样式(样式编号, `
+  注入样式(
+    样式编号,
+    `
 .${覆盖层类名} {
     position: absolute;
     left: 0;
@@ -175,6 +214,6 @@ function 安装样式() {
     position: relative !important;
 }
 ${功能样式列表.join('\n')}
-`)
+`,
+  )
 }
-

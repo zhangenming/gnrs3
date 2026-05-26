@@ -64,6 +64,10 @@ export const 状态 = {
   玩家名列表: null,
   队伍: null,
   已请求渲染: false,
+  性能诊断: {
+    地图更新: null,
+    覆盖层渲染: null,
+  },
   自适应棋盘待同步: true,
   socket已挂钩: false,
   页面观察器: null,
