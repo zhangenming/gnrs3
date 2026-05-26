@@ -15,7 +15,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板类名 = 'gio-action-watch-panel'
 const 画布类名 = 'gio-action-watch-canvas'
 const 样式编号 = 'gio-action-watch-style'
-const 每行回合数 = 25
+const 每行回合数 = 50
 const 阻挡地形集合 = new Set([-2, -4, -5, -6])
 const 行动类型列表 = ['空闲', '集兵', '扩地(开塔)', '抢地(抢塔)']
 const 行动优先级表 = new Map(
@@ -406,7 +406,7 @@ function 同步我方行动监控UI() {
     const 组间距 = 6
     const 单元高 = 19
     const 单元宽 = Math.max(
-      24,
+      12,
       (css宽 - 标签宽 - 标签间距 - 单元间距 * (每行回合数 - 1)) / 每行回合数,
     )
     const 内容宽 =
@@ -474,6 +474,7 @@ function 同步我方行动监控UI() {
       ctx.beginPath()
       ctx.roundRect(x, y, 单元宽, 单元高, 4)
       ctx.fill()
+      if (回合状态.大回合内回合 % 5 !== 0) return
       ctx.fillStyle = 样式.文字
       ctx.font = '800 11px Arial, sans-serif'
       ctx.fillText(
@@ -514,7 +515,9 @@ function 设置我方行动类型(回合, 行动类型) {
 }
 
 function 安装样式() {
-  注入样式(样式编号, `
+  注入样式(
+    样式编号,
+    `
 .${面板类名} {
     box-sizing: border-box;
     width: 100%;
@@ -608,7 +611,8 @@ function 安装样式() {
 }
 .${面板类名}[data-gio-action-watch-empty="true"] .gio-action-watch-empty {
     display: block;
-}`)
+}`,
+  )
 }
 
 import { 注册功能 } from '../注册中心.js'
