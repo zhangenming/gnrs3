@@ -10,6 +10,7 @@ import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.
 import { 状态 } from '../状态.js'
 import { 结算当前我方行动回合 } from './我方行动监控.js'
 import { 是战场数据冻结事件 } from './战场数据冻结.js'
+import { 读取当前回合, 取游戏画布, 取宿主 } from '../游戏工具.js'
 
 const 元素类名 = 'gio-replay-frame'
 const 面板类名 = 'gio-replay-panel'
@@ -119,7 +120,7 @@ export function 记录回放帧(事件名, 数据包) {
   const 帧 = {
     序号: 状态.回放帧列表.length,
     事件名,
-    回合: Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合,
+    回合: 读取当前回合(数据包),
     动画时间: performance.now(),
     状态快照: 取得状态快照(),
   }
@@ -187,7 +188,7 @@ export function 同步回放元素() {
   }
 
   const 帧 = 取得当前回放帧()
-  const 画布 = 取地图画布()
+  const 画布 = 取游戏画布()
   const 元素 = 确保回放元素(画布)
   if (!帧 || !画布 || !元素) return
 
@@ -551,22 +552,6 @@ function 安装回放样式() {
 }
 `.trim()
   document.documentElement.appendChild(样式)
-}
-
-function 取地图画布() {
-  return (
-    document.querySelector('#game-page #gameMap .game-map-canvas') ??
-    document.querySelector('.game-map-canvas')
-  )
-}
-
-function 取宿主(画布) {
-  if (!画布) return null
-  const 候选宿主 =
-    画布.parentElement ||
-    画布.closest('.relative') ||
-    画布.closest('.game-page')
-  return 候选宿主 ?? document.body
 }
 
 function 是输入中(元素) {

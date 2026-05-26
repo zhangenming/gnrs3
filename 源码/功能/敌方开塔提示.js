@@ -20,6 +20,7 @@ import {
   读取字段数字,
   读取文本数字,
 } from '../战场工具.js'
+import { 取得周期增长次数, 读取当前回合 } from '../游戏工具.js'
 import { 统计塔数 } from './塔数统计.js'
 
 const 敌方开塔提示元素编号 = 'gio-enemy-open-tower-alert'
@@ -114,10 +115,8 @@ export function 同步敌方开塔提示元素() {
 }
 
 function 取得敌方开塔判断(上次快照, 当前快照) {
-  const 二回合增长次数 =
-    Math.floor(当前快照.回合 / 2) - Math.floor(上次快照.回合 / 2)
-  const 大回合增长次数 =
-    Math.floor(当前快照.回合 / 50) - Math.floor(上次快照.回合 / 50)
+  const 二回合增长次数 = 取得周期增长次数(上次快照.回合, 当前快照.回合, 2)
+  const 大回合增长次数 = 取得周期增长次数(上次快照.回合, 当前快照.回合, 50)
   const 我方变化 = 取得玩家变化(
     上次快照.我方,
     当前快照.我方,
@@ -161,7 +160,7 @@ function 取得敌方开塔判断(上次快照, 当前快照) {
 
 function 读取战场快照(数据包) {
   同步我方玩家索引()
-  const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
+  const 回合 = 读取当前回合(数据包)
   if (!Number.isInteger(回合)) return null
 
   const 玩家数据 = 读取快照玩家数据() ?? 读取分数玩家数据(数据包)

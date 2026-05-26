@@ -12,6 +12,7 @@ import {
   读取功能总开关,
 } from './功能开关.js'
 import { 状态 } from './状态.js'
+import { 安装样式 as 注入样式 } from './工具.js'
 
 const 控制按钮编号 = 'gio-feature-toggle-button'
 const 控制面板编号 = 'gio-feature-toggle-panel'
@@ -245,12 +246,7 @@ function 取得分类列表() {
 }
 
 function 安装样式() {
-  if (!document.documentElement) return
-  if (document.getElementById(控制样式编号)) return
-
-  const 样式 = document.createElement('style')
-  样式.id = 控制样式编号
-  样式.textContent = `
+  注入样式(控制样式编号, `
 #${控制按钮编号} {
     position: fixed;
     right: 12px;
@@ -396,7 +392,5 @@ function 安装样式() {
     margin: 0;
     accent-color: #28a7ff;
     cursor: pointer;
-}
-`.trim()
-  document.documentElement.appendChild(样式)
+}`)
 }

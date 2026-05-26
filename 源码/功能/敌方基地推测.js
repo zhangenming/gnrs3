@@ -10,7 +10,7 @@ import {
 } from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
-import { 取得相邻索引列表, 是敌方格 } from '../游戏工具.js'
+import { 取得相邻索引列表, 是敌方格, 读取当前回合 } from '../游戏工具.js'
 
 export const 功能定义 = {
   id: '敌方基地推测',
@@ -42,7 +42,7 @@ export function 更新敌方基地推测(数据包, 请求渲染) {
     if (typeof 请求渲染 === 'function') 请求渲染()
     return
   }
-  const 当前回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
+  const 当前回合 = 读取当前回合(数据包)
   const 旧签名 = 取得签名()
 
   if (!Number.isInteger(当前回合) || 当前回合 < 0) {

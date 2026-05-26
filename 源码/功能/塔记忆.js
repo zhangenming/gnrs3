@@ -17,6 +17,7 @@ import {
   尝试从地图读取尺寸,
   是我方或队友,
 } from '../游戏.js'
+import { 取得周期增长次数, 读取当前回合 } from '../游戏工具.js'
 import { 中立黄色, 旋转框动画毫秒 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
@@ -307,8 +308,8 @@ function 取得我方开塔增长(塔索引) {
   const 回合差 = 当前回合 - 记录回合
   if (回合差 <= 0) return -记忆.开塔耗兵
 
-  const 塔自然增长 = Math.floor(当前回合 / 2) - Math.floor(记录回合 / 2)
-  const 大回合额外增长 = Math.floor(当前回合 / 50) - Math.floor(记录回合 / 50)
+  const 塔自然增长 = 取得周期增长次数(记录回合, 当前回合, 2)
+  const 大回合额外增长 = 取得周期增长次数(记录回合, 当前回合, 50)
 
   return -记忆.开塔耗兵 + 塔自然增长 + 大回合额外增长
 }
@@ -342,7 +343,7 @@ export function 更新塔类型(数据包, 塔索引) {
       if (!Number.isInteger(开塔耗兵) || 开塔耗兵 < 0) return
       状态.我方开塔增长表.set(塔索引, {
         开塔耗兵,
-        回合: Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合,
+        回合: 读取当前回合(数据包),
       })
       状态.中立塔开塔成本表.delete(塔索引)
     } else if (可见类型 !== '我方塔') {

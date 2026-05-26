@@ -12,6 +12,8 @@ import {
   读取快照玩家数据,
 } from '../战场工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
+import { 读取当前回合 } from '../游戏工具.js'
+import { 安装样式 as 注入样式 } from '../工具.js'
 
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
@@ -58,7 +60,7 @@ export const socket功能 = {
 
 export function 记录游戏数据进展(数据包) {
   if (!功能已启用('游戏数据进展图表')) return
-  const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
+  const 回合 = 读取当前回合(数据包)
   if (!是统计回合(回合)) return
   if (状态.游戏数据进展上次统计回合 === 回合) return
 
@@ -392,11 +394,7 @@ function 格式化差值(值) {
 }
 
 function 安装样式() {
-  if (!document.documentElement || document.getElementById(样式元素编号)) return
-
-  const 样式 = document.createElement('style')
-  样式.id = 样式元素编号
-  样式.textContent = `
+  注入样式(样式元素编号, `
 .gio-data-progress-panel {
     box-sizing: border-box;
     width: 100%;
@@ -460,9 +458,7 @@ function 安装样式() {
 }
 .gio-data-progress-panel[data-gio-data-progress-empty="true"] .gio-data-progress-empty {
     display: flex;
-}
-`.trim()
-  document.documentElement.appendChild(样式)
+}`)
 }
 
 import { 注册功能 } from '../注册中心.js'

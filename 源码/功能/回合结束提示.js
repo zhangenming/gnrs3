@@ -5,6 +5,7 @@
 // 只读取当前大回合倒计时并维护一个页面提示，不影响游戏数据和操作队列。
 import { 样式编号, 回合结束提示层级 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
+import { 安装样式 as 注入样式 } from '../工具.js'
 
 const 回合结束提示元素编号 = 'gio-turn-end-alert'
 const 回合结束提示样式编号 = `${样式编号}-turn-end-alert`
@@ -103,12 +104,7 @@ export function 更新回合结束提示(倒计时) {
   }
 
   function 安装样式() {
-    if (!document.documentElement) return
-    if (document.getElementById(回合结束提示样式编号)) return
-
-    const 样式 = document.createElement('style')
-    样式.id = 回合结束提示样式编号
-    样式.textContent = `
+    注入样式(回合结束提示样式编号, `
 #${回合结束提示元素编号} {
     box-sizing: border-box;
     position: fixed;
@@ -144,9 +140,7 @@ export function 更新回合结束提示(倒计时) {
     color: #ffffff;
     border-color: rgba(255, 182, 182, 0.92);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 14px rgba(255, 35, 35, 0.58);
-}
-`.trim()
-    document.documentElement.appendChild(样式)
+}`)
   }
 }
 

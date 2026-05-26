@@ -1,4 +1,5 @@
 import { 状态 } from './状态.js'
+import { 取得单元格列表 } from './战场DOM工具.js'
 
 export function 是我方或队友(玩家索引) {
   if (!Number.isInteger(玩家索引) || 玩家索引 < 0) return false
@@ -105,13 +106,6 @@ export function 同步我方玩家索引() {
       if (文本列表.includes('POV')) return 行
     }
     return null
-  }
-
-  function 取得单元格列表(行) {
-    return Array.from(行.children).filter((单元格) => {
-      const 标签名 = 单元格.tagName?.toLowerCase() ?? ''
-      return 标签名 === 'td' || 标签名 === 'th'
-    })
   }
 }
 

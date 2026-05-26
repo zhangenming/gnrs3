@@ -19,6 +19,7 @@ import {
   是我方或队友,
   读取地图归属,
 } from '../游戏.js'
+import { 是敌方格 } from '../游戏工具.js'
 import { 状态 } from '../状态.js'
 
 export const 功能定义 = {
@@ -115,10 +116,6 @@ export function 更新抢塔提示(旧地图数组, 新地图数组, 数据包) 
 
     function 是我方格(归属) {
       return Number.isInteger(归属) && 归属 >= 0 && 是我方或队友(归属)
-    }
-
-    function 是敌方格(归属) {
-      return Number.isInteger(归属) && 归属 >= 0 && !是我方或队友(归属)
     }
   }
 }

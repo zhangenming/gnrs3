@@ -10,6 +10,7 @@ import {
   是我方或队友,
   读取地图兵力,
 } from '../游戏.js'
+import { 取得周期增长次数, 读取当前回合 } from '../游戏工具.js'
 import { 旋转框动画毫秒 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
@@ -102,7 +103,7 @@ export function 处理基地位置(数据包, 请求渲染) {
 
     状态.基地兵力表.set(基地索引, {
       兵力,
-      回合: Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合,
+      回合: 读取当前回合(数据包),
     })
   }
 }
@@ -226,8 +227,8 @@ function 取得模拟基地兵力(基地索引) {
   const 回合差 = 当前回合 - 记录回合
   if (回合差 <= 0) return 记忆.兵力
 
-  const 基地自然增长 = Math.floor(当前回合 / 2) - Math.floor(记录回合 / 2)
-  const 大回合额外增长 = Math.floor(当前回合 / 50) - Math.floor(记录回合 / 50)
+  const 基地自然增长 = 取得周期增长次数(记录回合, 当前回合, 2)
+  const 大回合额外增长 = 取得周期增长次数(记录回合, 当前回合, 50)
 
   return 记忆.兵力 + 基地自然增长 + 大回合额外增长
 }

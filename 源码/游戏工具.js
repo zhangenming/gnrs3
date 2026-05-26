@@ -21,5 +21,24 @@ export function 取得周期增长次数(起始回合, 目标回合, 周期) {
 }
 
 export function 取游戏画布() {
-  return document.querySelector('#game-page #gameMap .game-map-canvas')
+  return (
+    document.querySelector('#game-page #gameMap .game-map-canvas') ??
+    document.querySelector('.game-map-canvas')
+  )
+}
+
+export function 取宿主(画布) {
+  if (!画布) return null
+  const 候选宿主 =
+    画布.parentElement ||
+    画布.closest('.relative') ||
+    画布.closest('.game-page')
+  if (!候选宿主) return null
+  const 样式 = window.getComputedStyle(候选宿主)
+  if (样式?.position === 'static') return document.body ?? 候选宿主
+  return 候选宿主
+}
+
+export function 读取当前回合(数据包) {
+  return Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
 }

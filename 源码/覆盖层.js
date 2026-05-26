@@ -8,7 +8,8 @@ import { 样式编号, 覆盖层类名, 覆盖层层级 } from './配置.js'
 import { 功能已启用 } from './功能状态.js'
 import { 覆盖层功能列表, 功能样式列表 } from './功能注册.js'
 import { 状态 } from './状态.js'
-import { 取游戏画布 } from './游戏工具.js'
+import { 安装样式 as 注入样式 } from './工具.js'
+import { 取游戏画布, 取宿主 } from './游戏工具.js'
 
 let 覆盖层动画帧 = null
 
@@ -162,11 +163,7 @@ function 调整覆盖层(部件) {
 }
 
 function 安装样式() {
-  if (!document.documentElement || document.getElementById(样式编号)) return
-
-  const 样式 = document.createElement('style')
-  样式.id = 样式编号
-  样式.textContent = `
+  注入样式(样式编号, `
 .${覆盖层类名} {
     position: absolute;
     left: 0;
@@ -178,18 +175,6 @@ function 安装样式() {
     position: relative !important;
 }
 ${功能样式列表.join('\n')}
-`.trim()
-  document.documentElement.appendChild(样式)
+`)
 }
 
-function 取宿主(画布) {
-  if (!画布) return null
-  const 候选宿主 =
-    画布.parentElement ||
-    画布.closest('.relative') ||
-    画布.closest('.game-page')
-  if (!候选宿主) return null
-  const 样式 = window.getComputedStyle(候选宿主)
-  if (样式?.position === 'static') return document.body ?? 候选宿主
-  return 候选宿主
-}
