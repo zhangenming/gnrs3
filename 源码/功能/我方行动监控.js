@@ -237,7 +237,6 @@ function 同步我方行动监控UI() {
   const 空闲数量 = 回合状态列表.filter((回合状态) => {
     return 回合状态.行动类型 === '空闲'
   }).length
-  const 计数元素 = 面板.querySelector('.gio-action-watch-count')
   const 列表元素 = 面板.querySelector('.gio-action-watch-list')
   if (!列表元素) return
 
@@ -249,10 +248,6 @@ function 同步我方行动监控UI() {
 
   if (面板.dataset.gioActionWatchTurns === 绘制签名) return
   面板.dataset.gioActionWatchTurns = 绘制签名
-
-  if (计数元素 && 计数元素.textContent !== String(空闲数量)) {
-    计数元素.textContent = String(空闲数量)
-  }
 
   面板.dataset.gioActionWatchEmpty = 回合状态列表.length ? 'false' : 'true'
 
@@ -323,7 +318,6 @@ function 同步我方行动监控UI() {
       面板.innerHTML =
         '<div class="gio-action-watch-head">' +
         '<span class="gio-action-watch-title">我方行动监控</span>' +
-        '<span class="gio-action-watch-count">0</span>' +
         '</div>' +
         '<div class="gio-action-watch-legend">' +
         '<span data-gio-action-watch-kind="idle">空闲</span>' +
@@ -546,15 +540,6 @@ function 安装样式() {
 .gio-action-watch-title {
     color: #f7fbff;
     font: 800 12px/1 Arial, sans-serif;
-}
-.gio-action-watch-count {
-    min-width: 24px;
-    padding: 2px 6px;
-    border-radius: 6px;
-    background: #ffbf3f;
-    color: #14110a;
-    text-align: center;
-    font: 900 12px/1 Arial, sans-serif;
 }
 .gio-action-watch-legend {
     display: flex;
