@@ -247,6 +247,10 @@ function 取得分类列表() {
 
 function 安装样式() {
   注入样式(控制样式编号, `
+body.gio-离开游戏 [id^="gio-"]:not(#gio-feature-toggle-button),
+body.gio-离开游戏 [class^="gio-"]:not(.gio-feature-toggle-badge):not(.gio-feature-toggle-count) {
+    display: none !important;
+}
 #${控制按钮编号} {
     position: fixed;
     right: 12px;

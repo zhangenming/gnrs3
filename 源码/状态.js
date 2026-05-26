@@ -68,6 +68,7 @@ export const 状态 = {
   socket已挂钩: false,
   页面观察器: null,
   页面同步中: false,
+  游戏中: false,
   战场表格缓存: null,
   已处理颜色数据包: new WeakSet(),
   原始兵力文本待渲染: false,
