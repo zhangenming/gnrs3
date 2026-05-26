@@ -3,7 +3,8 @@ import { 大回合turn数 } from './配置.js'
 export function 安全执行(事件, 函数体) {
   try {
     return 函数体()
-  } catch {
+  } catch (错误) {
+    console.warn(`[安全执行] ${事件}:`, 错误)
     return null
   }
 }
