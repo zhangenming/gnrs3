@@ -4,10 +4,12 @@
 // 作用范围:
 // 只处理带 playerColors 的入站数据包，并用 WeakSet 避免同一对象重复处理。
 // 颜色统一后，排行榜识别、地图显示和战场数据差功能都能用稳定的敌我颜色规则。
-import { 敌方红色索引, 我方蓝色索引 } from '../配置.js'
+import { 敌方红色, 敌方红色索引, 我方蓝色, 我方蓝色索引 } from '../配置.js'
 import { 读取玩家信息, 是我方或队友 } from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
+import { 取得表头行, 取得单元格列表, 取得玩家列索引 } from '../战场DOM工具.js'
+import { 取得战场数据表格 } from './战场表格.js'
 
 export const 功能定义 = {
   id: '玩家颜色统一',
@@ -39,8 +41,8 @@ export const 功能样式 = `
 
 export const 主程序功能 = {
   id: 功能定义.id,
-  启动: 同步地图颜色变量,
-  页面同步: 同步地图颜色变量,
+  启动: 同步页面颜色,
+  页面同步: 同步页面颜色,
 }
 
 export const socket功能 = {
@@ -64,7 +66,7 @@ export function 重构玩家颜色(数据包) {
 
   读取玩家信息(数据包)
   同步本局我方索引(数据包)
-  同步地图颜色变量()
+  同步页面颜色()
 
   if (!Array.isArray(数据包.playerColors)) {
     return
@@ -98,6 +100,60 @@ function 同步地图颜色变量() {
   样式.setProperty('--map-color-p1', '#ff0000')
   样式.setProperty('--map-rgb-p2', '39,146,255')
   样式.setProperty('--map-color-p2', '#2792ff')
+}
+
+function 同步页面颜色() {
+  同步地图颜色变量()
+  同步战场面板颜色()
+}
+
+function 同步战场面板颜色() {
+  if (!功能已启用('玩家颜色统一')) return
+  if (!Array.isArray(状态.玩家名列表)) return
+
+  const 表格 = 取得战场数据表格()
+  if (!表格) return
+
+  const 表头行 = 取得表头行(表格)
+  if (!表头行) return
+
+  const 玩家列 = 取得玩家列索引(取得单元格列表(表头行))
+  if (玩家列 < 0) return
+
+  Array.from(表格.querySelectorAll('tr')).forEach((行) => {
+    if (行 === 表头行) return
+    const 玩家格 = 取得单元格列表(行)[玩家列]
+    const 玩家名 = (玩家格?.textContent ?? '').trim()
+    const 玩家索引 = 状态.玩家名列表.indexOf(玩家名)
+    if (玩家索引 < 0) return
+
+    const 是我方 = 是我方或队友(玩家索引)
+    应用玩家格颜色(玩家格, 是我方)
+  })
+}
+
+function 应用玩家格颜色(玩家格, 是我方) {
+  const 颜色 = 是我方 ? 我方蓝色 : 敌方红色
+  const 类名 = 是我方 ? 'lightblue' : 'red'
+  const 节点列表 = [玩家格, ...玩家格.querySelectorAll('*')]
+
+  节点列表.forEach((节点) => {
+    清理颜色类名(节点)
+    节点.style.setProperty('background-color', 颜色, 'important')
+    节点.style.setProperty('color', '#ffffff', 'important')
+  })
+  玩家格.classList.add(类名)
+}
+
+function 清理颜色类名(节点) {
+  节点.classList.remove(
+    'red',
+    'selected-red',
+    'blue',
+    'selected-blue',
+    'lightblue',
+    'selected-lightblue',
+  )
 }
 
 import { 注册功能 } from '../注册中心.js'
