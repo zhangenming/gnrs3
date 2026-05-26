@@ -16,6 +16,7 @@ export const 功能恢复 = {
 let 选中格子索引 = null
 let 已同步移动队列长度 = 0
 let 移动队列起点索引 = null
+let 移动队列最后移动 = null
 let 已安装选中监听 = false
 
 export const 覆盖层功能 = {
@@ -35,8 +36,11 @@ export const socket功能 = {
     if (事件名 === 'attack') {
       同步移动队列终点选中()
       请求渲染()
-    } else if (事件名 === 'undo_move' || 事件名 === 'clear_moves') {
-      同步当前移动队列选中()
+    } else if (事件名 === 'undo_move') {
+      同步撤销移动选中()
+      请求渲染()
+    } else if (事件名 === 'clear_moves') {
+      同步移动队列标记()
       请求渲染()
     }
   },
@@ -101,20 +105,20 @@ function 同步移动队列终点选中() {
   }
 
   const 最后移动 = 状态.移动队列.at(-1)
+  移动队列最后移动 = 取得移动记录快照(最后移动)
   if (Number.isInteger(最后移动?.终点) && 最后移动.终点 >= 0) {
     选中格子索引 = 最后移动.终点
   }
   已同步移动队列长度 = 状态.移动队列.length
 }
 
-function 同步当前移动队列选中() {
-  if (状态.移动队列.length > 0) {
-    同步移动队列终点选中()
-    return
-  }
-
-  if (Number.isInteger(移动队列起点索引) && 移动队列起点索引 >= 0) {
-    选中格子索引 = 移动队列起点索引
+function 同步撤销移动选中() {
+  if (
+    Number.isInteger(移动队列最后移动?.起点) &&
+    Number.isInteger(移动队列最后移动?.终点) &&
+    选中格子索引 === 移动队列最后移动.终点
+  ) {
+    选中格子索引 = 移动队列最后移动.起点
   }
   同步移动队列标记()
 }
@@ -122,12 +126,14 @@ function 同步当前移动队列选中() {
 function 同步移动队列标记() {
   已同步移动队列长度 = 状态.移动队列.length
   移动队列起点索引 = 取得移动队列起点索引()
+  移动队列最后移动 = 取得移动记录快照(状态.移动队列.at(-1))
 }
 
 function 清空选中状态() {
   选中格子索引 = null
   已同步移动队列长度 = 0
   移动队列起点索引 = null
+  移动队列最后移动 = null
 }
 
 function 取得移动队列起点索引() {
@@ -135,6 +141,18 @@ function 取得移动队列起点索引() {
   return Number.isInteger(首次移动?.起点) && 首次移动.起点 >= 0
     ? 首次移动.起点
     : null
+}
+
+function 取得移动记录快照(移动) {
+  if (
+    !Number.isInteger(移动?.起点) ||
+    !Number.isInteger(移动?.终点) ||
+    移动.起点 < 0 ||
+    移动.终点 < 0
+  ) {
+    return null
+  }
+  return { 起点: 移动.起点, 终点: 移动.终点 }
 }
 
 function 取得点击格子索引(事件, 画布) {
