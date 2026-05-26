@@ -127,7 +127,8 @@ function 画基地记忆({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
 
 function 画基地(ctx, x, y, 大小, 当前动画时间, 阵营) {
   const 是敌方 = 阵营 === '敌方'
-  const 主色 = 是敌方 ? '#ff2d2d' : '#f6c945'
+  const 背景色 = '#f6c945'
+  const 旋转框颜色 = 是敌方 ? '#ff2d2d' : 背景色
   const 外边线颜色 = 是敌方 ? '#7f0000' : '#9a7720'
   const 高光颜色 = 是敌方
     ? 'rgba(255, 224, 214, 0.98)'
@@ -144,7 +145,7 @@ function 画基地(ctx, x, y, 大小, 当前动画时间, 阵营) {
 
   if (是敌方) {
     ctx.globalAlpha = 0.5
-    ctx.fillStyle = '#ff0000'
+    ctx.fillStyle = 背景色
     ctx.fillRect(x, y, 大小, 大小)
     ctx.globalAlpha = 1
   }
@@ -159,14 +160,14 @@ function 画基地(ctx, x, y, 大小, 当前动画时间, 阵营) {
       旋转框大小,
       当前动画时间,
       旋转框动画毫秒,
-      主色,
+      旋转框颜色,
     )
   } else {
-    画旋转框(ctx, x, y, 大小, 当前动画时间, 旋转框动画毫秒, 主色)
+    画旋转框(ctx, x, y, 大小, 当前动画时间, 旋转框动画毫秒, 旋转框颜色)
   }
 
   ctx.globalAlpha = 是敌方 ? 0.34 : 0.22
-  ctx.fillStyle = 主色
+  ctx.fillStyle = 背景色
   ctx.fillRect(x + 外偏移, y + 外偏移, 标记大小, 标记大小)
 
   ctx.globalAlpha = 1
