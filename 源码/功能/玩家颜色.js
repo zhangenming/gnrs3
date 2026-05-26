@@ -120,7 +120,12 @@ function 同步战场面板颜色() {
   const 玩家列 = 取得玩家列索引(取得单元格列表(表头行))
   if (玩家列 < 0) return
 
-  Array.from(表格.querySelectorAll('tr')).forEach((行) => {
+  const 数据行列表 = Array.from(表格.querySelectorAll('tr')).filter((行) => {
+    return 行 !== 表头行
+  })
+  固定我方数据第一行(数据行列表)
+
+  数据行列表.forEach((行) => {
     if (行 === 表头行) return
     const 玩家格 = 取得单元格列表(行)[玩家列]
     const 玩家名 = (玩家格?.textContent ?? '').trim()
@@ -130,6 +135,27 @@ function 同步战场面板颜色() {
     const 是我方 = 是我方或队友(玩家索引)
     应用玩家格颜色(玩家格, 是我方)
   })
+
+  function 固定我方数据第一行(数据行列表) {
+    const 我方玩家名 = 状态.玩家名列表[状态.我方索引]
+    if (!我方玩家名) return
+
+    const 我方行 = 数据行列表.find((行) => {
+      const 玩家格 = 取得单元格列表(行)[玩家列]
+      return (玩家格?.textContent ?? '').trim() === 我方玩家名
+    })
+    if (!我方行) return
+
+    const 第一行 = 数据行列表.find((行) => {
+      return 行.parentElement === 我方行.parentElement
+    })
+    if (第一行 && 第一行 !== 我方行) {
+      我方行.parentElement.insertBefore(我方行, 第一行)
+      return
+    }
+
+    if (表头行.parentElement === 我方行.parentElement) 表头行.after(我方行)
+  }
 }
 
 function 应用玩家格颜色(玩家格, 是我方) {
