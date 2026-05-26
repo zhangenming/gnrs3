@@ -17,12 +17,21 @@ export function 画兵力文本(ctx, x, y, 大小, 文本, 颜色) {
   ctx.restore()
 }
 
-export function 画旋转框(ctx, x, y, 大小, 动画时间, 动画周期, 颜色) {
+export function 画旋转框(
+  ctx,
+  x,
+  y,
+  大小,
+  动画时间,
+  动画周期,
+  颜色,
+  线宽倍数 = 1,
+) {
   const 中心X = x + 大小 / 2
   const 中心Y = y + 大小 / 2
   const 框大小 = Math.max(1, 大小 * 0.62)
   const 角长 = Math.max(5, 大小 * 0.2)
-  const 线宽 = Math.max(2, 大小 * 0.06)
+  const 线宽 = Math.max(2, 大小 * 0.06 * 线宽倍数)
   const 左 = 中心X - 框大小 / 2
   const 上 = 中心Y - 框大小 / 2
   const 右 = 左 + 框大小
