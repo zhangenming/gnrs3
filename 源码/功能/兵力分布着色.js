@@ -116,12 +116,14 @@ export function 画兵力分布着色({ ctx, 格宽, 格高, 大小 }) {
   function 画读数底片(x, y, 文本, 字号) {
     const 文本宽 = ctx.measureText(文本).width
     const 最小留白 = Math.max(2, 大小 * 0.08)
+    const 最大底片宽 = Math.max(1, 格宽 - 最小留白)
+    const 最大底片高 = Math.max(1, 格高 - 最小留白)
     const 底片宽 = Math.min(
-      格宽 - 最小留白,
-      Math.max(大小 * 0.58, 文本宽 + 大小 * 0.26),
+      最大底片宽,
+      Math.max(1, 大小 * 0.58, 文本宽 + 大小 * 0.26),
     )
-    const 底片高 = Math.min(格高 - 最小留白, Math.max(字号 * 1.2, 大小 * 0.52))
-    const 圆角 = Math.min(4, 底片高 * 0.2)
+    const 底片高 = Math.min(最大底片高, Math.max(1, 字号 * 1.2, 大小 * 0.52))
+    const 圆角 = Math.min(4, 底片宽 / 2, 底片高 / 2)
 
     ctx.shadowColor = 'rgba(0, 0, 0, 0.65)'
     ctx.shadowBlur = Math.max(1.5, 大小 * 0.04)
@@ -132,7 +134,6 @@ export function 画兵力分布着色({ ctx, 格宽, 格高, 大小 }) {
     ctx.roundRect(x - 底片宽 / 2, y - 底片高 / 2, 底片宽, 底片高, 圆角)
     ctx.fill()
   }
-
   function 取得兵力读数文本(地块) {
     const 原始文本 = 状态.原始兵力文本.get(地块.索引)
     if (原始文本?.兵力 === 地块.兵力) return 原始文本.文本
