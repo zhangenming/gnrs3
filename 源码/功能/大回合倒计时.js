@@ -11,6 +11,7 @@ import { 取得大回合倒计时 } from '../工具.js'
 import { 更新回合结束提示, 清除回合结束提示 } from './回合结束提示.js'
 import { 更新我方行动监控UI, 结算我方行动回合 } from './我方行动监控.js'
 import { 取得战场数据表格 } from './战场表格.js'
+import { 取得单元格列表, 取得玩家列索引 } from '../战场DOM工具.js'
 
 let 已请求更新大回合倒计时 = false
 
@@ -107,11 +108,9 @@ export function 更新大回合倒计时() {
 
   移除左上角倒计时()
   const 文本 = `${String(倒计时)}.${总回合}`
-  let 目标元素 = 状态.大回合倒计时元素
-  if (!目标元素 || !document.documentElement.contains(目标元素)) {
-    目标元素 = 取得大回合倒计时元素()
-  }
-  if (!目标元素) return
+  let 目标元素 = 取得大回合倒计时元素()
+  if (!目标元素) 目标元素 = 状态.大回合倒计时元素
+  if (!目标元素 || !document.documentElement.contains(目标元素)) return
 
   if (
     状态.上次大回合倒计时文本 !== 文本 ||
@@ -147,25 +146,25 @@ export function 更新大回合倒计时() {
 
     const 行列表 = 表格.querySelectorAll('tr')
     for (const 行 of 行列表) {
-      const 单元格列表 = Array.from(行.children).filter((单元格) => {
-        const 标签名 = 单元格.tagName?.toLowerCase() ?? ''
-        return 标签名 === 'td' || 标签名 === 'th'
-      })
-      if (单元格列表.length >= 2) {
-        const 第一格文本 = (单元格列表[0].textContent ?? '').trim()
-        const 第二格文本 = (单元格列表[1].textContent ?? '').trim()
-        if (
-          第一格文本 === '★' ||
-          第一格文本 === '*' ||
-          第二格文本 === 'Player' ||
-          单元格列表[0].querySelector('.star, .icon, svg')
-        ) {
-          return 单元格列表[0]
-        }
-      }
+      const 单元格列表 = 取得单元格列表(行)
+      const 玩家列 = 取得玩家列索引(单元格列表)
+      if (玩家列 <= 0) continue
+
+      const 标识格 = 单元格列表[玩家列 - 1]
+      if (是排行榜标识格(标识格)) return 标识格
     }
 
     return null
+  }
+
+  function 是排行榜标识格(单元格) {
+    const 文本 = (单元格?.textContent ?? '').trim()
+    return (
+      单元格?.classList.contains(大回合倒计时类名) ||
+      文本 === '★' ||
+      文本 === '*' ||
+      Boolean(单元格?.querySelector('.star, .icon, svg'))
+    )
   }
 
   function 倒计时内容已同步(元素, 倒计时, 总回合) {
