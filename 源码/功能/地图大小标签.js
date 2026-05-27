@@ -5,6 +5,12 @@ import { 状态 } from '../状态.js'
 const 地图大小元素编号 = 'gio-tower-memory-style-map-size'
 const 地图大小样式编号 = `${地图大小元素编号}-style`
 
+let 当前帧率 = 0
+let 采样帧数 = 0
+let 采样开始时间 = 0
+let 帧率计时编号 = 0
+let 当前地图元素 = null
+
 export const 功能定义 = {
   id: '地图大小标签',
   名称: '地图大小标签',
@@ -16,17 +22,26 @@ export const 功能恢复 = {
   id: 功能定义.id,
   关闭() {
     document.getElementById(地图大小元素编号)?.remove()
+    停止帧率统计()
   },
 }
 
 export function 同步地图大小标签(地图元素) {
   if (!功能已启用('地图大小标签')) {
     document.getElementById(地图大小元素编号)?.remove()
+    停止帧率统计()
     return
   }
   安装地图大小标签样式()
   const 标签 = 确保地图大小标签()
   if (!标签) return
+  当前地图元素 = 地图元素
+  启动帧率统计()
+  更新地图大小标签(标签, 地图元素)
+}
+
+function 更新地图大小标签(标签, 地图元素) {
+  if (!标签 || !地图元素?.isConnected) return
 
   if (!状态.宽度 || !状态.高度) {
     标签.style.display = 'none'
@@ -35,7 +50,7 @@ export function 同步地图大小标签(地图元素) {
 
   const 长 = 状态.宽度
   const 宽 = 状态.高度
-  const 文本 = `地图大小: ${长} * ${宽} = ${长 * 宽}`
+  const 文本 = `FPS: ${当前帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`
   if (标签.textContent !== 文本) 标签.textContent = 文本
   if (标签.style.display !== 'block') 标签.style.display = 'block'
 
@@ -51,6 +66,39 @@ export function 同步地图大小标签(地图元素) {
   const top = `${Math.max(间距, y)}px`
   if (标签.style.left !== left) 标签.style.left = left
   if (标签.style.top !== top) 标签.style.top = top
+}
+
+function 启动帧率统计() {
+  if (帧率计时编号) return
+  采样开始时间 = performance.now()
+  采样帧数 = 0
+  帧率计时编号 = requestAnimationFrame(统计帧率)
+}
+
+function 统计帧率(时间) {
+  if (!功能已启用('地图大小标签')) {
+    停止帧率统计()
+    return
+  }
+
+  采样帧数 += 1
+  const 间隔 = 时间 - 采样开始时间
+  if (间隔 >= 500) {
+    当前帧率 = Math.round((采样帧数 * 1000) / 间隔)
+    采样开始时间 = 时间
+    采样帧数 = 0
+    更新地图大小标签(document.getElementById(地图大小元素编号), 当前地图元素)
+  }
+
+  帧率计时编号 = requestAnimationFrame(统计帧率)
+}
+
+function 停止帧率统计() {
+  if (帧率计时编号) cancelAnimationFrame(帧率计时编号)
+  帧率计时编号 = 0
+  采样帧数 = 0
+  采样开始时间 = 0
+  当前地图元素 = null
 }
 
 function 确保地图大小标签() {
