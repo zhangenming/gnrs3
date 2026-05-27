@@ -22,6 +22,7 @@ export const 状态 = {
   基地被敌发现回合: null,
   基地危险背景豁免: false,
   已到达视野集合: new Set(),
+  已确认视野集合: new Set(),
   已知障碍物集合: new Set(),
   地图数组: null,
   原始兵力文本: new Map(),
