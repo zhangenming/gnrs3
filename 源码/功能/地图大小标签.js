@@ -6,6 +6,11 @@ const 地图大小元素编号 = 'gio-tower-memory-style-map-size'
 const 地图大小样式编号 = `${地图大小元素编号}-style`
 
 let 当前帧率 = 0
+let 平均帧率 = 0
+let 最高帧率 = 0
+let 最低帧率 = 0
+let 帧率样本数 = 0
+let 帧率总和 = 0
 let 采样帧数 = 0
 let 采样开始时间 = 0
 let 帧率计时编号 = 0
@@ -50,7 +55,7 @@ function 更新地图大小标签(标签, 地图元素) {
 
   const 长 = 状态.宽度
   const 宽 = 状态.高度
-  const 文本 = `FPS: ${当前帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`
+  const 文本 = `FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} 最低: ${最低帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`
   if (标签.textContent !== 文本) 标签.textContent = 文本
   if (标签.style.display !== 'block') 标签.style.display = 'block'
 
@@ -85,6 +90,7 @@ function 统计帧率(时间) {
   const 间隔 = 时间 - 采样开始时间
   if (间隔 >= 500) {
     当前帧率 = Math.round((采样帧数 * 1000) / 间隔)
+    记录帧率样本(当前帧率)
     采样开始时间 = 时间
     采样帧数 = 0
     更新地图大小标签(document.getElementById(地图大小元素编号), 当前地图元素)
@@ -93,9 +99,23 @@ function 统计帧率(时间) {
   帧率计时编号 = requestAnimationFrame(统计帧率)
 }
 
+function 记录帧率样本(帧率) {
+  帧率样本数 += 1
+  帧率总和 += 帧率
+  平均帧率 = Math.round(帧率总和 / 帧率样本数)
+  最高帧率 = 帧率样本数 === 1 ? 帧率 : Math.max(最高帧率, 帧率)
+  最低帧率 = 帧率样本数 === 1 ? 帧率 : Math.min(最低帧率, 帧率)
+}
+
 function 停止帧率统计() {
   if (帧率计时编号) cancelAnimationFrame(帧率计时编号)
   帧率计时编号 = 0
+  当前帧率 = 0
+  平均帧率 = 0
+  最高帧率 = 0
+  最低帧率 = 0
+  帧率样本数 = 0
+  帧率总和 = 0
   采样帧数 = 0
   采样开始时间 = 0
   当前地图元素 = null
