@@ -5,6 +5,7 @@
 import './功能/禁止滚轮缩放.js'
 import './功能/自适应棋盘.js'
 import './功能/地图大小标签.js'
+import './功能/长任务诊断.js'
 import './功能/玩家颜色.js'
 import './功能/大回合倒计时.js'
 import './功能/回合结束提示.js'

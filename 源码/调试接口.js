@@ -92,6 +92,23 @@ export function 暴露调试接口(请求渲染, 清空覆盖层) {
     性能() {
       return 状态.性能诊断
     },
+    清空长任务诊断() {
+      状态.性能诊断.长任务 = {
+        支持:
+          PerformanceObserver.supportedEntryTypes?.includes('longtask') ===
+          true,
+        运行中: 状态.性能诊断.长任务?.运行中 === true,
+        次数: 0,
+        总耗时: 0,
+        平均耗时: 0,
+        最近: null,
+        最长: null,
+        最近列表: [],
+        最近关联: [],
+        启动时间: Math.round(performance.now()),
+      }
+      return 状态.性能诊断.长任务
+    },
     敌方移动高亮() {
       return 状态.敌方移动高亮列表.map((移动) => {
         return {
