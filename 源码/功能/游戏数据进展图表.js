@@ -279,6 +279,11 @@ function 取得图表配置() {
     tooltip: {
       trigger: 'axis',
       confine: true,
+      axisPointer: {
+        label: {
+          show: false,
+        },
+      },
       backgroundColor: 'rgba(9, 13, 20, 0.96)',
       borderColor: 'rgba(124, 148, 176, 0.55)',
       textStyle: {
