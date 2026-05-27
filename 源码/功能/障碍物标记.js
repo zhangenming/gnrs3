@@ -6,6 +6,8 @@ import {
   读取地图归属,
 } from '../游戏.js'
 
+const 阻挡地形集合 = new Set([-2, -4, -5, -6])
+
 export const 功能定义 = {
   id: '障碍物标记',
   名称: '障碍物标记',
@@ -107,7 +109,7 @@ export function 记录已知障碍物(数据包) {
     const 地形 = 读取地图归属(地图数组, idx)
     if (塔索引集合.has(idx)) {
       状态.已知障碍物集合.delete(idx)
-    } else if (地形 === -2 || 地形 === -4) {
+    } else if (阻挡地形集合.has(地形)) {
       状态.已知障碍物集合.add(idx)
     } else if (Number.isInteger(地形) && 地形 >= -1) {
       状态.已知障碍物集合.delete(idx)
