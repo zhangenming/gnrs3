@@ -148,15 +148,15 @@ export function 更新战场塔信息() {
     `<span class="gio-battle-tower-group">` +
     `<span class="gio-battle-tower-item">我</span>` +
     `<span class="gio-battle-tower-values">` +
-    `<span class="gio-battle-tower-total">总塔${我方塔数}</span>` +
     `<span class="gio-battle-tower-open">开塔${我方开塔数}</span>` +
+    `<span class="gio-battle-tower-total">总塔${我方塔数}</span>` +
     `</span>` +
     `</span>` +
     `<span class="gio-battle-tower-group">` +
     `<span class="gio-battle-tower-item">敌</span>` +
     `<span class="gio-battle-tower-values">` +
-    `<span class="gio-battle-tower-total">总塔${敌方塔数}</span>` +
     `<span class="gio-battle-tower-open">开塔${敌方开塔数}</span>` +
+    `<span class="gio-battle-tower-total">总塔${敌方塔数}</span>` +
     `</span>` +
     `</span>` +
     `<span class="gio-battle-tower-group">` +
