@@ -198,8 +198,13 @@ export function 更新大回合倒计时() {
   }
 
   function 读取显示回合() {
+    const 页面回合 = 读取页面回合()
+    if (Number.isInteger(页面回合)) return 页面回合
     if (Number.isInteger(状态.当前回合)) return 状态.当前回合
+    return null
+  }
 
+  function 读取页面回合() {
     const 文本 = (document.getElementById('turn-counter')?.textContent ?? '')
       .trim()
       .replace(/\s+/g, ' ')
