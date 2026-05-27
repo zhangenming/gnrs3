@@ -14,6 +14,7 @@ import { 取得战场数据表格 } from './战场表格.js'
 import { 取得单元格列表, 取得玩家列索引 } from '../战场DOM工具.js'
 
 let 已请求更新大回合倒计时 = false
+let 回放回合轮询编号 = null
 
 export const 功能定义 = {
   id: '大回合倒计时',
@@ -24,6 +25,7 @@ export const 功能定义 = {
 
 export const 主程序功能 = {
   id: 功能定义.id,
+  启动: 安装回放回合轮询,
   页面同步: 更新大回合倒计时,
   窗口尺寸变化: 更新大回合倒计时,
 }
@@ -93,6 +95,15 @@ function 请求更新大回合倒计时() {
     已请求更新大回合倒计时 = false
     更新大回合倒计时()
   })
+}
+
+function 安装回放回合轮询() {
+  if (回放回合轮询编号 !== null) return
+  回放回合轮询编号 = window.setInterval(() => {
+    if (!功能已启用('大回合倒计时')) return
+    if (!是网页回放中()) return
+    更新大回合倒计时()
+  }, 250)
 }
 
 export function 更新大回合倒计时() {
@@ -205,15 +216,38 @@ export function 更新大回合倒计时() {
   }
 
   function 读取页面回合() {
+    const 回放输入回合 = 读取回放跳转输入回合()
+    if (Number.isInteger(回放输入回合)) return 回放输入回合
+
     const 文本 = (document.getElementById('turn-counter')?.textContent ?? '')
       .trim()
       .replace(/\s+/g, ' ')
-    const 匹配 = 文本.match(/^Turn\s+(\d+)/i)
+    return 解析页面回合文本(文本.replace(/^Turn\s+/i, ''))
+  }
+
+  function 读取回放跳转输入回合() {
+    const 文本 =
+      document.getElementById('replay-turn-jump-input')?.placeholder ?? ''
+    return 解析页面回合文本(文本)
+  }
+
+  function 解析页面回合文本(文本) {
+    const 匹配 = String(文本)
+      .trim()
+      .match(/^(\d+)(\.)?/)
     if (!匹配) return null
 
     const 回合 = Number.parseInt(匹配[1], 10)
-    return Number.isInteger(回合) ? 回合 : null
+    if (!Number.isInteger(回合)) return null
+    return 回合 * 2 + (匹配[2] ? 1 : 0)
   }
+}
+
+function 是网页回放中() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
 }
 
 export function 移除大回合倒计时() {
