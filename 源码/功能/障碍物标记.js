@@ -67,15 +67,11 @@ export function 画障碍物({ ctx, 格宽, 格高, 大小 }) {
     const y = 行 * 格高
     ctx.fillStyle = '#000000'
     ctx.fillRect(x, y, 格宽, 格高)
-    if (是未探索阻挡物(当前地形)) {
+    if (!状态.已到达视野集合.has(障碍物索引)) {
       画未知阻挡物标记(x, y)
     }
   })
   ctx.restore()
-
-  function 是未探索阻挡物(当前地形) {
-    return 当前地形 === -4
-  }
 
   function 画未知阻挡物标记(x, y) {
     ctx.save()
