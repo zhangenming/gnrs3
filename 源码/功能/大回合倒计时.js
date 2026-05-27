@@ -101,8 +101,8 @@ export function 更新大回合倒计时() {
     清除回合结束提示()
     return
   }
-  const 倒计时 = 取得大回合倒计时(状态.当前回合)
-  const 总回合 = 状态.当前回合
+  const 总回合 = 读取显示回合()
+  const 倒计时 = 取得大回合倒计时(总回合)
   更新回合结束提示(倒计时)
   if (倒计时 == null || !Number.isInteger(总回合)) return
 
@@ -144,6 +144,9 @@ export function 更新大回合倒计时() {
     const 表格 = 取得战场数据表格()
     if (!表格) return null
 
+    const 回放标识格 = 取得回放排行榜标识格(表格)
+    if (回放标识格) return 回放标识格
+
     const 行列表 = 表格.querySelectorAll('tr')
     for (const 行 of 行列表) {
       const 单元格列表 = 取得单元格列表(行)
@@ -157,10 +160,28 @@ export function 更新大回合倒计时() {
     return null
   }
 
+  function 取得回放排行榜标识格(表格) {
+    const 行列表 = 表格.querySelectorAll('tr')
+    for (const 行 of 行列表) {
+      const 单元格列表 = 取得单元格列表(行)
+      const 视角列 = 单元格列表.findIndex((单元格) => {
+        return (单元格.textContent ?? '').trim() === 'POV'
+      })
+      if (视角列 < 0) continue
+
+      const 标识格 = 单元格列表.find((单元格, idx) => {
+        return idx > 视角列 && 是排行榜标识格(单元格)
+      })
+      if (标识格) return 标识格
+    }
+    return null
+  }
+
   function 是排行榜标识格(单元格) {
     const 文本 = (单元格?.textContent ?? '').trim()
     return (
       单元格?.classList.contains(大回合倒计时类名) ||
+      单元格?.classList.contains('lb-star-col') ||
       文本 === '★' ||
       文本 === '*' ||
       Boolean(单元格?.querySelector('.star, .icon, svg'))
@@ -174,6 +195,19 @@ export function 更新大回合倒计时() {
       (倒计时元素?.textContent ?? '').trim() === String(倒计时) &&
       (总回合元素?.textContent ?? '').trim() === String(总回合)
     )
+  }
+
+  function 读取显示回合() {
+    if (Number.isInteger(状态.当前回合)) return 状态.当前回合
+
+    const 文本 = (document.getElementById('turn-counter')?.textContent ?? '')
+      .trim()
+      .replace(/\s+/g, ' ')
+    const 匹配 = 文本.match(/^Turn\s+(\d+)/i)
+    if (!匹配) return null
+
+    const 回合 = Number.parseInt(匹配[1], 10)
+    return Number.isInteger(回合) ? 回合 : null
   }
 }
 

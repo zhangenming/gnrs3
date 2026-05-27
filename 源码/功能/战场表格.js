@@ -9,7 +9,7 @@ export function 取得战场数据表格() {
   if (!document.body) return null
 
   const 表格列表 = document.body.querySelectorAll(
-    'table, .leaderboard, #leaderboard',
+    'table, .leaderboard, #leaderboard, #game-leaderboard',
   )
   for (const 表格 of 表格列表) {
     if (!是战场数据表格(表格)) continue
@@ -22,10 +22,13 @@ export function 取得战场数据表格() {
 }
 
 function 是战场数据表格(表格) {
+  if (表格.id === 'game-leaderboard') return true
+
   const 文本 = 表格.textContent ?? ''
   if (
     !(
       文本.includes('Player') ||
+      (文本.includes('POV') && 表格.querySelector('.lb-star-col')) ||
       表格.querySelector('[data-gio-battle-player-column="true"]')
     )
   ) {
