@@ -115,7 +115,8 @@ export function 更新大回合倒计时() {
 
   if (
     状态.上次大回合倒计时文本 !== 文本 ||
-    !目标元素.classList.contains(大回合倒计时类名)
+    !目标元素.classList.contains(大回合倒计时类名) ||
+    !倒计时内容已同步(目标元素, 倒计时, 总回合)
   ) {
     目标元素.innerHTML = `<span class="gio-big-turn-main">${倒计时}</span><span class="gio-big-turn-index">${总回合}</span>`
   }
@@ -165,6 +166,15 @@ export function 更新大回合倒计时() {
     }
 
     return null
+  }
+
+  function 倒计时内容已同步(元素, 倒计时, 总回合) {
+    const 倒计时元素 = 元素.querySelector('.gio-big-turn-main')
+    const 总回合元素 = 元素.querySelector('.gio-big-turn-index')
+    return (
+      (倒计时元素?.textContent ?? '').trim() === String(倒计时) &&
+      (总回合元素?.textContent ?? '').trim() === String(总回合)
+    )
   }
 }
 

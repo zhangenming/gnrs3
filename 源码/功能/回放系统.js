@@ -17,6 +17,7 @@ import { 状态 } from '../状态.js'
 import { 结算当前我方行动回合 } from './我方行动监控.js'
 import { 是战场数据冻结事件 } from './战场数据冻结.js'
 import { 读取当前回合, 取游戏画布, 取宿主 } from '../游戏工具.js'
+import { 更新大回合倒计时 } from './大回合倒计时.js'
 
 const 元素类名 = 'gio-replay-frame'
 const 面板类名 = 'gio-replay-panel'
@@ -253,6 +254,7 @@ function 应用当前回放帧(请求渲染) {
   恢复回放状态(回放状态)
   状态.回放动画时间 = 帧.动画时间
   状态.战场数据已冻结 = true
+  更新大回合倒计时()
   同步回放元素()
   if (typeof 请求渲染 === 'function') 请求渲染()
 }
