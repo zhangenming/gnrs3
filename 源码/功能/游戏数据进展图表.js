@@ -1,16 +1,13 @@
 ﻿// 功能目的:
-// 在右侧战场数据区域展示每个大回合的 Army 差和 Land 差走势。
+// 在右侧战场数据区域展示每回合的 Army 差和 Land 差走势。
 //
 // 作用范围:
-// 只在 50 turn 边界采样数据，并维护一个 ECharts 折线图。
-import { 大回合turn数, 我方蓝色, 样式编号 } from '../配置.js'
+// 每回合采样数据，并维护一个 ECharts 折线图。
+import { 我方蓝色, 样式编号 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
-import {
-  读取分数玩家数据,
-  读取快照玩家数据,
-} from '../战场工具.js'
+import { 读取分数玩家数据, 读取快照玩家数据 } from '../战场工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
 import { 读取当前回合 } from '../游戏工具.js'
 import { 安装样式 as 注入样式 } from '../工具.js'
@@ -32,7 +29,7 @@ export const 功能定义 = {
   id: '游戏数据进展图表',
   名称: '游戏数据进展图表',
   分类: '战场面板',
-  描述: '按大回合画出 Army 差和 Land 差走势',
+  描述: '按回合画出 Army 差和 Land 差走势',
 }
 
 export const 主程序功能 = {
@@ -61,7 +58,7 @@ export const socket功能 = {
 export function 记录游戏数据进展(数据包) {
   if (!功能已启用('游戏数据进展图表')) return
   const 回合 = 读取当前回合(数据包)
-  if (!是统计回合(回合)) return
+  if (!Number.isInteger(回合) || 回合 <= 0) return
   if (状态.游戏数据进展上次统计回合 === 回合) return
 
   const 差值 = 读取数据差(数据包)
@@ -70,7 +67,6 @@ export function 记录游戏数据进展(数据包) {
   状态.游戏数据进展上次统计回合 = 回合
   const 数据点 = {
     回合,
-    大回合: 回合 / 大回合turn数,
     兵力差: 差值.兵力差,
     陆地差: 差值.陆地差,
   }
@@ -131,10 +127,6 @@ export function 更新游戏数据进展图表() {
     })
 }
 
-function 是统计回合(回合) {
-  return Number.isInteger(回合) && 回合 > 0 && 回合 % 大回合turn数 === 0
-}
-
 function 读取数据差(数据包) {
   同步我方玩家索引()
   const 玩家数据 = 读取分数玩家数据(数据包) ?? 读取快照玩家数据()
@@ -161,12 +153,12 @@ function 确保面板() {
       '</div>' +
       '<div class="gio-data-progress-body">' +
       `<div class="${图表类名}"></div>` +
-      '<div class="gio-data-progress-empty">等待大回合</div>' +
+      '<div class="gio-data-progress-empty">等待回合</div>' +
       '</div>'
   }
 
   面板.className = 'gio-data-progress-panel'
-  面板.title = '每 50 turn 统计一次我方减敌方的 Army 和 Land'
+  面板.title = '每回合统计一次我方减敌方的 Army 和 Land'
 
   const 挂载点 = 取得右侧挂载点()
   if (挂载点) {
@@ -299,7 +291,6 @@ function 取得图表配置() {
         const 数据点 = 数据列表[索引]
         if (!数据点) return ''
         return [
-          `大回合 ${数据点.大回合}`,
           `turn ${数据点.回合}`,
           `兵力差 ${格式化差值(数据点.兵力差)}`,
           `陆地差 ${格式化差值(数据点.陆地差)}`,
@@ -326,7 +317,7 @@ function 取得图表配置() {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: 数据列表.map((数据点) => String(数据点.大回合)),
+      data: 数据列表.map((数据点) => String(数据点.回合)),
       axisLabel: {
         color: 'rgba(220, 232, 248, 0.82)',
         fontWeight: 700,
@@ -394,7 +385,9 @@ function 格式化差值(值) {
 }
 
 function 安装样式() {
-  注入样式(样式元素编号, `
+  注入样式(
+    样式元素编号,
+    `
 .gio-data-progress-panel {
     box-sizing: border-box;
     width: 100%;
@@ -458,7 +451,8 @@ function 安装样式() {
 }
 .gio-data-progress-panel[data-gio-data-progress-empty="true"] .gio-data-progress-empty {
     display: flex;
-}`)
+}`,
+  )
 }
 
 import { 注册功能 } from '../注册中心.js'
