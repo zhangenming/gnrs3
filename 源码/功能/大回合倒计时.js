@@ -14,7 +14,7 @@ import { 取得战场数据表格 } from './战场表格.js'
 import { 取得单元格列表, 取得玩家列索引 } from '../战场DOM工具.js'
 
 let 已请求更新大回合倒计时 = false
-let 回放回合轮询编号 = null
+let 回放回合动画帧编号 = null
 
 export const 功能定义 = {
   id: '大回合倒计时',
@@ -25,7 +25,7 @@ export const 功能定义 = {
 
 export const 主程序功能 = {
   id: 功能定义.id,
-  启动: 安装回放回合轮询,
+  启动: 安装回放回合动画同步,
   页面同步: 更新大回合倒计时,
   窗口尺寸变化: 更新大回合倒计时,
 }
@@ -97,13 +97,15 @@ function 请求更新大回合倒计时() {
   })
 }
 
-function 安装回放回合轮询() {
-  if (回放回合轮询编号 !== null) return
-  回放回合轮询编号 = window.setInterval(() => {
-    if (!功能已启用('大回合倒计时')) return
-    if (!是网页回放中()) return
-    更新大回合倒计时()
-  }, 250)
+function 安装回放回合动画同步() {
+  if (回放回合动画帧编号 !== null) return
+  function 同步回放回合() {
+    if (功能已启用('大回合倒计时') && 是网页回放中()) {
+      更新大回合倒计时()
+    }
+    回放回合动画帧编号 = window.requestAnimationFrame(同步回放回合)
+  }
+  回放回合动画帧编号 = window.requestAnimationFrame(同步回放回合)
 }
 
 export function 更新大回合倒计时() {
