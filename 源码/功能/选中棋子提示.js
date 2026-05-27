@@ -1,5 +1,6 @@
 import { 状态 } from '../状态.js'
 import { 取得大回合倒计时 } from '../工具.js'
+import { 读取显示回合 } from './大回合倒计时.js'
 
 export const 功能定义 = {
   id: '选中棋子提示',
@@ -207,7 +208,7 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
   }
 
   function 画选中倒计时() {
-    const 倒计时 = 取得大回合倒计时(状态.当前回合)
+    const 倒计时 = 取得大回合倒计时(读取显示回合())
     if (!Number.isInteger(倒计时)) return
 
     const 文本 = String(倒计时)

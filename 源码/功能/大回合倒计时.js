@@ -209,13 +209,13 @@ export function 更新大回合倒计时() {
       (总回合元素?.textContent ?? '').trim() === String(总回合)
     )
   }
+}
 
-  function 读取显示回合() {
-    const 页面回合 = 读取页面回合()
-    if (Number.isInteger(页面回合)) return 页面回合
-    if (Number.isInteger(状态.当前回合)) return 状态.当前回合
-    return null
-  }
+export function 读取显示回合() {
+  const 页面回合 = 读取页面回合()
+  if (Number.isInteger(页面回合)) return 页面回合
+  if (Number.isInteger(状态.当前回合)) return 状态.当前回合
+  return null
 
   function 读取页面回合() {
     const 回放输入回合 = 读取回放跳转输入回合()
