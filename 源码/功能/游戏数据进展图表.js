@@ -149,7 +149,6 @@ function 确保面板() {
     面板.innerHTML =
       '<div class="gio-data-progress-head">' +
       '<span class="gio-data-progress-title">数据进展</span>' +
-      '<span class="gio-data-progress-count">0</span>' +
       '</div>' +
       '<div class="gio-data-progress-body">' +
       `<div class="${图表类名}"></div>` +
@@ -194,12 +193,6 @@ function 取得右侧挂载点() {
 
 function 更新面板状态(面板) {
   const 数据数量 = 状态.游戏数据进展列表.length
-  const 计数元素 = 面板.querySelector('.gio-data-progress-count')
-  const 数量文本 = String(数据数量)
-  if (计数元素 && 计数元素.textContent !== 数量文本) {
-    计数元素.textContent = 数量文本
-  }
-
   const 空状态 = 数据数量 ? 'false' : 'true'
   if (面板.dataset.gioDataProgressEmpty !== 空状态) {
     面板.dataset.gioDataProgressEmpty = 空状态
@@ -430,15 +423,6 @@ function 安装样式() {
 }
 .gio-data-progress-title {
     color: #f7fbff;
-    font: 900 12px/1 Arial, sans-serif;
-}
-.gio-data-progress-count {
-    min-width: 24px;
-    padding: 2px 6px;
-    border-radius: 6px;
-    background: #253044;
-    color: #ffffff;
-    text-align: center;
     font: 900 12px/1 Arial, sans-serif;
 }
 .gio-data-progress-body {
