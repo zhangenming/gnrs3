@@ -326,6 +326,10 @@ function 取得图表配置() {
       axisLabel: {
         color: 'rgba(220, 232, 248, 0.82)',
         fontWeight: 700,
+        interval(idx) {
+          const 数据点 = 数据列表[idx]
+          return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
+        },
         formatter(回合) {
           const 数值 = Number(回合)
           return 数值 > 0 && 数值 % 50 === 0 ? 回合 : ''
