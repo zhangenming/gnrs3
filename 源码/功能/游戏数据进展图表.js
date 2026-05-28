@@ -149,6 +149,10 @@ function 确保面板() {
     面板.innerHTML =
       '<div class="gio-data-progress-head">' +
       '<span class="gio-data-progress-title">数据进展</span>' +
+      '<span class="gio-data-progress-legend">' +
+      '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-army"></span>兵力差</span>' +
+      '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-land"></span>陆地差</span>' +
+      '</span>' +
       '</div>' +
       '<div class="gio-data-progress-body">' +
       `<div class="${图表类名}"></div>` +
@@ -296,20 +300,13 @@ function 取得图表配置() {
       },
     },
     legend: {
-      top: 0,
-      right: 0,
-      itemWidth: 16,
-      itemHeight: 8,
-      textStyle: {
-        color: '#dce8f8',
-        fontWeight: 700,
-      },
+      show: false,
       data: ['兵力差', '陆地差'],
     },
     grid: {
       left: 42,
       right: 12,
-      top: 32,
+      top: 14,
       bottom: 28,
     },
     xAxis: {
@@ -419,11 +416,46 @@ function 安装样式() {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 2px;
 }
 .gio-data-progress-title {
     color: #f7fbff;
     font: 900 12px/1 Arial, sans-serif;
+}
+.gio-data-progress-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    color: #dce8f8;
+    font: 900 12px/1 Arial, sans-serif;
+}
+.gio-data-progress-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.gio-data-progress-legend-line {
+    position: relative;
+    display: inline-block;
+    width: 16px;
+    height: 2px;
+    background: var(--gio-data-progress-legend-color);
+}
+.gio-data-progress-legend-line::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: -2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gio-data-progress-legend-color);
+}
+.gio-data-progress-legend-army {
+    --gio-data-progress-legend-color: ${我方蓝色};
+}
+.gio-data-progress-legend-land {
+    --gio-data-progress-legend-color: ${陆地线颜色};
 }
 .gio-data-progress-body {
     position: relative;
