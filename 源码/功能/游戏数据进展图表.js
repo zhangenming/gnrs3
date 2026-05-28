@@ -5,7 +5,7 @@
 // 每回合采样数据，并维护一个 ECharts 折线图。
 import { 我方蓝色, 样式编号 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
+import { 同步我方玩家索引 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 读取分数玩家数据, 读取快照玩家数据 } from '../战场工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
@@ -59,6 +59,7 @@ export function 记录游戏数据进展(数据包) {
   if (!功能已启用('游戏数据进展图表')) return
   const 回合 = 读取当前回合(数据包)
   if (!Number.isInteger(回合) || 回合 <= 0) return
+  if (是游戏结束数据(数据包)) return
   if (状态.游戏数据进展上次统计回合 === 回合) return
 
   const 差值 = 读取数据差(数据包)
@@ -136,6 +137,12 @@ function 读取数据差(数据包) {
     兵力差: 玩家数据.我方.兵力 - 玩家数据.敌方.兵力,
     陆地差: 玩家数据.我方.陆地 - 玩家数据.敌方.陆地,
   }
+}
+
+function 是游戏结束数据(数据包) {
+  return Array.isArray(数据包?.scores)
+    ? 数据包.scores.some((分数) => 分数?.dead === true)
+    : false
 }
 
 function 确保面板() {
