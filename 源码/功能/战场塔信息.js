@@ -147,7 +147,8 @@ export function 更新战场塔信息() {
   玩家表头格.dataset.gioBattlePlayerColumn = 'true'
   玩家表头格.dataset.gioTowerSummary = 文本
   玩家表头格.dataset.gioTowerDiff = 差值状态
-  玩家表头格.title = '我方总塔数/开塔数、敌方总塔数/开塔数、塔差（我方减敌方）'
+  玩家表头格.title =
+    '我方当前塔数/开塔数、敌方当前塔数/开塔数、塔差（我方减敌方）'
   玩家表头格.innerHTML =
     `<span class="gio-battle-tower-pill">` +
     `<span class="gio-battle-tower-group">` +
@@ -157,14 +158,14 @@ export function 更新战场塔信息() {
     `<span class="gio-battle-tower-item">我</span>` +
     `<span class="gio-battle-tower-values">` +
     `<span class="gio-battle-tower-open">开塔${我方开塔数}</span>` +
-    `<span class="gio-battle-tower-total">总塔${我方塔数}</span>` +
+    `<span class="gio-battle-tower-total">当前塔${我方塔数}</span>` +
     `</span>` +
     `</span>` +
     `<span class="gio-battle-tower-group">` +
     `<span class="gio-battle-tower-item">敌</span>` +
     `<span class="gio-battle-tower-values">` +
     `<span class="gio-battle-tower-open">开塔${敌方开塔数}</span>` +
-    `<span class="gio-battle-tower-total">总塔${敌方塔数}</span>` +
+    `<span class="gio-battle-tower-total">当前塔${敌方塔数}</span>` +
     `</span>` +
     `</span>` +
     `</span>`
