@@ -165,8 +165,8 @@ function 调整覆盖层(部件) {
   const 画布矩形 = 部件.画布.getBoundingClientRect()
   const 宿主矩形 = 部件.宿主.getBoundingClientRect()
   const dpr = window.devicePixelRatio ?? 1
-  const css宽 = Math.max(1, 部件.画布.offsetWidth || 画布矩形.width)
-  const css高 = Math.max(1, 部件.画布.offsetHeight || 画布矩形.height)
+  const css宽 = Math.max(1, 读取画布css尺寸(部件.画布, 画布矩形, '宽'))
+  const css高 = Math.max(1, 读取画布css尺寸(部件.画布, 画布矩形, '高'))
   const 像素宽 = Math.round(css宽 * dpr)
   const 像素高 = Math.round(css高 * dpr)
   const 左 =
@@ -186,6 +186,50 @@ function 调整覆盖层(部件) {
   部件.覆盖层.style.top = `${上}px`
 
   return { dpr, css宽, css高 }
+}
+
+function 读取画布css尺寸(画布, 画布矩形, 方向) {
+  const 地图元素 = 画布.closest('#gameMap')
+  const 文字表格 = 地图元素?.querySelector('.game-cursor-table')
+  const 当前缩放 = Math.max(
+    0.0001,
+    读取数字(地图元素?.style.getPropertyValue('--gio-adaptive-map-scale'), 1),
+  )
+
+  if (方向 === '宽') {
+    return 读取像素尺寸(
+      画布.style.width,
+      文字表格?.style.width,
+      地图元素?.style.width,
+      地图元素?.style.getPropertyValue('--gio-adaptive-map-width'),
+      画布矩形.width / 当前缩放,
+      画布.offsetWidth,
+      画布矩形.width,
+    )
+  }
+
+  return 读取像素尺寸(
+    画布.style.height,
+    文字表格?.style.height,
+    地图元素?.style.height,
+    地图元素?.style.getPropertyValue('--gio-adaptive-map-height'),
+    画布矩形.height / 当前缩放,
+    画布.offsetHeight,
+    画布矩形.height,
+  )
+}
+
+function 读取像素尺寸(...候选值列表) {
+  for (const 候选值 of 候选值列表) {
+    const 数值 = 读取数字(候选值, 0)
+    if (数值 > 0) return 数值
+  }
+  return 0
+}
+
+function 读取数字(值, 默认值) {
+  const 数值 = Number.parseFloat(值)
+  return Number.isFinite(数值) ? 数值 : 默认值
 }
 
 function 记录渲染耗时(开始时间, 可绘制功能列表, 功能耗时) {

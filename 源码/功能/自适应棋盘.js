@@ -187,8 +187,6 @@ body:has(#game-page #gameMap.gio-adaptive-map) #game-page {
     animation: none !important;
 }
 #game-page #gameMap.gio-adaptive-map .game-map-canvas {
-    width: var(--gio-adaptive-map-width, auto) !important;
-    height: var(--gio-adaptive-map-height, auto) !important;
     max-width: none !important;
     max-height: none !important;
     transition: none !important;
@@ -269,36 +267,60 @@ function 标记当前棋盘(地图元素, 宿主) {
 
 function 取得地图原始尺寸(地图元素, 画布) {
   const 缓存签名 = 取得地图尺寸缓存签名(地图元素)
-  if (自适应棋盘尺寸缓存?.签名 === 缓存签名) {
-    return {
-      宽: 自适应棋盘尺寸缓存.宽,
-      高: 自适应棋盘尺寸缓存.高,
-    }
+  const 当前尺寸 = 读取当前地图尺寸(地图元素, 画布)
+  if (当前尺寸) {
+    const 缓存缩放 =
+      自适应棋盘尺寸缓存?.签名 === 缓存签名 &&
+      自适应棋盘尺寸缓存.宽 === 当前尺寸.宽 &&
+      自适应棋盘尺寸缓存.高 === 当前尺寸.高
+        ? 自适应棋盘尺寸缓存.缩放
+        : null
+    记录自适应棋盘尺寸(地图元素, 当前尺寸, 缓存缩放)
+    return 当前尺寸
   }
 
-  const 宽 = 读取像素尺寸(
-    地图元素.style.getPropertyValue('--gio-adaptive-map-width'),
-    画布.offsetWidth,
-    地图元素.offsetWidth,
-    画布.getBoundingClientRect().width /
-      读取数字(地图元素.style.getPropertyValue('--gio-adaptive-map-scale'), 1),
-  )
-  const 高 = 读取像素尺寸(
-    地图元素.style.getPropertyValue('--gio-adaptive-map-height'),
-    画布.offsetHeight,
-    地图元素.offsetHeight,
-    画布.getBoundingClientRect().height /
-      读取数字(地图元素.style.getPropertyValue('--gio-adaptive-map-scale'), 1),
-  )
-
-  if (宽 <= 0 || 高 <= 0) return null
-  const 尺寸 = { 宽, 高 }
-  记录自适应棋盘尺寸(地图元素, 尺寸, null)
-  return 尺寸
+  if (自适应棋盘尺寸缓存?.签名 !== 缓存签名) return null
+  return {
+    宽: 自适应棋盘尺寸缓存.宽,
+    高: 自适应棋盘尺寸缓存.高,
+  }
 }
 
 function 取得地图尺寸缓存签名(地图元素) {
   return `${状态.宽度}x${状态.高度}|${地图元素.id}`
+}
+
+function 读取当前地图尺寸(地图元素, 画布) {
+  const 文字表格 = 地图元素.querySelector('.game-cursor-table')
+  const 当前缩放 = Math.max(
+    0.0001,
+    读取数字(地图元素.style.getPropertyValue('--gio-adaptive-map-scale'), 1),
+  )
+  const 画布矩形 = 画布.getBoundingClientRect()
+  const 地图矩形 = 地图元素.getBoundingClientRect()
+  const 宽 = 读取像素尺寸(
+    地图元素.style.width,
+    文字表格?.style.width,
+    画布.style.width,
+    地图元素.style.getPropertyValue('--gio-adaptive-map-width'),
+    画布矩形.width / 当前缩放,
+    地图矩形.width / 当前缩放,
+    画布.offsetWidth,
+    地图元素.offsetWidth,
+  )
+  const 高 = 读取像素尺寸(
+    地图元素.style.height,
+    文字表格?.style.height,
+    画布.style.height,
+    地图元素.style.getPropertyValue('--gio-adaptive-map-height'),
+    画布矩形.height / 当前缩放,
+    地图矩形.height / 当前缩放,
+    画布.offsetHeight,
+    地图元素.offsetHeight,
+  )
+
+  if (宽 <= 0 || 高 <= 0) return null
+  return { 宽, 高 }
 }
 
 function 读取像素尺寸(...候选值列表) {
