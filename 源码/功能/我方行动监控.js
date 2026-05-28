@@ -23,6 +23,7 @@ const 行动优先级表 = new Map(
 )
 let 我方行动监控数据版本 = 0
 let 已请求更新我方行动监控UI = false
+let 悬停我方行动监控回合 = null
 
 export const 功能定义 = {
   id: '我方行动监控',
@@ -245,9 +246,11 @@ function 同步我方行动监控UI() {
   const 最大已确认回合 =
     回合状态列表[回合状态列表.length - 1]?.回合 ?? 监控起始回合 - 1
   const 绘制签名 = `${画布宽}:${最大已确认回合}:${我方行动监控数据版本}`
+  const 悬停回合 = 悬停我方行动监控回合
 
-  if (面板.dataset.gioActionWatchTurns === 绘制签名) return
-  面板.dataset.gioActionWatchTurns = 绘制签名
+  if (面板.dataset.gioActionWatchTurns === `${绘制签名}:${悬停回合 ?? ''}`)
+    return
+  面板.dataset.gioActionWatchTurns = `${绘制签名}:${悬停回合 ?? ''}`
 
   面板.dataset.gioActionWatchEmpty = 回合状态列表.length ? 'false' : 'true'
 
@@ -258,7 +261,7 @@ function 同步我方行动监控UI() {
     return
   }
 
-  绘制行动监控画布(画布, 画布宽, 取得大回合分组(回合状态列表))
+  绘制行动监控画布(画布, 画布宽, 取得大回合分组(回合状态列表), 悬停回合)
   面板.title = `空闲 ${空闲数量} / 已记录 ${回合状态列表.length}`
 
   function 取得回合状态列表() {
@@ -385,14 +388,49 @@ function 同步我方行动监控UI() {
       空状态.textContent = '等待回合'
       列表元素.replaceChildren(画布, 空状态)
     }
+    if (!画布.__gioActionWatchHoverInstalled) {
+      画布.__gioActionWatchHoverInstalled = true
+      画布.addEventListener('mousemove', 更新悬停回合)
+      画布.addEventListener('mouseleave', 清空悬停回合)
+    }
     return { 画布, 空状态 }
+
+    function 更新悬停回合(event) {
+      const rect = 画布.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return
+
+      const css宽 = Number.parseFloat(画布.style.width) || rect.width
+      const css高 = Number.parseFloat(画布.style.height) || rect.height
+      const x = ((event.clientX - rect.left) / rect.width) * css宽
+      const y = ((event.clientY - rect.top) / rect.height) * css高
+      const 命中 = (画布.__gioActionWatchHitBoxes ?? []).find((区域) => {
+        return (
+          x >= 区域.x &&
+          x <= 区域.x + 区域.宽 &&
+          y >= 区域.y &&
+          y <= 区域.y + 区域.高
+        )
+      })
+      const 新悬停回合 = 命中?.回合 ?? null
+      if (悬停我方行动监控回合 === 新悬停回合) return
+
+      悬停我方行动监控回合 = 新悬停回合
+      更新我方行动监控UI()
+    }
+
+    function 清空悬停回合() {
+      if (悬停我方行动监控回合 === null) return
+
+      悬停我方行动监控回合 = null
+      更新我方行动监控UI()
+    }
   }
 
   function 取得画布CSS宽(列表元素) {
     return Math.max(716, Math.floor(列表元素.clientWidth || 0))
   }
 
-  function 绘制行动监控画布(画布, css宽, 分组表) {
+  function 绘制行动监控画布(画布, css宽, 分组表, 悬停回合) {
     const dpr = window.devicePixelRatio ?? 1
     const 标签宽 = 38
     const 标签间距 = 6
@@ -434,6 +472,7 @@ function 同步我方行动监控UI() {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.letterSpacing = '0px'
+    画布.__gioActionWatchHitBoxes = []
 
     let y = 0
     for (let idx = 0; idx < 分组列表.length; idx += 1) {
@@ -463,6 +502,13 @@ function 同步我方行动监控UI() {
       const x = 标签宽 + 标签间距 + 列 * (单元宽 + 单元间距)
       const y = 组Y + 行 * (单元高 + 单元间距)
       const 样式 = 取得行动样式(回合状态.行动类型)
+      画布.__gioActionWatchHitBoxes.push({
+        回合: 回合状态.回合,
+        x,
+        y,
+        宽: 单元宽,
+        高: 单元高,
+      })
 
       if (回合状态.行动类型 === '吃地(抢塔)') {
         绘制五角星(x, y, 单元宽, 单元高, 样式.背景)
@@ -472,7 +518,7 @@ function 同步我方行动监控UI() {
         ctx.roundRect(x, y, 单元宽, 单元高, 4)
         ctx.fill()
       }
-      if (回合状态.大回合内回合 % 5 !== 0) return
+      if (回合状态.回合 !== 悬停回合) return
       ctx.fillStyle = 样式.文字
       ctx.font = '800 11px Arial, sans-serif'
       ctx.fillText(
