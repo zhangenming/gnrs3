@@ -17,7 +17,7 @@ const 画布类名 = 'gio-action-watch-canvas'
 const 样式编号 = 'gio-action-watch-style'
 const 每行回合数 = 50
 const 阻挡地形集合 = new Set([-2, -4, -5, -6])
-const 行动类型列表 = ['空闲', '集兵', '扩地(开塔)', '抢地(抢塔)']
+const 行动类型列表 = ['空闲', '集兵', '扩地(开塔)', '吃地(抢塔)']
 const 行动优先级表 = new Map(
   行动类型列表.map((行动类型, idx) => [行动类型, idx]),
 )
@@ -82,7 +82,7 @@ export function 更新我方行动地图判断(
     if (旧归属 === 新归属 || !是我方格(新归属)) continue
 
     if (是敌方格(旧归属)) {
-      设置我方行动类型(回合, '抢地(抢塔)')
+      设置我方行动类型(回合, '吃地(抢塔)')
       return
     }
     if (是中立或迷雾地(旧归属)) {
@@ -164,14 +164,14 @@ export function 更新我方行动地图判断(
 
     const 塔类型 = 状态.已知塔类型.get(目标索引)
     if (塔类型 === '中立塔') return '扩地(开塔)'
-    if (塔类型 === '敌方塔') return '抢地(抢塔)'
+    if (塔类型 === '敌方塔') return '吃地(抢塔)'
 
     if (目标索引 >= 格子数) return '集兵'
 
     const 旧归属 = 读取地图归属(旧地图数组, 目标索引)
     if (是中立或迷雾地(旧归属)) return '扩地(开塔)'
     if (Number.isInteger(旧归属) && 旧归属 >= 0 && !是我方或队友(旧归属)) {
-      return '抢地(抢塔)'
+      return '吃地(抢塔)'
     }
     return '集兵'
   }
@@ -323,7 +323,7 @@ function 同步我方行动监控UI() {
         '<span data-gio-action-watch-kind="idle">空闲</span>' +
         '<span data-gio-action-watch-kind="gather">集兵</span>' +
         '<span data-gio-action-watch-kind="expand">扩地(开塔)</span>' +
-        '<span data-gio-action-watch-kind="fight">抢地(抢塔)</span>' +
+        '<span data-gio-action-watch-kind="fight">吃地(抢塔)</span>' +
         '</div>' +
         `<div class="gio-action-watch-list"><canvas class="${画布类名}"></canvas><span class="gio-action-watch-empty">等待回合</span></div>`
     }
@@ -464,10 +464,14 @@ function 同步我方行动监控UI() {
       const y = 组Y + 行 * (单元高 + 单元间距)
       const 样式 = 取得行动样式(回合状态.行动类型)
 
-      ctx.fillStyle = 样式.背景
-      ctx.beginPath()
-      ctx.roundRect(x, y, 单元宽, 单元高, 4)
-      ctx.fill()
+      if (回合状态.行动类型 === '吃地(抢塔)') {
+        绘制五角星(x, y, 单元宽, 单元高, 样式.背景)
+      } else {
+        ctx.fillStyle = 样式.背景
+        ctx.beginPath()
+        ctx.roundRect(x, y, 单元宽, 单元高, 4)
+        ctx.fill()
+      }
       if (回合状态.大回合内回合 % 5 !== 0) return
       ctx.fillStyle = 样式.文字
       ctx.font = '800 11px Arial, sans-serif'
@@ -478,6 +482,37 @@ function 同步我方行动监控UI() {
       )
     }
 
+    function 绘制五角星(cx, cy, 宽, 高, 颜色) {
+      const 外半径 = Math.min(宽, 高) / 2
+      const 内半径 = 外半径 * 0.38
+      const 中心x = cx + 宽 / 2
+      const 中心y = cy + 高 / 2
+
+      ctx.fillStyle = 颜色
+      ctx.beginPath()
+      for (let i = 0; i < 5; i += 1) {
+        const 外角 = -Math.PI / 2 + (i * 2 * Math.PI) / 5
+        const 内角 = 外角 + Math.PI / 5
+        if (i === 0) {
+          ctx.moveTo(
+            中心x + 外半径 * Math.cos(外角),
+            中心y + 外半径 * Math.sin(外角),
+          )
+        } else {
+          ctx.lineTo(
+            中心x + 外半径 * Math.cos(外角),
+            中心y + 外半径 * Math.sin(外角),
+          )
+        }
+        ctx.lineTo(
+          中心x + 内半径 * Math.cos(内角),
+          中心y + 内半径 * Math.sin(内角),
+        )
+      }
+      ctx.closePath()
+      ctx.fill()
+    }
+
     function 取得行动样式(行动类型) {
       if (行动类型 === '空闲') {
         return { 背景: '#b4232a', 文字: '#fff7f7' }
@@ -485,8 +520,8 @@ function 同步我方行动监控UI() {
       if (行动类型 === '扩地(开塔)') {
         return { 背景: '#247448', 文字: '#effff5' }
       }
-      if (行动类型 === '抢地(抢塔)') {
-        return { 背景: '#247448', 文字: '#effff5' }
+      if (行动类型 === '吃地(抢塔)') {
+        return { 背景: '#d48b13', 文字: '#fff8ee' }
       }
       return {
         背景: 'rgba(124, 148, 176, 0.24)',
@@ -568,8 +603,8 @@ function 安装样式() {
     color: #effff5;
 }
 .gio-action-watch-legend [data-gio-action-watch-kind="fight"] {
-    background: rgba(36, 116, 72, 0.82);
-    color: #effff5;
+    background: rgba(212, 139, 19, 0.82);
+    color: #fff8ee;
 }
 .gio-action-watch-list {
     max-height: 220px;
