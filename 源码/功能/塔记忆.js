@@ -140,7 +140,18 @@ function 画塔标记(ctx, x, y, 大小, 类型, 当前动画时间) {
   }
 
   if (是已占领塔) {
-    画旋转框(ctx, x, y, 大小, 当前动画时间, 旋转框动画毫秒, '#ffffff')
+    const 旋转框大小 = 大小 * 1.8
+    const 旋转框偏移 = (旋转框大小 - 大小) / 2
+    画旋转框(
+      ctx,
+      x - 旋转框偏移,
+      y - 旋转框偏移,
+      旋转框大小,
+      当前动画时间,
+      旋转框动画毫秒,
+      '#ffffff',
+      1.35,
+    )
   }
 
   ctx.lineWidth = 外线宽
@@ -215,7 +226,7 @@ function 画我方开塔增长(ctx, 塔索引, x, y, 大小) {
   const 增长 = 取得我方开塔增长(塔索引)
   if (!Number.isInteger(增长)) return
 
-  const 文本 = 增长 > 0 ? `+${增长}` : String(增长)
+  const 文本 = String(Math.abs(增长))
   const 字号 = Math.max(9, Math.min(16, 大小 * 0.36))
   const 边距 = Math.max(3, 大小 * 0.1)
   const 文本x = x + 大小 - 边距
