@@ -12,8 +12,6 @@ import { 安装样式 as 注入样式 } from './工具.js'
 import { 取游戏画布, 取宿主 } from './游戏工具.js'
 
 let 覆盖层动画帧 = null
-let 上次连续动画时间 = 0
-const 连续动画间隔毫秒 = 1000 / 30
 
 export function 清空覆盖层() {
   const 覆盖层 = document.querySelector(`.${覆盖层类名}`)
@@ -22,7 +20,7 @@ export function 清空覆盖层() {
   if (ctx) ctx.clearRect(0, 0, 覆盖层.width, 覆盖层.height)
 }
 
-export function 渲染() {
+export function 渲染(动画时间 = performance.now()) {
   const 开始时间 = performance.now()
   状态.已请求渲染 = false
   安装样式()
@@ -62,9 +60,7 @@ export function 渲染() {
   const 格宽 = 尺寸.css宽 / 状态.宽度
   const 格高 = 尺寸.css高 / 状态.高度
   const 大小 = Math.min(格宽, 格高)
-  const 当前动画时间 = 状态.回放正在显示
-    ? (状态.回放动画时间 ?? 0)
-    : performance.now()
+  const 当前动画时间 = 状态.回放正在显示 ? (状态.回放动画时间 ?? 0) : 动画时间
   const 上下文 = {
     ctx,
     格宽,
@@ -93,8 +89,8 @@ export function 渲染() {
 export function 请求覆盖层重绘() {
   if (状态.已请求渲染) return
   状态.已请求渲染 = true
-  requestAnimationFrame(() => {
-    渲染()
+  requestAnimationFrame((动画时间) => {
+    渲染(动画时间)
   })
 }
 
@@ -121,21 +117,15 @@ function 需要连续动画() {
 
 function 请求连续动画帧() {
   if (覆盖层动画帧 !== null) return
-  覆盖层动画帧 = requestAnimationFrame(() => {
+  覆盖层动画帧 = requestAnimationFrame((动画时间) => {
     覆盖层动画帧 = null
     if (!需要连续动画()) return
-    const 当前时间 = performance.now()
-    if (当前时间 - 上次连续动画时间 < 连续动画间隔毫秒) {
-      请求连续动画帧()
-      return
-    }
-    上次连续动画时间 = 当前时间
     if (状态.已请求渲染) {
       请求连续动画帧()
       return
     }
     状态.已请求渲染 = true
-    渲染()
+    渲染(动画时间)
   })
 }
 
