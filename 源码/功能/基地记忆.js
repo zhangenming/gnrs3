@@ -143,29 +143,20 @@ function 画基地(ctx, x, y, 大小, 当前动画时间, 阵营) {
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
 
-  if (是敌方) {
-    ctx.globalAlpha = 0.5
-    ctx.fillStyle = 背景色
-    ctx.fillRect(x, y, 大小, 大小)
-    ctx.globalAlpha = 1
-  }
+  画醒目背景()
 
-  if (是敌方) {
-    const 旋转框大小 = 大小 * 1.25
-    const 旋转框偏移 = (旋转框大小 - 大小) / 2
-    画旋转框(
-      ctx,
-      x - 旋转框偏移,
-      y - 旋转框偏移,
-      旋转框大小,
-      当前动画时间,
-      旋转框动画毫秒,
-      旋转框颜色,
-      1.45,
-    )
-  } else {
-    画旋转框(ctx, x, y, 大小, 当前动画时间, 旋转框动画毫秒, 旋转框颜色, 1.35)
-  }
+  const 旋转框大小 = 大小 * (是敌方 ? 1.72 : 1.58)
+  const 旋转框偏移 = (旋转框大小 - 大小) / 2
+  画旋转框(
+    ctx,
+    x - 旋转框偏移,
+    y - 旋转框偏移,
+    旋转框大小,
+    当前动画时间,
+    旋转框动画毫秒,
+    旋转框颜色,
+    是敌方 ? 1.45 : 1.35,
+  )
 
   ctx.globalAlpha = 0.78
   ctx.fillStyle = 背景色
@@ -181,6 +172,26 @@ function 画基地(ctx, x, y, 大小, 当前动画时间, 阵营) {
   ctx.strokeRect(x + 内偏移, y + 内偏移, 高光大小, 高光大小)
 
   ctx.restore()
+
+  function 画醒目背景() {
+    const 背景边距 = 大小 * (是敌方 ? 0.3 : 0.24)
+    const 背景大小 = 大小 + 背景边距 * 2
+    const 背景x = x - 背景边距
+    const 背景y = y - 背景边距
+
+    ctx.globalAlpha = 是敌方 ? 0.48 : 0.4
+    ctx.fillStyle = 背景色
+    ctx.fillRect(背景x, 背景y, 背景大小, 背景大小)
+
+    ctx.globalAlpha = 0.78
+    ctx.strokeStyle = 是敌方
+      ? 'rgba(127, 0, 0, 0.86)'
+      : 'rgba(255, 242, 178, 0.9)'
+    ctx.lineWidth = Math.max(2, 大小 * 0.08)
+    ctx.strokeRect(背景x, 背景y, 背景大小, 背景大小)
+
+    ctx.globalAlpha = 1
+  }
 }
 
 function 画基地模拟兵力(ctx, 基地索引, x, y, 大小) {
