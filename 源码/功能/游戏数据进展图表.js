@@ -277,6 +277,43 @@ function 取得图表渲染签名(图表元素) {
 function 取得图表配置() {
   const 数据列表 = 状态.游戏数据进展列表
   const 兵力差变化列表 = 取得兵力差变化列表(数据列表)
+  function 渲染底部数字(参数, api) {
+    const 回合 = Number(api.value(4))
+    const 兵力差变化 = Number(api.value(2))
+    const 陆地差 = Number(api.value(3))
+    const [x] = api.coord([api.value(0), 0])
+    const 底部y = 参数.coordSys.y + 参数.coordSys.height
+    const children = []
+    const 兵力差变化文本 = 格式化非零差值(兵力差变化)
+    if (兵力差变化文本) {
+      children.push({
+        type: 'text',
+        x,
+        y: 底部y + 20,
+        style: {
+          text: 兵力差变化文本,
+          fill: 兵力差变化文字颜色,
+          align: 'center',
+          font: '900 9px Arial',
+        },
+      })
+    }
+    if (回合 > 0 && 回合 % 50 === 0) {
+      children.push({
+        type: 'text',
+        x,
+        y: 底部y + 38,
+        style: {
+          text: 格式化地差标签(陆地差),
+          fill: 取得地差颜色(陆地差),
+          align: 'center',
+          font: '900 10px Arial',
+        },
+      })
+    }
+    return { type: 'group', children }
+  }
+
   return {
     animation: true,
     animationDuration: 260,
@@ -324,84 +361,29 @@ function 取得图表配置() {
       top: 14,
       bottom: 62,
     },
-    xAxis: [
-      {
-        type: 'category',
-        boundaryGap: false,
-        data: 数据列表.map((数据点) => String(数据点.回合)),
-        axisLabel: {
-          color: 'rgba(220, 232, 248, 0.82)',
-          fontWeight: 700,
-          interval(idx) {
-            const 数据点 = 数据列表[idx]
-            return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
-          },
-          formatter(回合) {
-            const 数值 = Number(回合)
-            return 数值 > 0 && 数值 % 50 === 0 ? 回合 : ''
-          },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: 数据列表.map((数据点) => String(数据点.回合)),
+      axisLabel: {
+        color: 'rgba(220, 232, 248, 0.82)',
+        fontWeight: 700,
+        interval(idx) {
+          const 数据点 = 数据列表[idx]
+          return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
         },
-        axisLine: {
-          lineStyle: { color: 'rgba(220, 232, 248, 0.32)' },
-        },
-        axisTick: {
-          show: false,
+        formatter(回合) {
+          const 数值 = Number(回合)
+          return 数值 > 0 && 数值 % 50 === 0 ? 回合 : ''
         },
       },
-      {
-        type: 'category',
-        boundaryGap: false,
-        position: 'bottom',
-        offset: 18,
-        data: 数据列表.map((数据点) => String(数据点.回合)),
-        axisLabel: {
-          color: 兵力差变化文字颜色,
-          fontSize: 9,
-          fontWeight: 900,
-          hideOverlap: false,
-          interval: 0,
-          margin: 4,
-          formatter(_回合, idx) {
-            return 格式化非零差值(兵力差变化列表[idx])
-          },
-        },
-        axisLine: {
-          show: false,
-        },
-        axisTick: {
-          show: false,
-        },
+      axisLine: {
+        lineStyle: { color: 'rgba(220, 232, 248, 0.32)' },
       },
-      {
-        type: 'category',
-        boundaryGap: false,
-        position: 'bottom',
-        offset: 34,
-        data: 数据列表.map((数据点) => String(数据点.回合)),
-        axisLabel: {
-          color(_回合, idx) {
-            return 取得地差颜色(数据列表[idx]?.陆地差)
-          },
-          fontSize: 10,
-          fontWeight: 900,
-          hideOverlap: false,
-          interval(idx) {
-            const 数据点 = 数据列表[idx]
-            return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
-          },
-          margin: 4,
-          formatter(_回合, idx) {
-            return 格式化地差标签(数据列表[idx]?.陆地差)
-          },
-        },
-        axisLine: {
-          show: false,
-        },
-        axisTick: {
-          show: false,
-        },
+      axisTick: {
+        show: false,
       },
-    ],
+    },
     yAxis: {
       type: 'value',
       axisLabel: {
@@ -446,6 +428,23 @@ function 取得图表配置() {
         data: 数据列表.map((数据点) => 数据点.陆地差),
         itemStyle: { color: 陆地线颜色 },
         lineStyle: { color: 陆地线颜色, width: 2.4 },
+      },
+      {
+        type: 'custom',
+        silent: true,
+        clip: false,
+        z: 8,
+        renderItem: 渲染底部数字,
+        tooltip: { show: false },
+        data: 数据列表.map((数据点, idx) => {
+          return [
+            String(数据点.回合),
+            0,
+            兵力差变化列表[idx],
+            数据点.陆地差,
+            数据点.回合,
+          ]
+        }),
       },
     ],
   }
