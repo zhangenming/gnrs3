@@ -70,10 +70,14 @@ function 更新地图大小标签(标签, 地图元素) {
   const 宽 = 状态.高度
   const 最长长任务时间 = 读取最长长任务时间()
   const 文本 =
-    `长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms | ` +
     `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率}` +
-    ` | 地图大小: ${长} * ${宽} = ${长 * 宽}`
+    ` | 地图大小: ${长} * ${宽} = ${长 * 宽}` +
+    ` | 长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms`
   if (标签.dataset.文本 !== 文本) {
+    const 第一排 = document.createElement('span')
+    第一排.className = 'gio-map-size-row'
+    const 第二排 = document.createElement('span')
+    第二排.className = 'gio-map-size-row gio-map-size-diagnostics-row'
     const 长任务元素 = document.createElement('span')
     长任务元素.className = 'gio-map-size-long-task'
     长任务元素.textContent = `长任务: ${最长长任务时间}ms`
@@ -83,14 +87,14 @@ function 更新地图大小标签(标签, 地图元素) {
     const 最低帧率元素 = document.createElement('span')
     最低帧率元素.className = 'gio-map-size-min-fps'
     最低帧率元素.textContent = `最低: ${最低帧率}`
-    标签.replaceChildren(
-      长任务元素,
-      主线程元素,
+    第一排.replaceChildren(
       最低帧率元素,
       document.createTextNode(
         `FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`,
       ),
     )
+    第二排.replaceChildren(长任务元素, 主线程元素)
+    标签.replaceChildren(第一排, 第二排)
     标签.dataset.文本 = 文本
   }
   if (标签.style.display !== 'block') 标签.style.display = 'block'
@@ -219,8 +223,19 @@ function 安装地图大小标签样式() {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
     white-space: nowrap !important;
     display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
+}
+
+#${地图大小元素编号} .gio-map-size-row {
+    display: flex !important;
     align-items: center !important;
     gap: 5px !important;
+}
+
+#${地图大小元素编号} .gio-map-size-diagnostics-row {
+    min-height: 15px !important;
 }
 
 #${地图大小元素编号} .gio-map-size-min-fps,
