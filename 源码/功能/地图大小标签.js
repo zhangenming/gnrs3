@@ -16,6 +16,11 @@ let 采样开始时间 = 0
 let 上次帧时间 = 0
 let 当前主线程执行时间 = 0
 let 当前帧时间 = 0
+let 最大帧间隔 = 0
+let 最小帧间隔 = 0
+let 平均帧间隔 = 0
+let 帧间隔样本数 = 0
+let 帧间隔总和 = 0
 let 帧率计时编号 = 0
 let 当前地图元素 = null
 
@@ -74,7 +79,8 @@ function 更新地图大小标签(标签, 地图元素) {
     `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率}` +
     ` | 地图大小: ${长} * ${宽} = ${长 * 宽}` +
     ` | 长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms` +
-    ` | 帧时间: ${当前帧时间}ms`
+    ` | 最大间隔: ${最大帧间隔}ms 实时值: ${当前帧时间}ms` +
+    ` 最小值: ${最小帧间隔}ms 平均值: ${平均帧间隔}ms 个数: ${帧间隔样本数}`
   if (标签.dataset.文本 !== 文本) {
     const 第一排 = document.createElement('span')
     第一排.className = 'gio-map-size-row'
@@ -88,9 +94,21 @@ function 更新地图大小标签(标签, 地图元素) {
     const 主线程元素 = document.createElement('span')
     主线程元素.className = 'gio-map-size-main-thread'
     主线程元素.textContent = `主线程: ${当前主线程执行时间}ms`
-    const 帧时间元素 = document.createElement('span')
-    帧时间元素.className = 'gio-map-size-frame-time'
-    帧时间元素.textContent = `帧时间: ${当前帧时间}ms`
+    const 最大间隔元素 = document.createElement('span')
+    最大间隔元素.className = 'gio-map-size-frame-time'
+    最大间隔元素.textContent = `最大间隔: ${最大帧间隔}ms`
+    const 实时值元素 = document.createElement('span')
+    实时值元素.className = 'gio-map-size-frame-time'
+    实时值元素.textContent = `实时值: ${当前帧时间}ms`
+    const 最小值元素 = document.createElement('span')
+    最小值元素.className = 'gio-map-size-frame-time'
+    最小值元素.textContent = `最小值: ${最小帧间隔}ms`
+    const 平均值元素 = document.createElement('span')
+    平均值元素.className = 'gio-map-size-frame-time'
+    平均值元素.textContent = `平均值: ${平均帧间隔}ms`
+    const 统计个数元素 = document.createElement('span')
+    统计个数元素.className = 'gio-map-size-frame-time'
+    统计个数元素.textContent = `个数: ${帧间隔样本数}`
     const 最低帧率元素 = document.createElement('span')
     最低帧率元素.className = 'gio-map-size-min-fps'
     最低帧率元素.textContent = `最低: ${最低帧率}`
@@ -101,7 +119,13 @@ function 更新地图大小标签(标签, 地图元素) {
       ),
     )
     第二排.replaceChildren(长任务元素, 主线程元素)
-    第三排.replaceChildren(帧时间元素)
+    第三排.replaceChildren(
+      最大间隔元素,
+      实时值元素,
+      最小值元素,
+      平均值元素,
+      统计个数元素,
+    )
     标签.replaceChildren(第一排, 第二排, 第三排)
     标签.dataset.文本 = 文本
   }
@@ -144,6 +168,7 @@ function 统计帧率(时间) {
   采样帧数 += 1
   当前帧时间 = Math.round(时间 - 上次帧时间)
   当前主线程执行时间 = 当前帧时间
+  记录帧间隔样本(当前帧时间)
   上次帧时间 = 时间
   const 间隔 = 时间 - 采样开始时间
   if (间隔 >= 500) {
@@ -165,6 +190,14 @@ function 记录帧率样本(帧率) {
   最低帧率 = 帧率样本数 === 1 ? 帧率 : Math.min(最低帧率, 帧率)
 }
 
+function 记录帧间隔样本(帧间隔) {
+  帧间隔样本数 += 1
+  帧间隔总和 += 帧间隔
+  最大帧间隔 = 帧间隔样本数 === 1 ? 帧间隔 : Math.max(最大帧间隔, 帧间隔)
+  最小帧间隔 = 帧间隔样本数 === 1 ? 帧间隔 : Math.min(最小帧间隔, 帧间隔)
+  平均帧间隔 = Math.round(帧间隔总和 / 帧间隔样本数)
+}
+
 function 停止帧率计算() {
   if (帧率计时编号) cancelAnimationFrame(帧率计时编号)
   帧率计时编号 = 0
@@ -173,6 +206,11 @@ function 停止帧率计算() {
   上次帧时间 = 0
   当前主线程执行时间 = 0
   当前帧时间 = 0
+  最大帧间隔 = 0
+  最小帧间隔 = 0
+  平均帧间隔 = 0
+  帧间隔样本数 = 0
+  帧间隔总和 = 0
 }
 
 function 重置帧率统计(保留地图元素 = false) {
