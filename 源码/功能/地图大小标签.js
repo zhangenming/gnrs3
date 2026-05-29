@@ -67,7 +67,19 @@ function 更新地图大小标签(标签, 地图元素) {
   const 长 = 状态.宽度
   const 宽 = 状态.高度
   const 文本 = `FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} 最低: ${最低帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`
-  if (标签.textContent !== 文本) 标签.textContent = 文本
+  if (标签.dataset.文本 !== 文本) {
+    const 最低帧率元素 = document.createElement('span')
+    最低帧率元素.className = 'gio-map-size-min-fps'
+    最低帧率元素.textContent = `最低: ${最低帧率}`
+    标签.replaceChildren(
+      document.createTextNode(
+        `FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} `,
+      ),
+      最低帧率元素,
+      document.createTextNode(` | 地图大小: ${长} * ${宽} = ${长 * 宽}`),
+    )
+    标签.dataset.文本 = 文本
+  }
   if (标签.style.display !== 'block') 标签.style.display = 'block'
 
   const 间距 = 8
@@ -184,6 +196,15 @@ function 安装地图大小标签样式() {
     font: 800 13px/1 Arial, sans-serif !important;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
     white-space: nowrap !important;
+}
+
+#${地图大小元素编号} .gio-map-size-min-fps {
+    display: inline-block !important;
+    padding: 1px 3px !important;
+    border-radius: 2px !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    text-shadow: none !important;
 }
 `.trim()
   document.documentElement.appendChild(样式)
