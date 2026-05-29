@@ -289,7 +289,7 @@ function 取得图表配置() {
       children.push({
         type: 'text',
         x,
-        y: 底部y + 20,
+        y: 底部y + 38,
         style: {
           text: 兵力差变化文本,
           fill: 取得差值颜色(兵力差变化),
@@ -302,7 +302,7 @@ function 取得图表配置() {
       children.push({
         type: 'text',
         x,
-        y: 底部y + 38,
+        y: 底部y + 20,
         style: {
           text: 格式化地差标签(陆地差),
           fill: 取得地差颜色(陆地差),
