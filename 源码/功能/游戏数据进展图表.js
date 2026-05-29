@@ -20,6 +20,8 @@ const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
 const 陆地线颜色 = '#ffbf3f'
 const 兵力差变化文字颜色 = '#ff3d5a'
+const 地差劣势文字颜色 = '#ff3d5a'
+const 地差持平文字颜色 = '#000'
 
 let 图表实例 = null
 let ECharts加载Promise = null
@@ -320,7 +322,7 @@ function 取得图表配置() {
       left: 42,
       right: 12,
       top: 14,
-      bottom: 46,
+      bottom: 62,
     },
     xAxis: [
       {
@@ -361,6 +363,37 @@ function 取得图表配置() {
           margin: 4,
           formatter(_回合, idx) {
             return 格式化非零差值(兵力差变化列表[idx])
+          },
+        },
+        axisLine: {
+          show: false,
+        },
+        axisTick: {
+          show: false,
+        },
+      },
+      {
+        type: 'category',
+        boundaryGap: false,
+        position: 'bottom',
+        offset: 34,
+        data: 数据列表.map((数据点) => String(数据点.回合)),
+        axisLabel: {
+          fontSize: 10,
+          fontWeight: 900,
+          hideOverlap: false,
+          interval(idx) {
+            const 数据点 = 数据列表[idx]
+            return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
+          },
+          margin: 4,
+          rich: {
+            优势: { color: 我方蓝色 },
+            劣势: { color: 地差劣势文字颜色 },
+            持平: { color: 地差持平文字颜色 },
+          },
+          formatter(_回合, idx) {
+            return 格式化地差标签(数据列表[idx]?.陆地差)
           },
         },
         axisLine: {
@@ -438,6 +471,14 @@ function 格式化非零差值(值) {
   const 数值 = Number(值)
   if (!Number.isFinite(数值) || 数值 === 0) return ''
   return 格式化差值(数值)
+}
+
+function 格式化地差标签(值) {
+  const 数值 = Number(值)
+  if (!Number.isFinite(数值)) return ''
+  if (数值 > 0) return `{优势|${格式化差值(数值)}}`
+  if (数值 < 0) return `{劣势|${数值}}`
+  return `{持平|0}`
 }
 
 function 安装样式() {
