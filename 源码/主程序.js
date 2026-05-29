@@ -1,5 +1,5 @@
 import { 状态 } from './状态.js'
-import { 安全执行 } from './工具.js'
+import { 安全执行, 安装样式 } from './工具.js'
 import { 暴露调试接口 } from './调试接口.js'
 import { 清空覆盖层, 渲染 } from './覆盖层.js'
 import { 挂钩socket } from './socket挂钩.js'
@@ -21,6 +21,7 @@ function 请求渲染() {
 function 启动() {
   初始化功能开关()
   暴露调试接口(请求渲染, 清空覆盖层)
+  安装注入成功样式()
   安装功能控制UI()
   安装功能恢复()
   执行主程序Hook('启动')
@@ -49,6 +50,7 @@ function 启动() {
       subtree: true,
       zem: true,
     })
+    标记注入成功按钮()
 
     window.addEventListener(
       'resize',
@@ -79,6 +81,7 @@ function 启动() {
               清除插件内联隐藏()
             }
           }
+          if (在主页面) 标记注入成功按钮()
           if (!在主页面) {
             执行主程序Hook('页面同步')
             请求渲染()
@@ -145,6 +148,7 @@ function 启动() {
             '#game-page',
             '#game-page #gameMap',
             '#gameMap',
+            '#main-menu',
             '.game-map-canvas',
             '#game-leaderboard-container',
             '#game-pass-turn-button',
@@ -184,6 +188,27 @@ function 启动() {
         时间: Math.round(开始时间),
       }
     }
+  }
+}
+
+function 安装注入成功样式() {
+  安装样式(
+    'gio-注入成功样式',
+    `
+    .gio-注入成功按钮 {
+      background: #00d5d5 !important;
+    }
+  `,
+  )
+}
+
+function 标记注入成功按钮() {
+  const 主菜单 = document.querySelector('#main-menu')
+  if (!主菜单) return
+  for (const 元素 of 主菜单.querySelectorAll('button, input, .button')) {
+    const 文本 = 元素.value || 元素.textContent || ''
+    if (!['开始游戏', 'Play'].includes(文本.trim())) continue
+    元素.classList.add('gio-注入成功按钮')
   }
 }
 
