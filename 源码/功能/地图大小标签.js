@@ -104,47 +104,47 @@ function 更新地图大小标签(标签, 地图元素) {
     第四排.className = 'gio-map-size-row gio-map-size-long-task-api-row'
     const 长任务元素 = document.createElement('span')
     长任务元素.className = 'gio-map-size-long-task'
-    长任务元素.textContent = `长任务: ${最长长任务时间}ms`
+    长任务元素.textContent = `长任务:${最长长任务时间}ms`
     const 主线程元素 = document.createElement('span')
     主线程元素.className = 'gio-map-size-main-thread'
-    主线程元素.textContent = `主线程: ${当前主线程执行时间}ms`
+    主线程元素.textContent = `主线程:${当前主线程执行时间}ms`
     const 最大间隔元素 = document.createElement('span')
     最大间隔元素.className = 'gio-map-size-frame-time'
-    最大间隔元素.textContent = `最大间隔: ${最大帧间隔}ms`
+    最大间隔元素.textContent = `最大:${最大帧间隔}ms`
     const 实时值元素 = document.createElement('span')
     实时值元素.className = 'gio-map-size-frame-time'
-    实时值元素.textContent = `实时值: ${当前帧时间}ms`
+    实时值元素.textContent = `实时:${当前帧时间}ms`
     const 最小值元素 = document.createElement('span')
     最小值元素.className = 'gio-map-size-frame-time'
-    最小值元素.textContent = `最小值: ${最小帧间隔}ms`
+    最小值元素.textContent = `最小:${最小帧间隔}ms`
     const 平均值元素 = document.createElement('span')
     平均值元素.className = 'gio-map-size-frame-time'
-    平均值元素.textContent = `平均值: ${平均帧间隔}ms`
+    平均值元素.textContent = `平均:${平均帧间隔}ms`
     const 统计个数元素 = document.createElement('span')
     统计个数元素.className = 'gio-map-size-frame-time'
-    统计个数元素.textContent = `个数: ${帧间隔样本数}`
+    统计个数元素.textContent = `个数:${帧间隔样本数}`
     const API最大间隔元素 = document.createElement('span')
     API最大间隔元素.className = 'gio-map-size-long-task-api'
-    API最大间隔元素.textContent = `最大间隔: ${最大长任务API耗时}ms`
+    API最大间隔元素.textContent = `最大:${最大长任务API耗时}ms`
     const API实时值元素 = document.createElement('span')
     API实时值元素.className = 'gio-map-size-long-task-api'
-    API实时值元素.textContent = `实时值: ${当前长任务API耗时}ms`
+    API实时值元素.textContent = `实时:${当前长任务API耗时}ms`
     const API最小值元素 = document.createElement('span')
     API最小值元素.className = 'gio-map-size-long-task-api'
-    API最小值元素.textContent = `最小值: ${最小长任务API耗时}ms`
+    API最小值元素.textContent = `最小:${最小长任务API耗时}ms`
     const API平均值元素 = document.createElement('span')
     API平均值元素.className = 'gio-map-size-long-task-api'
-    API平均值元素.textContent = `平均值: ${平均长任务API耗时}ms`
+    API平均值元素.textContent = `平均:${平均长任务API耗时}ms`
     const API统计个数元素 = document.createElement('span')
     API统计个数元素.className = 'gio-map-size-long-task-api'
-    API统计个数元素.textContent = `个数: ${长任务API样本数}`
+    API统计个数元素.textContent = `个数:${长任务API样本数}`
     const 最低帧率元素 = document.createElement('span')
     最低帧率元素.className = 'gio-map-size-min-fps'
-    最低帧率元素.textContent = `最低: ${最低帧率}`
+    最低帧率元素.textContent = `低:${最低帧率}`
     第一排.replaceChildren(
       最低帧率元素,
       document.createTextNode(
-        `FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`,
+        `FPS:${当前帧率} 均:${平均帧率} 高:${最高帧率} | 地图:${长}*${宽}=${长 * 宽}`,
       ),
     )
     第二排.replaceChildren(长任务元素, 主线程元素)
@@ -344,35 +344,35 @@ function 安装地图大小标签样式() {
     pointer-events: none !important;
     z-index: ${地图标签层级} !important;
     display: none;
-    padding: 5px 8px !important;
+    padding: 3px 5px !important;
     border-radius: 4px !important;
     background: rgba(0, 0, 0, 0.72) !important;
     color: #ffffff !important;
-    font: 800 13px/1 Arial, sans-serif !important;
+    font: 800 11px/1 Arial, sans-serif !important;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
     white-space: nowrap !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 4px !important;
+    gap: 2px !important;
 }
 
 #${地图大小元素编号} .gio-map-size-row {
     display: flex !important;
     align-items: center !important;
-    gap: 5px !important;
+    gap: 3px !important;
 }
 
 #${地图大小元素编号} .gio-map-size-diagnostics-row {
-    min-height: 15px !important;
+    min-height: 12px !important;
 }
 
 #${地图大小元素编号} .gio-map-size-frame-row {
-    min-height: 15px !important;
+    min-height: 12px !important;
 }
 
 #${地图大小元素编号} .gio-map-size-long-task-api-row {
-    min-height: 15px !important;
+    min-height: 12px !important;
 }
 
 #${地图大小元素编号} .gio-map-size-min-fps,
@@ -381,9 +381,16 @@ function 安装地图大小标签样式() {
 #${地图大小元素编号} .gio-map-size-frame-time,
 #${地图大小元素编号} .gio-map-size-long-task-api {
     display: inline-block !important;
-    padding: 1px 3px !important;
+    box-sizing: border-box !important;
+    min-width: 48px !important;
+    padding: 1px 2px !important;
     border-radius: 2px !important;
     text-shadow: none !important;
+}
+
+#${地图大小元素编号} .gio-map-size-long-task,
+#${地图大小元素编号} .gio-map-size-main-thread {
+    min-width: 62px !important;
 }
 
 #${地图大小元素编号} .gio-map-size-min-fps {
