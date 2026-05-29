@@ -13,6 +13,8 @@ let 帧率样本数 = 0
 let 帧率总和 = 0
 let 采样帧数 = 0
 let 采样开始时间 = 0
+let 上次帧时间 = 0
+let 当前主线程执行时间 = 0
 let 帧率计时编号 = 0
 let 当前地图元素 = null
 
@@ -66,15 +68,27 @@ function 更新地图大小标签(标签, 地图元素) {
 
   const 长 = 状态.宽度
   const 宽 = 状态.高度
-  const 文本 = `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`
+  const 最长长任务时间 = 读取最长长任务时间()
+  const 文本 =
+    `长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms | ` +
+    `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率}` +
+    ` | 地图大小: ${长} * ${宽} = ${长 * 宽}`
   if (标签.dataset.文本 !== 文本) {
+    const 长任务元素 = document.createElement('span')
+    长任务元素.className = 'gio-map-size-long-task'
+    长任务元素.textContent = `长任务: ${最长长任务时间}ms`
+    const 主线程元素 = document.createElement('span')
+    主线程元素.className = 'gio-map-size-main-thread'
+    主线程元素.textContent = `主线程: ${当前主线程执行时间}ms`
     const 最低帧率元素 = document.createElement('span')
     最低帧率元素.className = 'gio-map-size-min-fps'
     最低帧率元素.textContent = `最低: ${最低帧率}`
     标签.replaceChildren(
+      长任务元素,
+      主线程元素,
       最低帧率元素,
       document.createTextNode(
-        ` FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`,
+        `FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`,
       ),
     )
     标签.dataset.文本 = 文本
@@ -98,6 +112,7 @@ function 更新地图大小标签(标签, 地图元素) {
 function 启动帧率统计() {
   if (帧率计时编号) return
   采样开始时间 = performance.now()
+  上次帧时间 = 采样开始时间
   采样帧数 = 0
   帧率计时编号 = requestAnimationFrame(统计帧率)
 }
@@ -115,6 +130,8 @@ function 统计帧率(时间) {
   }
 
   采样帧数 += 1
+  当前主线程执行时间 = Math.round(时间 - 上次帧时间)
+  上次帧时间 = 时间
   const 间隔 = 时间 - 采样开始时间
   if (间隔 >= 500) {
     当前帧率 = Math.round((采样帧数 * 1000) / 间隔)
@@ -140,6 +157,8 @@ function 停止帧率计算() {
   帧率计时编号 = 0
   采样帧数 = 0
   采样开始时间 = 0
+  上次帧时间 = 0
+  当前主线程执行时间 = 0
 }
 
 function 重置帧率统计(保留地图元素 = false) {
@@ -163,6 +182,10 @@ function 正在游戏中() {
     当前地图元素?.isConnected &&
     当前地图元素.closest('#game-page'),
   )
+}
+
+function 读取最长长任务时间() {
+  return Math.round(状态.性能诊断.长任务?.最长?.耗时 ?? 0)
 }
 
 function 确保地图大小标签() {
@@ -195,15 +218,33 @@ function 安装地图大小标签样式() {
     font: 800 13px/1 Arial, sans-serif !important;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
     white-space: nowrap !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
 }
 
-#${地图大小元素编号} .gio-map-size-min-fps {
+#${地图大小元素编号} .gio-map-size-min-fps,
+#${地图大小元素编号} .gio-map-size-long-task,
+#${地图大小元素编号} .gio-map-size-main-thread {
     display: inline-block !important;
     padding: 1px 3px !important;
     border-radius: 2px !important;
+    text-shadow: none !important;
+}
+
+#${地图大小元素编号} .gio-map-size-min-fps {
     background: #ffffff !important;
     color: #000000 !important;
-    text-shadow: none !important;
+}
+
+#${地图大小元素编号} .gio-map-size-long-task {
+    background: #ffd86b !important;
+    color: #000000 !important;
+}
+
+#${地图大小元素编号} .gio-map-size-main-thread {
+    background: #b8e6ff !important;
+    color: #000000 !important;
 }
 `.trim()
   document.documentElement.appendChild(样式)
