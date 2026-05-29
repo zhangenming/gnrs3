@@ -15,6 +15,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
+const 图表显示版本 = '无符号差值-1'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -270,7 +271,7 @@ function 取得图表渲染签名(图表元素) {
       return `${数据点.回合}:${数据点.兵力差}:${数据点.陆地差}`
     })
     .join('|')
-  return `${图表元素.clientWidth}x${图表元素.clientHeight}|${数据签名}`
+  return `${图表显示版本}|${图表元素.clientWidth}x${图表元素.clientHeight}|${数据签名}`
 }
 
 function 取得图表配置() {
@@ -460,7 +461,7 @@ function 取得兵力差变化列表(数据列表) {
 function 格式化差值(值) {
   const 数值 = Number(值)
   if (!Number.isFinite(数值)) return ''
-  return 数值 > 0 ? `+${数值}` : String(数值)
+  return String(Math.abs(数值))
 }
 
 function 格式化非零差值(值) {
