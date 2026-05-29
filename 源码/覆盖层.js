@@ -12,6 +12,7 @@ import { 安装样式 as 注入样式 } from './工具.js'
 import { 取游戏画布, 取宿主 } from './游戏工具.js'
 
 let 覆盖层动画帧 = null
+let 覆盖层功能排序缓存 = null
 
 export function 清空覆盖层() {
   const 覆盖层 = document.querySelector(`.${覆盖层类名}`)
@@ -103,20 +104,23 @@ function 执行覆盖层渲染前Hook() {
 }
 
 function 取得可绘制功能列表() {
-  return 覆盖层功能列表
-    .map((功能, idx) => {
-      return { 功能, idx }
-    })
-    .filter(({ 功能 }) => {
-      return 功能已启用(功能.id) && 功能.需要绘制?.()
-    })
-    .sort((左, 右) => {
-      const 左层级 = Number.isFinite(左.功能.层级) ? 左.功能.层级 : 0
-      const 右层级 = Number.isFinite(右.功能.层级) ? 右.功能.层级 : 0
-      if (左层级 !== 右层级) return 左层级 - 右层级
-      return 左.idx - 右.idx
-    })
-    .map(({ 功能 }) => 功能)
+  if (!覆盖层功能排序缓存) {
+    覆盖层功能排序缓存 = 覆盖层功能列表
+      .map((功能, idx) => {
+        return { 功能, idx }
+      })
+      .sort((左, 右) => {
+        const 左层级 = Number.isFinite(左.功能.层级) ? 左.功能.层级 : 0
+        const 右层级 = Number.isFinite(右.功能.层级) ? 右.功能.层级 : 0
+        if (左层级 !== 右层级) return 左层级 - 右层级
+        return 左.idx - 右.idx
+      })
+      .map(({ 功能 }) => 功能)
+  }
+
+  return 覆盖层功能排序缓存.filter((功能) => {
+    return 功能已启用(功能.id) && 功能.需要绘制?.()
+  })
 }
 
 function 需要连续动画() {
@@ -179,12 +183,18 @@ function 调整覆盖层(部件) {
       ? 部件.画布.offsetTop
       : 画布矩形.top - 宿主矩形.top
 
+  const 样式 = 部件.覆盖层.style
+  const css宽文本 = `${css宽}px`
+  const css高文本 = `${css高}px`
+  const 左文本 = `${左}px`
+  const 上文本 = `${上}px`
+
   if (部件.覆盖层.width !== 像素宽) 部件.覆盖层.width = 像素宽
   if (部件.覆盖层.height !== 像素高) 部件.覆盖层.height = 像素高
-  部件.覆盖层.style.width = `${css宽}px`
-  部件.覆盖层.style.height = `${css高}px`
-  部件.覆盖层.style.left = `${左}px`
-  部件.覆盖层.style.top = `${上}px`
+  if (样式.width !== css宽文本) 样式.width = css宽文本
+  if (样式.height !== css高文本) 样式.height = css高文本
+  if (样式.left !== 左文本) 样式.left = 左文本
+  if (样式.top !== 上文本) 样式.top = 上文本
 
   return { dpr, css宽, css高 }
 }

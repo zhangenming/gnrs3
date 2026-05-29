@@ -1,4 +1,4 @@
-import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.js'
+import { 地图可读, 是我方或队友 } from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 
@@ -46,9 +46,8 @@ export function 更新敌方最强兵力位置() {
 
   let 本次最强 = null
   for (let idx = 0; idx < 格子数; idx += 1) {
-    const 地块 = 读取地图地块(地图数组, idx)
-    const 兵力 = 地块?.兵力
-    const 归属 = 地块?.归属
+    const 兵力 = 地图数组[2 + idx]
+    const 归属 = 地图数组[2 + 格子数 + idx]
     if (
       !Number.isInteger(兵力) ||
       兵力 <= 0 ||

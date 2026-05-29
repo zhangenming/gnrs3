@@ -5,7 +5,8 @@ import {
   取得本次塔列表,
   地图可读,
   是我方或队友,
-  读取地图地块,
+  读取地图兵力,
+  读取地图归属,
 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 安装原始兵力文本捕获 } from './原始兵力文本.js'
@@ -192,9 +193,8 @@ export function 画兵力分布着色({ ctx, 格宽, 格高, 大小 }) {
         continue
       }
 
-      const 当前地块 = 读取地图地块(状态.地图数组, 地块.索引)
-      const 兵力 = 当前地块?.兵力
-      const 归属 = 当前地块?.归属
+      const 兵力 = 读取地图兵力(状态.地图数组, 地块.索引)
+      const 归属 = 读取地图归属(状态.地图数组, 地块.索引)
       const 符合要求 =
         Number.isInteger(兵力) &&
         兵力 >= 兵力着色最小兵力 &&
@@ -297,9 +297,8 @@ export function 取得兵力分布着色列表(数据包, 来源事件) {
     if (Number.isInteger(移动.终点) && 移动.终点 >= 0) 路径集合.add(移动.终点)
   })
   for (let idx = 0; idx < 格子数; idx += 1) {
-    const 地块 = 读取地图地块(地图数组, idx)
-    const 兵力 = 地块?.兵力
-    const 地形 = 地块?.归属
+    const 兵力 = 地图数组[2 + idx]
+    const 地形 = 地图数组[2 + 格子数 + idx]
     if (!Number.isInteger(地形) || !是我方或队友(地形)) continue
     可调用地块数量 += 1
     if (!Number.isInteger(兵力) || 兵力 < 兵力着色最小兵力) continue

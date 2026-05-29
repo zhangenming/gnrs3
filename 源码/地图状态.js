@@ -14,7 +14,7 @@ export function 更新地图缓存和兵力分布(
 ) {
   const 开始时间 = performance.now()
   const 完整地图数组 = 取得完整地图数组(数据包)
-  const 旧地图数组 = Array.isArray(状态.地图数组) ? 状态.地图数组.slice() : null
+  const 旧地图数组 = Array.isArray(状态.地图数组) ? 状态.地图数组 : null
   if (完整地图数组) {
     状态.地图数组 = 完整地图数组.slice()
   } else if (Array.isArray(数据包?.map_diff) && Array.isArray(状态.地图数组)) {

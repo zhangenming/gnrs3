@@ -174,11 +174,21 @@ export function 读取可见地块兵力(数据包, 格子索引) {
 }
 
 export function 读取地图兵力(地图数组, 格子索引) {
-  return 读取地图地块(地图数组, 格子索引)?.兵力 ?? null
+  const 格子数 = 取得地图格子数(地图数组)
+  if (格子数 == null || !Number.isInteger(格子索引)) return null
+  if (格子索引 < 0 || 格子索引 >= 格子数) return null
+
+  const 兵力 = 地图数组[2 + 格子索引]
+  return Number.isInteger(兵力) ? 兵力 : null
 }
 
 export function 读取地图归属(地图数组, 格子索引) {
-  return 读取地图地块(地图数组, 格子索引)?.归属 ?? null
+  const 格子数 = 取得地图格子数(地图数组)
+  if (格子数 == null || !Number.isInteger(格子索引)) return null
+  if (格子索引 < 0 || 格子索引 >= 格子数) return null
+
+  const 归属 = 地图数组[2 + 格子数 + 格子索引]
+  return Number.isInteger(归属) ? 归属 : null
 }
 
 export function 读取地图地块(地图数组, 格子索引) {
@@ -275,14 +285,20 @@ export function 应用增量(旧数组, 增量) {
   for (let idx = 0; idx < 增量.length; ) {
     const 保留数量 = 增量[idx] ?? 0
     if (保留数量 > 0) {
-      新数组.push(...旧数组.slice(新数组.length, 新数组.length + 保留数量))
+      const 起点 = 新数组.length
+      for (let 保留idx = 0; 保留idx < 保留数量; 保留idx += 1) {
+        新数组[起点 + 保留idx] = 旧数组[起点 + 保留idx]
+      }
     }
 
     idx += 1
     if (idx < 增量.length) {
       const 插入数量 = 增量[idx] ?? 0
       if (插入数量 > 0) {
-        新数组.push(...增量.slice(idx + 1, idx + 1 + 插入数量))
+        const 起点 = 新数组.length
+        for (let 插入idx = 0; 插入idx < 插入数量; 插入idx += 1) {
+          新数组[起点 + 插入idx] = 增量[idx + 1 + 插入idx]
+        }
         idx += 插入数量
       }
     }

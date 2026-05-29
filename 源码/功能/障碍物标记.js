@@ -143,7 +143,7 @@ export function 记录已知障碍物(数据包) {
     })
   }
   for (let idx = 0; idx < 格子数; idx += 1) {
-    const 地形 = 读取地图归属(地图数组, idx)
+    const 地形 = 地图数组[2 + 格子数 + idx]
     if (塔索引集合.has(idx)) {
       状态.已知障碍物集合.delete(idx)
     } else if (阻挡地形集合.has(地形)) {
