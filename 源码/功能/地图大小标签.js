@@ -22,6 +22,13 @@ let 平均帧间隔 = 0
 let 帧间隔样本数 = 0
 let 帧间隔总和 = 0
 let 帧率计时编号 = 0
+let 长任务API观察器 = null
+let 当前长任务API耗时 = 0
+let 最大长任务API耗时 = 0
+let 最小长任务API耗时 = 0
+let 平均长任务API耗时 = 0
+let 长任务API样本数 = 0
+let 长任务API总耗时 = 0
 let 当前地图元素 = null
 
 export const 功能定义 = {
@@ -36,6 +43,7 @@ export const 功能恢复 = {
   关闭() {
     document.getElementById(地图大小元素编号)?.remove()
     重置帧率统计()
+    停止长任务API统计()
   },
 }
 
@@ -50,9 +58,11 @@ export function 同步地图大小标签(地图元素) {
   if (!功能已启用('地图大小标签')) {
     document.getElementById(地图大小元素编号)?.remove()
     重置帧率统计()
+    停止长任务API统计()
     return
   }
   安装地图大小标签样式()
+  启动长任务API统计()
   const 标签 = 确保地图大小标签()
   if (!标签) return
   当前地图元素 = 地图元素
@@ -80,7 +90,9 @@ function 更新地图大小标签(标签, 地图元素) {
     ` | 地图大小: ${长} * ${宽} = ${长 * 宽}` +
     ` | 长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms` +
     ` | 最大间隔: ${最大帧间隔}ms 实时值: ${当前帧时间}ms` +
-    ` 最小值: ${最小帧间隔}ms 平均值: ${平均帧间隔}ms 个数: ${帧间隔样本数}`
+    ` 最小值: ${最小帧间隔}ms 平均值: ${平均帧间隔}ms 个数: ${帧间隔样本数}` +
+    ` | API最大间隔: ${最大长任务API耗时}ms API实时值: ${当前长任务API耗时}ms` +
+    ` API最小值: ${最小长任务API耗时}ms API平均值: ${平均长任务API耗时}ms API个数: ${长任务API样本数}`
   if (标签.dataset.文本 !== 文本) {
     const 第一排 = document.createElement('span')
     第一排.className = 'gio-map-size-row'
@@ -88,6 +100,8 @@ function 更新地图大小标签(标签, 地图元素) {
     第二排.className = 'gio-map-size-row gio-map-size-diagnostics-row'
     const 第三排 = document.createElement('span')
     第三排.className = 'gio-map-size-row gio-map-size-frame-row'
+    const 第四排 = document.createElement('span')
+    第四排.className = 'gio-map-size-row gio-map-size-long-task-api-row'
     const 长任务元素 = document.createElement('span')
     长任务元素.className = 'gio-map-size-long-task'
     长任务元素.textContent = `长任务: ${最长长任务时间}ms`
@@ -109,6 +123,21 @@ function 更新地图大小标签(标签, 地图元素) {
     const 统计个数元素 = document.createElement('span')
     统计个数元素.className = 'gio-map-size-frame-time'
     统计个数元素.textContent = `个数: ${帧间隔样本数}`
+    const API最大间隔元素 = document.createElement('span')
+    API最大间隔元素.className = 'gio-map-size-long-task-api'
+    API最大间隔元素.textContent = `最大间隔: ${最大长任务API耗时}ms`
+    const API实时值元素 = document.createElement('span')
+    API实时值元素.className = 'gio-map-size-long-task-api'
+    API实时值元素.textContent = `实时值: ${当前长任务API耗时}ms`
+    const API最小值元素 = document.createElement('span')
+    API最小值元素.className = 'gio-map-size-long-task-api'
+    API最小值元素.textContent = `最小值: ${最小长任务API耗时}ms`
+    const API平均值元素 = document.createElement('span')
+    API平均值元素.className = 'gio-map-size-long-task-api'
+    API平均值元素.textContent = `平均值: ${平均长任务API耗时}ms`
+    const API统计个数元素 = document.createElement('span')
+    API统计个数元素.className = 'gio-map-size-long-task-api'
+    API统计个数元素.textContent = `个数: ${长任务API样本数}`
     const 最低帧率元素 = document.createElement('span')
     最低帧率元素.className = 'gio-map-size-min-fps'
     最低帧率元素.textContent = `最低: ${最低帧率}`
@@ -126,7 +155,14 @@ function 更新地图大小标签(标签, 地图元素) {
       平均值元素,
       统计个数元素,
     )
-    标签.replaceChildren(第一排, 第二排, 第三排)
+    第四排.replaceChildren(
+      API最大间隔元素,
+      API实时值元素,
+      API最小值元素,
+      API平均值元素,
+      API统计个数元素,
+    )
+    标签.replaceChildren(第一排, 第二排, 第三排, 第四排)
     标签.dataset.文本 = 文本
   }
   if (标签.style.display !== 'block') 标签.style.display = 'block'
@@ -198,6 +234,50 @@ function 记录帧间隔样本(帧间隔) {
   平均帧间隔 = Math.round(帧间隔总和 / 帧间隔样本数)
 }
 
+function 启动长任务API统计() {
+  if (长任务API观察器) return
+  if (!PerformanceObserver.supportedEntryTypes?.includes('longtask')) return
+
+  长任务API观察器 = new PerformanceObserver(function (列表) {
+    for (const entry of 列表.getEntries()) {
+      记录长任务API样本(entry.duration)
+    }
+    更新地图大小标签(document.getElementById(地图大小元素编号), 当前地图元素)
+  })
+  长任务API观察器.observe({
+    type: 'longtask',
+    buffered: true,
+    zem: true,
+  })
+}
+
+function 停止长任务API统计() {
+  长任务API观察器?.disconnect()
+  长任务API观察器 = null
+  重置长任务API统计()
+}
+
+function 记录长任务API样本(耗时) {
+  const 长任务耗时 = Math.round(耗时)
+  当前长任务API耗时 = 长任务耗时
+  长任务API样本数 += 1
+  长任务API总耗时 += 长任务耗时
+  最大长任务API耗时 =
+    长任务API样本数 === 1 ? 长任务耗时 : Math.max(最大长任务API耗时, 长任务耗时)
+  最小长任务API耗时 =
+    长任务API样本数 === 1 ? 长任务耗时 : Math.min(最小长任务API耗时, 长任务耗时)
+  平均长任务API耗时 = Math.round(长任务API总耗时 / 长任务API样本数)
+}
+
+function 重置长任务API统计() {
+  当前长任务API耗时 = 0
+  最大长任务API耗时 = 0
+  最小长任务API耗时 = 0
+  平均长任务API耗时 = 0
+  长任务API样本数 = 0
+  长任务API总耗时 = 0
+}
+
 function 停止帧率计算() {
   if (帧率计时编号) cancelAnimationFrame(帧率计时编号)
   帧率计时编号 = 0
@@ -211,6 +291,7 @@ function 停止帧率计算() {
   平均帧间隔 = 0
   帧间隔样本数 = 0
   帧间隔总和 = 0
+  重置长任务API统计()
 }
 
 function 重置帧率统计(保留地图元素 = false) {
@@ -290,10 +371,15 @@ function 安装地图大小标签样式() {
     min-height: 15px !important;
 }
 
+#${地图大小元素编号} .gio-map-size-long-task-api-row {
+    min-height: 15px !important;
+}
+
 #${地图大小元素编号} .gio-map-size-min-fps,
 #${地图大小元素编号} .gio-map-size-long-task,
 #${地图大小元素编号} .gio-map-size-main-thread,
-#${地图大小元素编号} .gio-map-size-frame-time {
+#${地图大小元素编号} .gio-map-size-frame-time,
+#${地图大小元素编号} .gio-map-size-long-task-api {
     display: inline-block !important;
     padding: 1px 3px !important;
     border-radius: 2px !important;
@@ -317,6 +403,11 @@ function 安装地图大小标签样式() {
 
 #${地图大小元素编号} .gio-map-size-frame-time {
     background: #c8efb2 !important;
+    color: #000000 !important;
+}
+
+#${地图大小元素编号} .gio-map-size-long-task-api {
+    background: #efc9ff !important;
     color: #000000 !important;
 }
 `.trim()
