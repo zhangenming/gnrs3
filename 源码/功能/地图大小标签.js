@@ -15,6 +15,7 @@ let 采样帧数 = 0
 let 采样开始时间 = 0
 let 上次帧时间 = 0
 let 当前主线程执行时间 = 0
+let 当前帧时间 = 0
 let 帧率计时编号 = 0
 let 当前地图元素 = null
 
@@ -72,18 +73,24 @@ function 更新地图大小标签(标签, 地图元素) {
   const 文本 =
     `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率}` +
     ` | 地图大小: ${长} * ${宽} = ${长 * 宽}` +
-    ` | 长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms`
+    ` | 长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms` +
+    ` | 帧时间: ${当前帧时间}ms`
   if (标签.dataset.文本 !== 文本) {
     const 第一排 = document.createElement('span')
     第一排.className = 'gio-map-size-row'
     const 第二排 = document.createElement('span')
     第二排.className = 'gio-map-size-row gio-map-size-diagnostics-row'
+    const 第三排 = document.createElement('span')
+    第三排.className = 'gio-map-size-row gio-map-size-frame-row'
     const 长任务元素 = document.createElement('span')
     长任务元素.className = 'gio-map-size-long-task'
     长任务元素.textContent = `长任务: ${最长长任务时间}ms`
     const 主线程元素 = document.createElement('span')
     主线程元素.className = 'gio-map-size-main-thread'
     主线程元素.textContent = `主线程: ${当前主线程执行时间}ms`
+    const 帧时间元素 = document.createElement('span')
+    帧时间元素.className = 'gio-map-size-frame-time'
+    帧时间元素.textContent = `帧时间: ${当前帧时间}ms`
     const 最低帧率元素 = document.createElement('span')
     最低帧率元素.className = 'gio-map-size-min-fps'
     最低帧率元素.textContent = `最低: ${最低帧率}`
@@ -94,7 +101,8 @@ function 更新地图大小标签(标签, 地图元素) {
       ),
     )
     第二排.replaceChildren(长任务元素, 主线程元素)
-    标签.replaceChildren(第一排, 第二排)
+    第三排.replaceChildren(帧时间元素)
+    标签.replaceChildren(第一排, 第二排, 第三排)
     标签.dataset.文本 = 文本
   }
   if (标签.style.display !== 'block') 标签.style.display = 'block'
@@ -134,7 +142,8 @@ function 统计帧率(时间) {
   }
 
   采样帧数 += 1
-  当前主线程执行时间 = Math.round(时间 - 上次帧时间)
+  当前帧时间 = Math.round(时间 - 上次帧时间)
+  当前主线程执行时间 = 当前帧时间
   上次帧时间 = 时间
   const 间隔 = 时间 - 采样开始时间
   if (间隔 >= 500) {
@@ -163,6 +172,7 @@ function 停止帧率计算() {
   采样开始时间 = 0
   上次帧时间 = 0
   当前主线程执行时间 = 0
+  当前帧时间 = 0
 }
 
 function 重置帧率统计(保留地图元素 = false) {
@@ -238,9 +248,14 @@ function 安装地图大小标签样式() {
     min-height: 15px !important;
 }
 
+#${地图大小元素编号} .gio-map-size-frame-row {
+    min-height: 15px !important;
+}
+
 #${地图大小元素编号} .gio-map-size-min-fps,
 #${地图大小元素编号} .gio-map-size-long-task,
-#${地图大小元素编号} .gio-map-size-main-thread {
+#${地图大小元素编号} .gio-map-size-main-thread,
+#${地图大小元素编号} .gio-map-size-frame-time {
     display: inline-block !important;
     padding: 1px 3px !important;
     border-radius: 2px !important;
@@ -259,6 +274,11 @@ function 安装地图大小标签样式() {
 
 #${地图大小元素编号} .gio-map-size-main-thread {
     background: #b8e6ff !important;
+    color: #000000 !important;
+}
+
+#${地图大小元素编号} .gio-map-size-frame-time {
+    background: #c8efb2 !important;
     color: #000000 !important;
 }
 `.trim()
