@@ -36,13 +36,23 @@ export const 地图更新功能 = {
 
 export const 覆盖层功能 = {
   id: 功能定义.id,
+  层级: -100,
   需要绘制() {
     return 状态.已知障碍物集合.size > 0
   },
-  绘制: 画障碍物,
+  绘制: 画障碍物底色,
 }
 
-export function 画障碍物({ ctx, 格宽, 格高, 大小 }) {
+const 障碍物文字覆盖层功能 = {
+  id: 功能定义.id,
+  层级: 100,
+  需要绘制() {
+    return 状态.已知障碍物集合.size > 0
+  },
+  绘制: 画障碍物文字,
+}
+
+export function 画障碍物底色({ ctx, 格宽, 格高 }) {
   if (!状态.已知障碍物集合.size) return
 
   const 格子数 = 状态.宽度 * 状态.高度
@@ -69,9 +79,36 @@ export function 画障碍物({ ctx, 格宽, 格高, 大小 }) {
     const y = 行 * 格高
     ctx.fillStyle = '#000000'
     ctx.fillRect(x, y, 格宽, 格高)
-    if (!状态.已确认视野集合.has(障碍物索引)) {
-      画未知阻挡物标记(x, y)
+  })
+  ctx.restore()
+}
+
+function 画障碍物文字({ ctx, 格宽, 格高, 大小 }) {
+  if (!状态.已知障碍物集合.size) return
+
+  const 格子数 = 状态.宽度 * 状态.高度
+  const 地图数组 = 状态.地图数组
+
+  ctx.save()
+  状态.已知障碍物集合.forEach((障碍物索引) => {
+    const 当前地形 = 读取地图归属(地图数组, 障碍物索引)
+    if (
+      !Number.isInteger(障碍物索引) ||
+      障碍物索引 < 0 ||
+      障碍物索引 >= 格子数 ||
+      状态.已知塔集合.has(障碍物索引) ||
+      状态.已确认视野集合.has(障碍物索引)
+    ) {
+      return
     }
+    if (地图可读(地图数组)) {
+      if (Number.isInteger(当前地形) && 当前地形 >= -1) return
+    }
+    const 行 = Math.floor(障碍物索引 / 状态.宽度)
+    const 列 = 障碍物索引 % 状态.宽度
+    const x = 列 * 格宽
+    const y = 行 * 格高
+    画未知阻挡物标记(x, y)
   })
   ctx.restore()
 
@@ -119,3 +156,4 @@ export function 记录已知障碍物(数据包) {
 
 import { 注册功能 } from '../注册中心.js'
 注册功能({ 功能定义, 功能恢复, socket功能, 覆盖层功能, 地图更新功能 })
+注册功能({ 覆盖层功能: 障碍物文字覆盖层功能 })

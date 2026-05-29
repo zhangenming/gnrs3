@@ -103,9 +103,20 @@ function 执行覆盖层渲染前Hook() {
 }
 
 function 取得可绘制功能列表() {
-  return 覆盖层功能列表.filter((功能) => {
-    return 功能已启用(功能.id) && 功能.需要绘制?.()
-  })
+  return 覆盖层功能列表
+    .map((功能, idx) => {
+      return { 功能, idx }
+    })
+    .filter(({ 功能 }) => {
+      return 功能已启用(功能.id) && 功能.需要绘制?.()
+    })
+    .sort((左, 右) => {
+      const 左层级 = Number.isFinite(左.功能.层级) ? 左.功能.层级 : 0
+      const 右层级 = Number.isFinite(右.功能.层级) ? 右.功能.层级 : 0
+      if (左层级 !== 右层级) return 左层级 - 右层级
+      return 左.idx - 右.idx
+    })
+    .map(({ 功能 }) => 功能)
 }
 
 function 需要连续动画() {
