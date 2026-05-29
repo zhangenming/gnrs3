@@ -66,17 +66,16 @@ function 更新地图大小标签(标签, 地图元素) {
 
   const 长 = 状态.宽度
   const 宽 = 状态.高度
-  const 文本 = `FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} 最低: ${最低帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`
+  const 文本 = `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`
   if (标签.dataset.文本 !== 文本) {
     const 最低帧率元素 = document.createElement('span')
     最低帧率元素.className = 'gio-map-size-min-fps'
     最低帧率元素.textContent = `最低: ${最低帧率}`
     标签.replaceChildren(
-      document.createTextNode(
-        `FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} `,
-      ),
       最低帧率元素,
-      document.createTextNode(` | 地图大小: ${长} * ${宽} = ${长 * 宽}`),
+      document.createTextNode(
+        ` FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率} | 地图大小: ${长} * ${宽} = ${长 * 宽}`,
+      ),
     )
     标签.dataset.文本 = 文本
   }
