@@ -38,6 +38,13 @@ export const 功能恢复 = {
 export const socket功能 = {
   id: 功能定义.id,
   新局重置: 重置自适应棋盘尺寸,
+  新局重置后({ 请求渲染 }) {
+    请求同步自适应棋盘(请求渲染)
+  },
+  game_update({ 请求渲染 }) {
+    if (!状态.自适应棋盘待同步) return
+    请求同步自适应棋盘(请求渲染)
+  },
 }
 
 export const 覆盖层功能 = {
@@ -61,6 +68,8 @@ export function 同步自适应棋盘(请求重绘 = function () {}) {
 
   const 宿主 = 地图元素.parentElement
   if (!宿主) return
+
+  if (!地图尺寸已就绪()) return
 
   标记当前棋盘(地图元素, 宿主)
 
@@ -108,13 +117,20 @@ export function 重置自适应棋盘尺寸() {
       地图元素.style.removeProperty('--gio-adaptive-map-scale')
       地图元素.style.removeProperty('--gio-adaptive-map-width')
       地图元素.style.removeProperty('--gio-adaptive-map-height')
+      地图元素.classList.remove('gio-adaptive-map')
     })
   document.querySelectorAll('.gio-adaptive-map-host').forEach((宿主) => {
     宿主.style.removeProperty('--gio-adaptive-map-width')
     宿主.style.removeProperty('--gio-adaptive-map-height')
     宿主.style.removeProperty('--gio-adaptive-map-visual-width')
     宿主.style.removeProperty('--gio-adaptive-map-visual-height')
+    宿主.classList.remove('gio-adaptive-map-host')
   })
+
+  const 根元素 = document.documentElement
+  根元素?.style.removeProperty('--gio-battle-panel-left')
+  根元素?.style.removeProperty('--gio-battle-panel-top')
+  根元素?.style.removeProperty('--gio-battle-panel-width')
 }
 
 function 请求同步自适应棋盘(请求渲染) {
@@ -131,6 +147,10 @@ function 取得稳定缩放(地图元素, 目标缩放) {
     return Math.min(目标缩放, 上次缩放)
   }
   return 目标缩放
+}
+
+function 地图尺寸已就绪() {
+  return 状态.宽度 > 0 && 状态.高度 > 0
 }
 
 function 记录自适应棋盘尺寸(地图元素, 尺寸, 缩放) {
