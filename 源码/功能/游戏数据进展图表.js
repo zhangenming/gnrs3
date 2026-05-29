@@ -19,7 +19,7 @@ const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
 const 陆地线颜色 = '#ffbf3f'
-const 兵力差变化线颜色 = '#ff3d5a'
+const 兵力差变化文字颜色 = '#ff3d5a'
 
 let 图表实例 = null
 let ECharts加载Promise = null
@@ -159,7 +159,6 @@ function 确保面板() {
       '<span class="gio-data-progress-title">数据进展</span>' +
       '<span class="gio-data-progress-legend">' +
       '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-army"></span>兵力差</span>' +
-      '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-army-change"></span>兵力差变化</span>' +
       '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-land"></span>陆地差</span>' +
       '</span>' +
       '</div>' +
@@ -312,37 +311,63 @@ function 取得图表配置() {
     },
     legend: {
       show: false,
-      data: ['兵力差', '兵力差变化', '陆地差'],
+      data: ['兵力差', '陆地差'],
     },
     grid: {
       left: 42,
       right: 12,
       top: 14,
-      bottom: 28,
+      bottom: 46,
     },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: 数据列表.map((数据点) => String(数据点.回合)),
-      axisLabel: {
-        color: 'rgba(220, 232, 248, 0.82)',
-        fontWeight: 700,
-        interval(idx) {
-          const 数据点 = 数据列表[idx]
-          return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
+    xAxis: [
+      {
+        type: 'category',
+        boundaryGap: false,
+        data: 数据列表.map((数据点) => String(数据点.回合)),
+        axisLabel: {
+          color: 'rgba(220, 232, 248, 0.82)',
+          fontWeight: 700,
+          interval(idx) {
+            const 数据点 = 数据列表[idx]
+            return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
+          },
+          formatter(回合) {
+            const 数值 = Number(回合)
+            return 数值 > 0 && 数值 % 50 === 0 ? 回合 : ''
+          },
         },
-        formatter(回合) {
-          const 数值 = Number(回合)
-          return 数值 > 0 && 数值 % 50 === 0 ? 回合 : ''
+        axisLine: {
+          lineStyle: { color: 'rgba(220, 232, 248, 0.32)' },
+        },
+        axisTick: {
+          show: false,
         },
       },
-      axisLine: {
-        lineStyle: { color: 'rgba(220, 232, 248, 0.32)' },
+      {
+        type: 'category',
+        boundaryGap: false,
+        position: 'bottom',
+        offset: 18,
+        data: 数据列表.map((数据点) => String(数据点.回合)),
+        axisLabel: {
+          color: 兵力差变化文字颜色,
+          fontSize: 9,
+          fontWeight: 900,
+          hideOverlap: false,
+          interval: 0,
+          margin: 4,
+          formatter(_回合, idx) {
+            return 格式化差值(兵力差变化列表[idx])
+          },
+        },
+        axisLine: {
+          show: false,
+        },
+        axisTick: {
+          show: false,
+        },
       },
-      axisTick: {
-        show: false,
-      },
-    },
+    ],
     yAxis: {
       type: 'value',
       axisLabel: {
@@ -377,16 +402,6 @@ function 取得图表配置() {
           },
           data: [{ yAxis: 0 }],
         },
-      },
-      {
-        name: '兵力差变化',
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 6,
-        data: 兵力差变化列表,
-        itemStyle: { color: 兵力差变化线颜色 },
-        lineStyle: { color: 兵力差变化线颜色, width: 2.4 },
       },
       {
         name: '陆地差',
@@ -482,9 +497,6 @@ function 安装样式() {
 }
 .gio-data-progress-legend-army {
     --gio-data-progress-legend-color: ${我方蓝色};
-}
-.gio-data-progress-legend-army-change {
-    --gio-data-progress-legend-color: ${兵力差变化线颜色};
 }
 .gio-data-progress-legend-land {
     --gio-data-progress-legend-color: ${陆地线颜色};
