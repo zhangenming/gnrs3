@@ -19,6 +19,7 @@ const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
 const 陆地线颜色 = '#ffbf3f'
+const 兵力差变化线颜色 = '#ff3d5a'
 
 let 图表实例 = null
 let ECharts加载Promise = null
@@ -158,6 +159,7 @@ function 确保面板() {
       '<span class="gio-data-progress-title">数据进展</span>' +
       '<span class="gio-data-progress-legend">' +
       '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-army"></span>兵力差</span>' +
+      '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-army-change"></span>兵力差变化</span>' +
       '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-land"></span>陆地差</span>' +
       '</span>' +
       '</div>' +
@@ -273,6 +275,7 @@ function 取得图表渲染签名(图表元素) {
 
 function 取得图表配置() {
   const 数据列表 = 状态.游戏数据进展列表
+  const 兵力差变化列表 = 取得兵力差变化列表(数据列表)
   return {
     animation: true,
     animationDuration: 260,
@@ -302,13 +305,14 @@ function 取得图表配置() {
         return [
           `turn ${数据点.回合}`,
           `兵力差 ${格式化差值(数据点.兵力差)}`,
+          `兵力差变化 ${格式化差值(兵力差变化列表[索引])}`,
           `陆地差 ${格式化差值(数据点.陆地差)}`,
         ].join('<br>')
       },
     },
     legend: {
       show: false,
-      data: ['兵力差', '陆地差'],
+      data: ['兵力差', '兵力差变化', '陆地差'],
     },
     grid: {
       left: 42,
@@ -375,6 +379,16 @@ function 取得图表配置() {
         },
       },
       {
+        name: '兵力差变化',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        data: 兵力差变化列表,
+        itemStyle: { color: 兵力差变化线颜色 },
+        lineStyle: { color: 兵力差变化线颜色, width: 2.4 },
+      },
+      {
         name: '陆地差',
         type: 'line',
         smooth: true,
@@ -386,6 +400,14 @@ function 取得图表配置() {
       },
     ],
   }
+}
+
+function 取得兵力差变化列表(数据列表) {
+  return 数据列表.map((数据点, idx) => {
+    const 上回合数据点 = 数据列表[idx - 1]
+    if (!上回合数据点) return null
+    return 数据点.兵力差 - 上回合数据点.兵力差
+  })
 }
 
 function 格式化差值(值) {
@@ -460,6 +482,9 @@ function 安装样式() {
 }
 .gio-data-progress-legend-army {
     --gio-data-progress-legend-color: ${我方蓝色};
+}
+.gio-data-progress-legend-army-change {
+    --gio-data-progress-legend-color: ${兵力差变化线颜色};
 }
 .gio-data-progress-legend-land {
     --gio-data-progress-legend-color: ${陆地线颜色};
