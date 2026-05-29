@@ -59,7 +59,6 @@ export const 状态 = {
   回放正在显示: false,
   回放已安装: false,
   回放元素: null,
-  回放面板: null,
   回放动画时间: null,
   我方索引: null,
   玩家名列表: null,
