@@ -43,7 +43,7 @@ export const 功能恢复 = {
   关闭() {
     document.getElementById(地图大小元素编号)?.remove()
     重置帧率统计()
-    停止长任务API统计()
+    停止长任务API统计(true)
   },
 }
 
@@ -58,18 +58,19 @@ export function 同步地图大小标签(地图元素) {
   if (!功能已启用('地图大小标签')) {
     document.getElementById(地图大小元素编号)?.remove()
     重置帧率统计()
-    停止长任务API统计()
+    停止长任务API统计(true)
     return
   }
   安装地图大小标签样式()
-  启动长任务API统计()
   const 标签 = 确保地图大小标签()
   if (!标签) return
   当前地图元素 = 地图元素
   if (正在游戏中()) {
     启动帧率统计()
+    启动长任务API统计()
   } else {
     停止帧率计算()
+    停止长任务API统计()
   }
   更新地图大小标签(标签, 地图元素)
 }
@@ -251,10 +252,10 @@ function 启动长任务API统计() {
   })
 }
 
-function 停止长任务API统计() {
+function 停止长任务API统计(清空数据 = false) {
   长任务API观察器?.disconnect()
   长任务API观察器 = null
-  重置长任务API统计()
+  if (清空数据) 重置长任务API统计()
 }
 
 function 记录长任务API样本(耗时) {
@@ -284,6 +285,9 @@ function 停止帧率计算() {
   采样帧数 = 0
   采样开始时间 = 0
   上次帧时间 = 0
+}
+
+function 清空帧率统计数据() {
   当前主线程执行时间 = 0
   当前帧时间 = 0
   最大帧间隔 = 0
@@ -296,6 +300,7 @@ function 停止帧率计算() {
 
 function 重置帧率统计(保留地图元素 = false) {
   停止帧率计算()
+  清空帧率统计数据()
   当前帧率 = 0
   平均帧率 = 0
   最高帧率 = 0
