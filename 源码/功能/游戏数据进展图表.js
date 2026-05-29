@@ -301,12 +301,15 @@ function 取得图表配置() {
         const 索引 = 参数列表?.[0]?.dataIndex ?? 0
         const 数据点 = 数据列表[索引]
         if (!数据点) return ''
-        return [
+        const 文本列表 = [
           `turn ${数据点.回合}`,
           `兵力差 ${格式化差值(数据点.兵力差)}`,
-          `兵力差变化 ${格式化差值(兵力差变化列表[索引])}`,
           `陆地差 ${格式化差值(数据点.陆地差)}`,
-        ].join('<br>')
+        ]
+        const 兵力差变化文本 = 格式化非零差值(兵力差变化列表[索引])
+        if (兵力差变化文本)
+          文本列表.splice(2, 0, `兵力差变化 ${兵力差变化文本}`)
+        return 文本列表.join('<br>')
       },
     },
     legend: {
@@ -357,7 +360,7 @@ function 取得图表配置() {
           interval: 0,
           margin: 4,
           formatter(_回合, idx) {
-            return 格式化差值(兵力差变化列表[idx])
+            return 格式化非零差值(兵力差变化列表[idx])
           },
         },
         axisLine: {
@@ -429,6 +432,12 @@ function 格式化差值(值) {
   const 数值 = Number(值)
   if (!Number.isFinite(数值)) return ''
   return 数值 > 0 ? `+${数值}` : String(数值)
+}
+
+function 格式化非零差值(值) {
+  const 数值 = Number(值)
+  if (!Number.isFinite(数值) || 数值 === 0) return ''
+  return 格式化差值(数值)
 }
 
 function 安装样式() {
