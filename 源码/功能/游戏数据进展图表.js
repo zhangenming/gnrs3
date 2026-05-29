@@ -75,15 +75,21 @@ export function 记录游戏数据进展(数据包) {
     兵力差: 差值.兵力差,
     陆地差: 差值.陆地差,
   }
-  const 已有索引 = 状态.游戏数据进展列表.findIndex((点) => {
-    return 点.回合 === 回合
-  })
+  const 最后数据点 = 状态.游戏数据进展列表.at(-1)
+  const 已有索引 =
+    最后数据点?.回合 === 回合
+      ? 状态.游戏数据进展列表.length - 1
+      : 状态.游戏数据进展列表.findIndex((点) => {
+          return 点.回合 === 回合
+        })
   if (已有索引 >= 0) {
     状态.游戏数据进展列表[已有索引] = 数据点
+  } else if (!最后数据点 || 最后数据点.回合 < 回合) {
+    状态.游戏数据进展列表.push(数据点)
   } else {
     状态.游戏数据进展列表.push(数据点)
+    状态.游戏数据进展列表.sort((左, 右) => 左.回合 - 右.回合)
   }
-  状态.游戏数据进展列表.sort((左, 右) => 左.回合 - 右.回合)
   更新游戏数据进展图表()
 }
 
@@ -353,8 +359,7 @@ function 取得图表配置() {
   }
 
   return {
-    animation: true,
-    animationDuration: 260,
+    animation: false,
     textStyle: {
       color: '#dce8f8',
       fontFamily: 'Arial, sans-serif',
@@ -441,8 +446,7 @@ function 取得图表配置() {
         name: '兵力差',
         type: 'line',
         smooth: true,
-        symbol: 'circle',
-        symbolSize: 6,
+        showSymbol: false,
         data: 数据列表.map((数据点) => 数据点.兵力差),
         itemStyle: { color: 我方蓝色 },
         lineStyle: { color: 我方蓝色, width: 2.4 },
@@ -462,8 +466,7 @@ function 取得图表配置() {
         name: '陆地差',
         type: 'line',
         smooth: true,
-        symbol: 'circle',
-        symbolSize: 6,
+        showSymbol: false,
         data: 数据列表.map((数据点) => 数据点.陆地差),
         itemStyle: { color: 陆地线颜色 },
         lineStyle: { color: 陆地线颜色, width: 2.4 },
@@ -475,18 +478,30 @@ function 取得图表配置() {
         z: 8,
         renderItem: 渲染底部数字,
         tooltip: { show: false },
-        data: 数据列表.map((数据点, idx) => {
-          return [
-            String(数据点.回合),
-            0,
-            兵力差变化列表[idx],
-            数据点.陆地差,
-            数据点.回合,
-          ]
-        }),
+        data: 取得底部数字数据列表(数据列表, 兵力差变化列表),
       },
     ],
   }
+}
+
+function 取得底部数字数据列表(数据列表, 兵力差变化列表) {
+  const 输出列表 = []
+  for (let idx = 0; idx < 数据列表.length; idx += 1) {
+    const 数据点 = 数据列表[idx]
+    const 兵力差变化 = 兵力差变化列表[idx]
+    const 有兵力差变化 = Number.isFinite(兵力差变化) && 兵力差变化 !== 0
+    const 是大回合点 = 数据点.回合 > 0 && 数据点.回合 % 50 === 0
+    if (!有兵力差变化 && !是大回合点) continue
+
+    输出列表.push([
+      String(数据点.回合),
+      0,
+      兵力差变化,
+      数据点.陆地差,
+      数据点.回合,
+    ])
+  }
+  return 输出列表
 }
 
 function 取得兵力差变化列表(数据列表) {

@@ -138,12 +138,31 @@ export function 挂钩socket(socket, 请求渲染) {
   }
 
   function 执行socketHook(hook名, 上下文, 标签 = hook名) {
+    const 开始时间 = performance.now()
+    const 功能耗时 = []
     for (const 功能 of socket功能列表) {
       const hook = 功能?.[hook名]
       if (typeof hook !== 'function') continue
+      const 功能开始时间 = performance.now()
       安全执行(`${功能.id}${标签}`, () => {
         hook(上下文)
       })
+      功能耗时.push({
+        id: 功能.id,
+        耗时: Math.round((performance.now() - 功能开始时间) * 100) / 100,
+      })
+    }
+    状态.性能诊断.socketHook = {
+      hook名,
+      标签,
+      耗时: Math.round((performance.now() - 开始时间) * 100) / 100,
+      功能数量: 功能耗时.length,
+      功能耗时: 功能耗时.filter((记录) => 记录.耗时 > 0),
+      事件名: 上下文.事件名,
+      回合: Number.isInteger(上下文.数据包?.turn)
+        ? 上下文.数据包.turn
+        : 状态.当前回合,
+      时间: Math.round(开始时间),
     }
   }
 

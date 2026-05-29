@@ -69,6 +69,7 @@ export const 状态 = {
     覆盖层渲染: null,
     页面观察: null,
     页面同步: null,
+    socketHook: null,
     长任务: null,
   },
   自适应棋盘待同步: true,
