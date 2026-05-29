@@ -527,7 +527,7 @@ function 安装回放样式() {
 .${面板类名} {
     position: fixed;
     right: 12px;
-    top: 12px;
+    top: 56px;
     z-index: ${提示层级};
     display: flex;
     align-items: center;
