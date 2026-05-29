@@ -27,6 +27,7 @@ let 图表实例 = null
 let ECharts加载Promise = null
 let 正在等待ECharts = false
 let 图表渲染签名 = ''
+let 图表显示系列 = { 兵力差: true, 陆地差: false }
 
 export const 功能定义 = {
   id: '游戏数据进展图表',
@@ -160,8 +161,8 @@ function 确保面板() {
       '<div class="gio-data-progress-head">' +
       '<span class="gio-data-progress-title">数据进展</span>' +
       '<span class="gio-data-progress-legend">' +
-      '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-army"></span>兵力差</span>' +
-      '<span class="gio-data-progress-legend-item"><span class="gio-data-progress-legend-line gio-data-progress-legend-land"></span>陆地差</span>' +
+      '<span class="gio-data-progress-legend-item" data-gio-data-progress-series="兵力差"><span class="gio-data-progress-legend-line gio-data-progress-legend-army"></span>兵力差</span>' +
+      '<span class="gio-data-progress-legend-item" data-gio-data-progress-series="陆地差"><span class="gio-data-progress-legend-line gio-data-progress-legend-land"></span>陆地差</span>' +
       '</span>' +
       '</div>' +
       '<div class="gio-data-progress-body">' +
@@ -211,6 +212,24 @@ function 更新面板状态(面板) {
   if (面板.dataset.gioDataProgressEmpty !== 空状态) {
     面板.dataset.gioDataProgressEmpty = 空状态
   }
+  for (const 图例 of 面板.querySelectorAll('[data-gio-data-progress-series]')) {
+    const 系列名 = 图例.dataset.gioDataProgressSeries
+    图例.dataset.gioDataProgressActive = 图表显示系列[系列名] ? 'true' : 'false'
+    if (图例.dataset.gioDataProgressReady) continue
+    图例.dataset.gioDataProgressReady = 'true'
+    图例.addEventListener('click', () => {
+      切换图表系列(系列名)
+    })
+  }
+}
+
+function 切换图表系列(系列名) {
+  图表显示系列 = {
+    ...图表显示系列,
+    [系列名]: !图表显示系列[系列名],
+  }
+  图表渲染签名 = ''
+  更新游戏数据进展图表()
 }
 
 function 加载ECharts() {
@@ -271,7 +290,10 @@ function 取得图表渲染签名(图表元素) {
       return `${数据点.回合}:${数据点.兵力差}:${数据点.陆地差}`
     })
     .join('|')
-  return `${图表显示版本}|${图表元素.clientWidth}x${图表元素.clientHeight}|${数据签名}`
+  const 显示签名 = Object.entries(图表显示系列)
+    .map(([系列名, 显示]) => `${系列名}:${显示 ? 1 : 0}`)
+    .join('|')
+  return `${图表显示版本}|${显示签名}|${图表元素.clientWidth}x${图表元素.clientHeight}|${数据签名}`
 }
 
 function 取得图表配置() {
@@ -370,6 +392,7 @@ function 取得图表配置() {
     legend: {
       show: false,
       data: ['兵力差', '陆地差'],
+      selected: 图表显示系列,
     },
     grid: {
       left: 42,
@@ -548,6 +571,12 @@ function 安装样式() {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 120ms ease;
+}
+.gio-data-progress-legend-item[data-gio-data-progress-active="false"] {
+    opacity: 0.38;
 }
 .gio-data-progress-legend-line {
     position: relative;
