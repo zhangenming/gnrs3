@@ -19,7 +19,6 @@ const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
 const 陆地线颜色 = '#ffbf3f'
-const 兵力差变化文字颜色 = '#ff3d5a'
 const 地差劣势文字颜色 = '#ff3d5a'
 const 地差持平文字颜色 = '#000'
 
@@ -292,7 +291,7 @@ function 取得图表配置() {
         y: 底部y + 20,
         style: {
           text: 兵力差变化文本,
-          fill: 兵力差变化文字颜色,
+          fill: 取得差值颜色(兵力差变化),
           align: 'center',
           font: '900 9px Arial',
         },
@@ -477,6 +476,10 @@ function 格式化地差标签(值) {
 }
 
 function 取得地差颜色(值) {
+  return 取得差值颜色(值)
+}
+
+function 取得差值颜色(值) {
   const 数值 = Number(值)
   if (!Number.isFinite(数值) || 数值 === 0) return 地差持平文字颜色
   return 数值 > 0 ? 我方蓝色 : 地差劣势文字颜色
