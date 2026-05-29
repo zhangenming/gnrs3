@@ -11,6 +11,10 @@ let 最高帧率 = 0
 let 最低帧率 = 0
 let 帧率样本数 = 0
 let 帧率总和 = 0
+let 游戏开始时间 = 0
+let 游戏时间 = 0
+let 游戏回合数 = 0
+let 平均每回合时间 = 0
 let 采样帧数 = 0
 let 采样开始时间 = 0
 let 上次帧时间 = 0
@@ -86,7 +90,11 @@ function 更新地图大小标签(标签, 地图元素) {
   const 长 = 状态.宽度
   const 宽 = 状态.高度
   const 最长长任务时间 = 读取最长长任务时间()
+  更新游戏节奏统计()
   const 文本 =
+    `游戏时间: ${格式化秒数(游戏时间)} 回合数: ${游戏回合数}` +
+    ` 平均每回合: ${格式化秒数(平均每回合时间)}` +
+    ` | ` +
     `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率}` +
     ` | 地图大小: ${长} * ${宽} = ${长 * 宽}` +
     ` | 长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms` +
@@ -95,6 +103,8 @@ function 更新地图大小标签(标签, 地图元素) {
     ` | API最大间隔: ${最大长任务API耗时}ms API实时值: ${当前长任务API耗时}ms` +
     ` API最小值: ${最小长任务API耗时}ms API平均值: ${平均长任务API耗时}ms API个数: ${长任务API样本数}`
   if (标签.dataset.文本 !== 文本) {
+    const 游戏排 = document.createElement('span')
+    游戏排.className = 'gio-map-size-row gio-map-size-game-row'
     const 第一排 = document.createElement('span')
     第一排.className = 'gio-map-size-row'
     const 第二排 = document.createElement('span')
@@ -139,6 +149,15 @@ function 更新地图大小标签(标签, 地图元素) {
     const API统计个数元素 = document.createElement('span')
     API统计个数元素.className = 'gio-map-size-long-task-api'
     API统计个数元素.textContent = `个数:${长任务API样本数}`
+    const 游戏时间元素 = document.createElement('span')
+    游戏时间元素.className = 'gio-map-size-game-time'
+    游戏时间元素.textContent = `游戏:${格式化秒数(游戏时间)}`
+    const 游戏回合数元素 = document.createElement('span')
+    游戏回合数元素.className = 'gio-map-size-game-time'
+    游戏回合数元素.textContent = `回合:${游戏回合数}`
+    const 平均每回合元素 = document.createElement('span')
+    平均每回合元素.className = 'gio-map-size-game-time'
+    平均每回合元素.textContent = `均:${格式化秒数(平均每回合时间)}`
     const 最低帧率元素 = document.createElement('span')
     最低帧率元素.className = 'gio-map-size-min-fps'
     最低帧率元素.textContent = `低:${最低帧率}`
@@ -148,6 +167,7 @@ function 更新地图大小标签(标签, 地图元素) {
         `FPS:${当前帧率} 均:${平均帧率} 高:${最高帧率} | 地图:${长}*${宽}=${长 * 宽}`,
       ),
     )
+    游戏排.replaceChildren(游戏时间元素, 游戏回合数元素, 平均每回合元素)
     第二排.replaceChildren(长任务元素, 主线程元素)
     第三排.replaceChildren(
       最大间隔元素,
@@ -163,7 +183,7 @@ function 更新地图大小标签(标签, 地图元素) {
       API平均值元素,
       API统计个数元素,
     )
-    标签.replaceChildren(第一排, 第二排, 第三排, 第四排)
+    标签.replaceChildren(游戏排, 第一排, 第二排, 第三排, 第四排)
     标签.dataset.文本 = 文本
   }
   if (标签.style.display !== 'block') 标签.style.display = 'block'
@@ -185,6 +205,7 @@ function 更新地图大小标签(标签, 地图元素) {
 function 启动帧率统计() {
   if (帧率计时编号) return
   采样开始时间 = performance.now()
+  if (!游戏开始时间) 游戏开始时间 = 采样开始时间
   上次帧时间 = 采样开始时间
   采样帧数 = 0
   帧率计时编号 = requestAnimationFrame(统计帧率)
@@ -225,6 +246,12 @@ function 记录帧率样本(帧率) {
   平均帧率 = Math.round(帧率总和 / 帧率样本数)
   最高帧率 = 帧率样本数 === 1 ? 帧率 : Math.max(最高帧率, 帧率)
   最低帧率 = 帧率样本数 === 1 ? 帧率 : Math.min(最低帧率, 帧率)
+}
+
+function 更新游戏节奏统计() {
+  游戏回合数 = Number.isFinite(状态.当前回合) ? Math.max(0, 状态.当前回合) : 0
+  if (游戏开始时间 && 帧率计时编号) 游戏时间 = performance.now() - 游戏开始时间
+  平均每回合时间 = 游戏回合数 ? 游戏时间 / 游戏回合数 : 0
 }
 
 function 记录帧间隔样本(帧间隔) {
@@ -288,6 +315,10 @@ function 停止帧率计算() {
 }
 
 function 清空帧率统计数据() {
+  游戏开始时间 = 0
+  游戏时间 = 0
+  游戏回合数 = 0
+  平均每回合时间 = 0
   当前主线程执行时间 = 0
   当前帧时间 = 0
   最大帧间隔 = 0
@@ -324,6 +355,10 @@ function 正在游戏中() {
 
 function 读取最长长任务时间() {
   return Math.round(状态.性能诊断.长任务?.最长?.耗时 ?? 0)
+}
+
+function 格式化秒数(毫秒) {
+  return `${Math.round(毫秒 / 100) / 10}s`
 }
 
 function 确保地图大小标签() {
@@ -368,6 +403,10 @@ function 安装地图大小标签样式() {
     gap: 3px !important;
 }
 
+#${地图大小元素编号} .gio-map-size-game-row {
+    min-height: 12px !important;
+}
+
 #${地图大小元素编号} .gio-map-size-diagnostics-row {
     min-height: 12px !important;
 }
@@ -381,6 +420,7 @@ function 安装地图大小标签样式() {
 }
 
 #${地图大小元素编号} .gio-map-size-min-fps,
+#${地图大小元素编号} .gio-map-size-game-time,
 #${地图大小元素编号} .gio-map-size-long-task,
 #${地图大小元素编号} .gio-map-size-main-thread,
 #${地图大小元素编号} .gio-map-size-frame-time,
@@ -396,6 +436,11 @@ function 安装地图大小标签样式() {
 #${地图大小元素编号} .gio-map-size-long-task,
 #${地图大小元素编号} .gio-map-size-main-thread {
     min-width: 62px !important;
+}
+
+#${地图大小元素编号} .gio-map-size-game-time {
+    background: #d8e7ff !important;
+    color: #000000 !important;
 }
 
 #${地图大小元素编号} .gio-map-size-min-fps {
