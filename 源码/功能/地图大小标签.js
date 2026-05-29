@@ -106,10 +106,12 @@ function 更新地图大小标签(标签, 地图元素) {
     const 第一排 = document.createElement('span')
     第一排.className = 'gio-map-size-row gio-map-size-summary-row'
     const 第二排 = document.createElement('span')
-    第二排.className =
-      'gio-map-size-row gio-map-size-diagnostics-row gio-map-size-wrap-row'
+    第二排.className = 'gio-map-size-row gio-map-size-diagnostics-row'
     const 第三排 = document.createElement('span')
     第三排.className =
+      'gio-map-size-row gio-map-size-diagnostics-row gio-map-size-wrap-row'
+    const 第四排 = document.createElement('span')
+    第四排.className =
       'gio-map-size-row gio-map-size-long-task-api-row gio-map-size-wrap-row'
     const 长任务元素 = document.createElement('span')
     长任务元素.className = 'gio-map-size-long-task'
@@ -168,23 +170,22 @@ function 更新地图大小标签(标签, 地图元素) {
         `FPS:${当前帧率} 均:${平均帧率} 高:${最高帧率} | 地图:${长}*${宽}=${长 * 宽}`,
       ),
     )
-    第二排.replaceChildren(
-      长任务元素,
-      主线程元素,
+    第二排.replaceChildren(长任务元素, 主线程元素)
+    第三排.replaceChildren(
       最大间隔元素,
       实时值元素,
       最小值元素,
       平均值元素,
       统计个数元素,
     )
-    第三排.replaceChildren(
+    第四排.replaceChildren(
       API最大间隔元素,
       API实时值元素,
       API最小值元素,
       API平均值元素,
       API统计个数元素,
     )
-    标签.replaceChildren(第一排, 第二排, 第三排)
+    标签.replaceChildren(第一排, 第二排, 第三排, 第四排)
     标签.dataset.文本 = 文本
   }
   if (标签.style.display !== 'block') 标签.style.display = 'block'
