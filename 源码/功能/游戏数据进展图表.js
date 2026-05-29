@@ -15,7 +15,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '无符号差值-1'
+const 图表显示版本 = '无符号差值-2'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -284,6 +284,8 @@ function 取得图表配置() {
     const [x] = api.coord([api.value(0), 0])
     const 底部y = 参数.coordSys.y + 参数.coordSys.height
     const children = []
+    const 有效地差 = 回合 > 0 && 回合 % 50 === 0 && Number.isFinite(陆地差)
+    const 有效兵力差变化 = Number.isFinite(兵力差变化) && 兵力差变化 !== 0
     const 兵力差变化文本 = 格式化非零差值(兵力差变化)
     if (兵力差变化文本) {
       children.push({
@@ -298,7 +300,7 @@ function 取得图表配置() {
         },
       })
     }
-    if (回合 > 0 && 回合 % 50 === 0) {
+    if (有效地差) {
       children.push({
         type: 'text',
         x,
@@ -308,6 +310,20 @@ function 取得图表配置() {
           fill: 取得地差颜色(陆地差),
           align: 'center',
           font: '900 10px Arial',
+        },
+      })
+    }
+    if (有效地差 && 有效兵力差变化) {
+      const 两行差 = 陆地差 - 兵力差变化
+      children.push({
+        type: 'text',
+        x,
+        y: 底部y + 54,
+        style: {
+          text: 格式化差值(两行差),
+          fill: 取得差值颜色(两行差),
+          align: 'center',
+          font: '900 9px Arial',
         },
       })
     }
@@ -359,7 +375,7 @@ function 取得图表配置() {
       left: 42,
       right: 12,
       top: 14,
-      bottom: 62,
+      bottom: 76,
     },
     xAxis: {
       type: 'category',

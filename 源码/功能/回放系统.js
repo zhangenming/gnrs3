@@ -4,7 +4,13 @@
 // 实现原理:
 // 每次 game_start/game_update 处理完后，保存一份状态快照。
 // 复盘时恢复快照，让既有覆盖层渲染逻辑直接读取历史状态；地图底图按快照地图即时绘制。
-import { 样式编号, 我方蓝色, 敌方红色, 回放底图层级 } from '../配置.js'
+import {
+  样式编号,
+  我方蓝色,
+  敌方红色,
+  回放底图层级,
+  提示层级,
+} from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.js'
 import { 状态 } from '../状态.js'
@@ -14,6 +20,7 @@ import { 读取当前回合, 取游戏画布, 取宿主 } from '../游戏工具.
 import { 更新大回合倒计时 } from './大回合倒计时.js'
 
 const 元素类名 = 'gio-replay-frame'
+const 面板类名 = 'gio-replay-panel'
 const 样式元素编号 = `${样式编号}-replay-system`
 
 export const 功能定义 = {
@@ -121,7 +128,9 @@ export function 记录回放帧(事件名, 数据包) {
   const 帧 = {
     序号: 状态.回放帧列表.length,
     事件名,
-    回合: 读取当前回合(数据包),
+    回合: Number.isInteger(状态.当前回合)
+      ? 状态.当前回合
+      : 读取当前回合(数据包),
     动画时间: performance.now(),
     状态快照: 取得状态快照(),
   }
@@ -138,6 +147,7 @@ export function 结束回放(_事件名, _数据包, 请求渲染) {
   状态.回放当前帧索引 = 状态.回放帧列表.length - 1
   状态.战场数据已冻结 = true
   移除回放元素()
+  移除回放面板()
   if (typeof 请求渲染 === 'function') 请求渲染()
 }
 
@@ -148,6 +158,7 @@ export function 重置回放() {
   状态.回放正在显示 = false
   状态.回放动画时间 = null
   移除回放元素()
+  移除回放面板()
 }
 
 export function 安装回放快捷键(请求渲染) {
@@ -177,8 +188,10 @@ export function 安装回放快捷键(请求渲染) {
 export function 同步回放元素() {
   if (!功能已启用('回放系统')) {
     移除回放元素()
+    移除回放面板()
     return
   }
+  同步回放面板()
   if (!状态.回放正在显示) {
     移除回放元素()
     return
@@ -256,6 +269,7 @@ function 取得回放状态() {
     正在显示: 状态.回放正在显示,
     已安装: 状态.回放已安装,
     元素: 状态.回放元素,
+    面板: 状态.回放面板,
   }
 }
 
@@ -266,6 +280,7 @@ function 恢复回放状态(回放状态) {
   状态.回放正在显示 = 回放状态.正在显示
   状态.回放已安装 = 回放状态.已安装
   状态.回放元素 = 回放状态.元素
+  状态.回放面板 = 回放状态.面板
 }
 
 function 取得当前回放帧() {
@@ -434,9 +449,57 @@ function 绘制备用地图(画布, css宽, css高) {
   }
 }
 
+function 同步回放面板() {
+  if (!状态.回放已结束 || !状态.回放帧列表.length) {
+    移除回放面板()
+    return
+  }
+
+  const 面板 = 确保回放面板()
+  const 帧 = 取得当前回放帧()
+  if (!面板 || !帧) return
+
+  const 索引 = 状态.回放帧列表.indexOf(帧)
+  const 签名 = `${索引}:${状态.回放帧列表.length}:${帧.回合}`
+  if (面板.dataset.gioReplaySignature === 签名) return
+  面板.dataset.gioReplaySignature = 签名
+
+  面板.querySelector('.gio-replay-index').textContent =
+    `${索引 + 1}/${状态.回放帧列表.length}`
+  面板.querySelector('.gio-replay-turn').textContent = Number.isInteger(帧.回合)
+    ? `turn ${帧.回合}`
+    : 'turn ?'
+}
+
+function 确保回放面板() {
+  安装回放样式()
+
+  let 面板 = 状态.回放面板
+  if (!面板 || !document.documentElement.contains(面板)) {
+    面板 = document.querySelector(`.${面板类名}`)
+  }
+  if (!面板) {
+    面板 = document.createElement('div')
+    面板.className = 面板类名
+    面板.innerHTML =
+      '<span class="gio-replay-name">回放</span>' +
+      '<span class="gio-replay-index"></span>' +
+      '<span class="gio-replay-turn"></span>'
+  }
+  if (面板.parentElement !== document.body) document.body.appendChild(面板)
+
+  状态.回放面板 = 面板
+  return 面板
+}
+
 function 移除回放元素() {
   document.querySelectorAll(`.${元素类名}`).forEach((元素) => 元素.remove())
   状态.回放元素 = null
+}
+
+function 移除回放面板() {
+  document.querySelectorAll(`.${面板类名}`).forEach((元素) => 元素.remove())
+  状态.回放面板 = null
 }
 
 function 安装回放样式() {
@@ -462,6 +525,41 @@ function 安装回放样式() {
 }
 .gio-tower-memory-host {
     position: relative !important;
+}
+.${面板类名} {
+    position: fixed;
+    right: 12px;
+    top: 56px;
+    z-index: ${提示层级};
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    box-sizing: border-box;
+    max-width: min(280px, calc(100vw - 24px));
+    min-height: 28px;
+    padding: 5px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    border-radius: 6px;
+    background: rgba(8, 12, 18, 0.9);
+    color: #ffffff;
+    font: 900 12px/1 Arial, sans-serif;
+    letter-spacing: 0;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.92);
+    pointer-events: none;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+.${面板类名} span {
+    min-width: 0;
+    white-space: nowrap;
+}
+.gio-replay-name {
+    color: #f5d66b;
+}
+.gio-replay-index {
+    color: #ffffff;
+}
+.gio-replay-turn {
+    color: #b9d8ff;
 }
 `.trim()
   document.documentElement.appendChild(样式)

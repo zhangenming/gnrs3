@@ -212,19 +212,29 @@ export function 更新大回合倒计时() {
 }
 
 export function 读取显示回合() {
+  const 回放帧回合 = 读取插件回放帧回合()
+  if (Number.isInteger(回放帧回合)) return 回放帧回合
+
   const 页面回合 = 读取页面回合()
   if (Number.isInteger(页面回合)) return 页面回合
   if (Number.isInteger(状态.当前回合)) return 状态.当前回合
   return null
 
-  function 读取页面回合() {
-    const 回放输入回合 = 读取回放跳转输入回合()
-    if (Number.isInteger(回放输入回合)) return 回放输入回合
+  function 读取插件回放帧回合() {
+    if (!状态.回放正在显示) return null
+    const 索引 = 状态.回放当前帧索引
+    if (!Number.isInteger(索引)) return null
+    return 状态.回放帧列表[索引]?.回合 ?? null
+  }
 
+  function 读取页面回合() {
     const 文本 = (document.getElementById('turn-counter')?.textContent ?? '')
       .trim()
       .replace(/\s+/g, ' ')
-    return 解析页面回合文本(文本.replace(/^Turn\s+/i, ''))
+    const 左上角回合 = 解析页面回合文本(文本.replace(/^Turn\s+/i, ''))
+    if (Number.isInteger(左上角回合)) return 左上角回合
+
+    return 读取回放跳转输入回合()
   }
 
   function 读取回放跳转输入回合() {
