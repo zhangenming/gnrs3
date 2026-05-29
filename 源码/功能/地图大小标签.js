@@ -103,16 +103,14 @@ function 更新地图大小标签(标签, 地图元素) {
     ` | API最大间隔: ${最大长任务API耗时}ms API实时值: ${当前长任务API耗时}ms` +
     ` API最小值: ${最小长任务API耗时}ms API平均值: ${平均长任务API耗时}ms API个数: ${长任务API样本数}`
   if (标签.dataset.文本 !== 文本) {
-    const 游戏排 = document.createElement('span')
-    游戏排.className = 'gio-map-size-row gio-map-size-game-row'
     const 第一排 = document.createElement('span')
-    第一排.className = 'gio-map-size-row'
+    第一排.className = 'gio-map-size-row gio-map-size-summary-row'
     const 第二排 = document.createElement('span')
-    第二排.className = 'gio-map-size-row gio-map-size-diagnostics-row'
+    第二排.className =
+      'gio-map-size-row gio-map-size-diagnostics-row gio-map-size-wrap-row'
     const 第三排 = document.createElement('span')
-    第三排.className = 'gio-map-size-row gio-map-size-frame-row'
-    const 第四排 = document.createElement('span')
-    第四排.className = 'gio-map-size-row gio-map-size-long-task-api-row'
+    第三排.className =
+      'gio-map-size-row gio-map-size-long-task-api-row gio-map-size-wrap-row'
     const 长任务元素 = document.createElement('span')
     长任务元素.className = 'gio-map-size-long-task'
     长任务元素.textContent = `长任务:${最长长任务时间}ms`
@@ -162,28 +160,31 @@ function 更新地图大小标签(标签, 地图元素) {
     最低帧率元素.className = 'gio-map-size-min-fps'
     最低帧率元素.textContent = `低:${最低帧率}`
     第一排.replaceChildren(
+      游戏时间元素,
+      游戏回合数元素,
+      平均每回合元素,
       最低帧率元素,
       document.createTextNode(
         `FPS:${当前帧率} 均:${平均帧率} 高:${最高帧率} | 地图:${长}*${宽}=${长 * 宽}`,
       ),
     )
-    游戏排.replaceChildren(游戏时间元素, 游戏回合数元素, 平均每回合元素)
-    第二排.replaceChildren(长任务元素, 主线程元素)
-    第三排.replaceChildren(
+    第二排.replaceChildren(
+      长任务元素,
+      主线程元素,
       最大间隔元素,
       实时值元素,
       最小值元素,
       平均值元素,
       统计个数元素,
     )
-    第四排.replaceChildren(
+    第三排.replaceChildren(
       API最大间隔元素,
       API实时值元素,
       API最小值元素,
       API平均值元素,
       API统计个数元素,
     )
-    标签.replaceChildren(游戏排, 第一排, 第二排, 第三排, 第四排)
+    标签.replaceChildren(第一排, 第二排, 第三排)
     标签.dataset.文本 = 文本
   }
   if (标签.style.display !== 'block') 标签.style.display = 'block'
@@ -403,7 +404,7 @@ function 安装地图大小标签样式() {
     gap: 3px !important;
 }
 
-#${地图大小元素编号} .gio-map-size-game-row {
+#${地图大小元素编号} .gio-map-size-summary-row {
     min-height: 12px !important;
 }
 
@@ -411,12 +412,14 @@ function 安装地图大小标签样式() {
     min-height: 12px !important;
 }
 
-#${地图大小元素编号} .gio-map-size-frame-row {
+#${地图大小元素编号} .gio-map-size-long-task-api-row {
     min-height: 12px !important;
 }
 
-#${地图大小元素编号} .gio-map-size-long-task-api-row {
-    min-height: 12px !important;
+#${地图大小元素编号} .gio-map-size-wrap-row {
+    flex-wrap: wrap !important;
+    max-width: 330px !important;
+    row-gap: 2px !important;
 }
 
 #${地图大小元素编号} .gio-map-size-min-fps,
