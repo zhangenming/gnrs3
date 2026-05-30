@@ -205,23 +205,48 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
       !是确认山(索引 + 1) &&
       !是确认山(索引 + 状态.宽度)
     ) {
-      画对角顺滑连接(x + 格宽, y + 格高)
+      画对角顺滑连接(x + 格宽, y + 格高, '左上右下')
     }
     if (
-      行 > 0 &&
-      列 < 状态.宽度 - 1 &&
-      是确认山(索引 - 状态.宽度 + 1) &&
-      !是确认山(索引 + 1) &&
-      !是确认山(索引 - 状态.宽度)
+      行 < 状态.高度 - 1 &&
+      列 > 0 &&
+      是确认山(索引 + 状态.宽度 - 1) &&
+      !是确认山(索引 - 1) &&
+      !是确认山(索引 + 状态.宽度)
     ) {
-      画对角顺滑连接(x + 格宽, y)
+      画对角顺滑连接(x, y + 格高, '右上左下')
     }
   }
 
-  function 画对角顺滑连接(x, y) {
+  function 画对角顺滑连接(x, y, 方向) {
+    const 弧长 = Math.max(边框宽度 * 3.8, Math.min(格宽, 格高) * 0.18)
+    const 线宽 = 边框宽度 * 1.75
+    ctx.save()
+    ctx.lineWidth = 线宽
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = '#ffd84d'
+    ctx.fillStyle = '#ffd84d'
+
     ctx.beginPath()
-    ctx.arc(x, y, 边框宽度 * 1.45, 0, Math.PI * 2)
+    ctx.arc(x, y, 线宽 * 0.72, 0, Math.PI * 2)
     ctx.fill()
+
+    if (方向 === '左上右下') {
+      画弧线(x, y - 弧长, x + 弧长, y, x + 弧长, y - 弧长)
+      画弧线(x - 弧长, y, x, y + 弧长, x - 弧长, y + 弧长)
+    } else {
+      画弧线(x - 弧长, y, x, y - 弧长, x - 弧长, y - 弧长)
+      画弧线(x, y + 弧长, x + 弧长, y, x + 弧长, y + 弧长)
+    }
+    ctx.restore()
+
+    function 画弧线(起点x, 起点y, 终点x, 终点y, 控制x, 控制y) {
+      ctx.beginPath()
+      ctx.moveTo(起点x, 起点y)
+      ctx.quadraticCurveTo(控制x, 控制y, 终点x, 终点y)
+      ctx.stroke()
+    }
   }
 }
 
