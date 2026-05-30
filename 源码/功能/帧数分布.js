@@ -18,6 +18,8 @@ const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
 const 图表更新间隔 = 1000
 const 柱状图颜色 = 我方蓝色
+const 标准帧耗时 = '16.7'
+const 标准帧颜色 = '#32c86a'
 
 let 图表实例 = null
 let ECharts加载Promise = null
@@ -378,7 +380,14 @@ function 取得图表配置(分布列表) {
         type: 'bar',
         barMinWidth: 3,
         barMaxWidth: 16,
-        data: 分布列表.map((数据点) => 数据点.数量),
+        data: 分布列表.map((数据点) => {
+          if (数据点.耗时 !== 标准帧耗时) return 数据点.数量
+          return {
+            value: 数据点.数量,
+            itemStyle: { color: 标准帧颜色 },
+            label: { color: 标准帧颜色 },
+          }
+        }),
         label: {
           show: true,
           position: 'top',
