@@ -87,3 +87,5 @@ export const 状态 = {
   已处理颜色数据包: new WeakSet(),
   原始兵力文本待渲染: false,
 }
+
+window.状态 = 状态

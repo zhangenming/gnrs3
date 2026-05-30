@@ -234,9 +234,6 @@ function 同步我方行动监控UI() {
   if (!面板) return
 
   const 回合状态列表 = 取得回合状态列表()
-  const 空闲数量 = 回合状态列表.filter((回合状态) => {
-    return 回合状态.行动类型 === '空闲'
-  }).length
   const 列表元素 = 面板.querySelector('.gio-action-watch-list')
   if (!列表元素) return
 
@@ -261,7 +258,7 @@ function 同步我方行动监控UI() {
   }
 
   绘制行动监控画布(画布, 画布宽, 取得大回合分组(回合状态列表), 悬停回合)
-  面板.title = `空闲 ${空闲数量} / 已记录 ${回合状态列表.length}`
+  面板.title = '我方行动记录'
 
   function 取得回合状态列表() {
     const 最大回合 = 取得最大已确认回合()
