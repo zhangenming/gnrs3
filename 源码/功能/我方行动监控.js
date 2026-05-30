@@ -237,6 +237,8 @@ function 同步我方行动监控UI() {
   const 空闲数量 = 回合状态列表.filter((回合状态) => {
     return 回合状态.行动类型 === '空闲'
   }).length
+  const 空闲总数元素 = 面板.querySelector('.gio-action-watch-idle-total')
+  if (空闲总数元素) 空闲总数元素.textContent = `空闲 ${空闲数量}`
   const 列表元素 = 面板.querySelector('.gio-action-watch-list')
   if (!列表元素) return
 
@@ -319,7 +321,10 @@ function 同步我方行动监控UI() {
       面板.className = 面板类名
       面板.innerHTML =
         '<div class="gio-action-watch-head">' +
+        '<div class="gio-action-watch-head-main">' +
         '<span class="gio-action-watch-title">我方行动监控</span>' +
+        '<span class="gio-action-watch-idle-total">空闲 0</span>' +
+        '</div>' +
         '<div class="gio-action-watch-legend">' +
         '<span data-gio-action-watch-kind="idle">空闲</span>' +
         '<span data-gio-action-watch-kind="gather">集兵</span>' +
@@ -620,6 +625,23 @@ function 安装样式() {
 .gio-action-watch-title {
     color: #f7fbff;
     font: 800 12px/1 Arial, sans-serif;
+}
+.gio-action-watch-head-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+.gio-action-watch-idle-total {
+    box-sizing: border-box;
+    min-width: 44px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: rgba(180, 35, 42, 0.76);
+    color: #fff7f7;
+    text-align: center;
+    white-space: nowrap;
+    font: 900 10px/1 Arial, sans-serif;
 }
 .gio-action-watch-legend {
     display: flex;
