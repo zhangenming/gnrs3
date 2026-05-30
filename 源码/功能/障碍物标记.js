@@ -57,6 +57,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   const 格子数 = 状态.宽度 * 状态.高度
   const 地图数组 = 状态.地图数组
   const 边框宽度 = Math.max(2, Math.min(3, 大小 * 0.08))
+  const 圆角半径 = 边框宽度 * 0.85
 
   ctx.save()
   ctx.fillStyle = '#000000'
@@ -96,22 +97,35 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
 
     if (行 === 0 || !是确认山(索引 - 状态.宽度)) {
       ctx.fillRect(x, y, 格宽, 边框宽度)
+      画圆角连接(x, y)
+      画圆角连接(x + 格宽, y)
     }
     if (行 === 状态.高度 - 1 || !是确认山(索引 + 状态.宽度)) {
       ctx.fillRect(x, y + 格高 - 边框宽度, 格宽, 边框宽度)
+      画圆角连接(x, y + 格高)
+      画圆角连接(x + 格宽, y + 格高)
     }
     if (列 === 0 || !是确认山(索引 - 1)) {
       ctx.fillRect(x, y, 边框宽度, 格高)
+      画圆角连接(x, y)
+      画圆角连接(x, y + 格高)
     }
     if (列 === 状态.宽度 - 1 || !是确认山(索引 + 1)) {
       ctx.fillRect(x + 格宽 - 边框宽度, y, 边框宽度, 格高)
+      画圆角连接(x + 格宽, y)
+      画圆角连接(x + 格宽, y + 格高)
     }
 
     画对角山连接(索引, 行, 列, x, y)
   }
 
+  function 画圆角连接(x, y) {
+    ctx.beginPath()
+    ctx.arc(x, y, 圆角半径, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
   function 画对角山连接(索引, 行, 列, x, y) {
-    const 半径 = 边框宽度 * 0.72
     ctx.fillStyle = '#ffd84d'
     if (
       行 < 状态.高度 - 1 &&
@@ -120,9 +134,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
       !是确认山(索引 + 1) &&
       !是确认山(索引 + 状态.宽度)
     ) {
-      ctx.beginPath()
-      ctx.arc(x + 格宽, y + 格高, 半径, 0, Math.PI * 2)
-      ctx.fill()
+      画圆角连接(x + 格宽, y + 格高)
     }
     if (
       行 > 0 &&
@@ -131,9 +143,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
       !是确认山(索引 + 1) &&
       !是确认山(索引 - 状态.宽度)
     ) {
-      ctx.beginPath()
-      ctx.arc(x + 格宽, y, 半径, 0, Math.PI * 2)
-      ctx.fill()
+      画圆角连接(x + 格宽, y)
     }
   }
 }
