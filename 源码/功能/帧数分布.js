@@ -17,6 +17,12 @@ const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
 const 图表更新间隔 = 1000
 const 柱状图颜色 = 我方蓝色
+const 游戏结束事件集合 = new Set([
+  'game_lost',
+  'game_won',
+  'game_over',
+  'game_end',
+])
 
 const raf = []
 let 图表实例 = null
@@ -25,6 +31,7 @@ let 正在等待ECharts = false
 let 采样动画帧编号 = 0
 let 上次图表更新时间 = 0
 let 图表渲染签名 = ''
+let 对局正在记录 = false
 
 export const 功能定义 = {
   id: '帧数分布',
@@ -49,7 +56,10 @@ export const 功能恢复 = {
 
 export const socket功能 = {
   id: 功能定义.id,
-  新局重置: 重置帧数分布,
+  入站预处理({ 事件名, 数据包 }) {
+    if (是游戏结束数据(事件名, 数据包)) 结束帧数分布记录()
+  },
+  新局重置: 开始帧数分布新局,
   新局重置后: 更新帧数分布,
 }
 
@@ -67,7 +77,11 @@ export function 更新帧数分布() {
   }
 
   安装样式()
-  启动帧数采样()
+  if (对局正在记录) {
+    启动帧数采样()
+  } else {
+    停止帧数采样()
+  }
   const 面板 = 确保面板()
   if (!面板) return
 
@@ -94,11 +108,30 @@ export function 更新帧数分布() {
 }
 
 export function 重置帧数分布() {
+  对局正在记录 = false
+  停止帧数采样()
+  清空帧数分布数据()
+  更新帧数分布()
+}
+
+function 开始帧数分布新局() {
+  对局正在记录 = true
+  停止帧数采样()
+  清空帧数分布数据()
+}
+
+function 结束帧数分布记录() {
+  if (!对局正在记录 && !采样动画帧编号) return
+  对局正在记录 = false
+  停止帧数采样()
+  更新帧数分布()
+}
+
+function 清空帧数分布数据() {
   raf.length = 0
   上次图表更新时间 = 0
   图表渲染签名 = ''
   图表实例?.clear()
-  更新帧数分布()
 }
 
 function 启动帧数采样() {
@@ -112,6 +145,7 @@ function 启动帧数采样() {
     }
 
     if (
+      对局正在记录 &&
       功能已启用('帧数分布') &&
       document.querySelector('#game-page #gameMap')
     ) {
@@ -119,6 +153,18 @@ function 启动帧数采样() {
     } else {
       采样动画帧编号 = 0
     }
+  })
+}
+
+function 是游戏结束数据(事件名, 数据包) {
+  return 游戏结束事件集合.has(事件名) || 包含死亡分数(数据包)
+}
+
+function 包含死亡分数(数据包) {
+  if (!Array.isArray(数据包?.scores)) return false
+
+  return 数据包.scores.some((分数) => {
+    return 分数?.dead === true
   })
 }
 
