@@ -57,7 +57,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   const 格子数 = 状态.宽度 * 状态.高度
   const 地图数组 = 状态.地图数组
   const 边框宽度 = Math.max(2, Math.min(3, 大小 * 0.08))
-  const 圆角半径 = 边框宽度 * 0.85
+  const 圆角半径 = 边框宽度 * 1.1
 
   ctx.save()
   ctx.fillStyle = '#000000'
@@ -112,13 +112,40 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
       ctx.fillRect(x + 格宽 - 边框宽度, y, 边框宽度, 格高)
     }
 
+    if (有上边 && 有左边) 画圆角连接(x, y)
+    if (有上边 && 有右边) 画圆角连接(x + 格宽, y)
+    if (有下边 && 有左边) 画圆角连接(x, y + 格高)
+    if (有下边 && 有右边) 画圆角连接(x + 格宽, y + 格高)
+
     画对角山连接(索引, 行, 列, x, y)
   }
 
   function 画圆角连接(x, y) {
+    ctx.save()
+    ctx.beginPath()
+    添加圆角裁剪区域(x, y)
+    ctx.clip()
     ctx.beginPath()
     ctx.arc(x, y, 圆角半径, 0, Math.PI * 2)
     ctx.fill()
+    ctx.restore()
+  }
+
+  function 添加圆角裁剪区域(x, y) {
+    const 交点行 = Math.round(y / 格高)
+    const 交点列 = Math.round(x / 格宽)
+    for (let 行偏移 = -1; 行偏移 <= 0; 行偏移 += 1) {
+      const 山行 = 交点行 + 行偏移
+      if (山行 < 0 || 山行 >= 状态.高度) continue
+      for (let 列偏移 = -1; 列偏移 <= 0; 列偏移 += 1) {
+        const 山列 = 交点列 + 列偏移
+        if (山列 < 0 || 山列 >= 状态.宽度) continue
+        const 山索引 = 山行 * 状态.宽度 + 山列
+        if (是确认山(山索引)) {
+          ctx.rect(山列 * 格宽, 山行 * 格高, 格宽, 格高)
+        }
+      }
+    }
   }
 
   function 画对角山连接(索引, 行, 列, x, y) {
