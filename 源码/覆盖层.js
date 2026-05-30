@@ -268,6 +268,10 @@ function 安装样式() {
 .gio-tower-memory-host {
     position: relative !important;
 }
+body:has(#game-page #gameMap) #game-page,
+body:has(#game-page #gameMap) #game-page * {
+    cursor: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"%3E%3Cpath d="M16 2v28M2 16h28" stroke="%23f00" stroke-width="3" stroke-linecap="square"/%3E%3Cpath d="M16 11v10M11 16h10" stroke="%23fff" stroke-width="1" stroke-linecap="square"/%3E%3C/svg%3E') 16 16, crosshair !important;
+}
 `,
   )
 }
