@@ -170,41 +170,96 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
 
   const 行 = Math.floor(格子索引 / 状态.宽度)
   const 列 = 格子索引 % 状态.宽度
+  const x = 列 * 格宽
+  const y = 行 * 格高
   const 中心x = 列 * 格宽 + 格宽 / 2
   const 中心y = 行 * 格高 + 格高 / 2
-  const 动画相位 = (当前动画时间 % 760) / 760
+  const 动画相位 = (当前动画时间 % 640) / 640
   const 脉冲 = 0.5 - Math.cos(动画相位 * Math.PI * 2) / 2
-  const 半径 = Math.max(5, 大小 * (0.42 + 脉冲 * 0.05))
-  const 外线宽 = Math.max(3, 大小 * (0.12 + 脉冲 * 0.03))
-  const 内线宽 = Math.max(1.5, 外线宽 * 0.35)
+  const 边距 = Math.max(2, 大小 * 0.06)
+  const 外线宽 = Math.max(4, 大小 * (0.13 + 脉冲 * 0.04))
+  const 内线宽 = Math.max(2, 大小 * 0.055)
+  const 角长 = Math.max(9, 大小 * 0.34)
+  const 内缩 = 边距 + 外线宽 / 2
 
   ctx.save()
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.shadowColor = 'rgba(255, 228, 77, 0.88)'
-  ctx.shadowBlur = Math.max(6, 大小 * (0.18 + 脉冲 * 0.1))
+  ctx.shadowColor = 'rgba(0, 238, 255, 0.95)'
+  ctx.shadowBlur = Math.max(8, 大小 * (0.24 + 脉冲 * 0.18))
 
   ctx.globalAlpha = 0.96
-  ctx.lineWidth = 外线宽 + Math.max(3, 大小 * 0.08)
+  ctx.lineWidth = 外线宽 + Math.max(4, 大小 * 0.1)
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.98)'
-  画圆环(半径)
+  画整框()
 
   ctx.globalAlpha = 1
   ctx.lineWidth = 外线宽
-  ctx.strokeStyle = '#ffe44d'
-  画圆环(半径)
+  ctx.strokeStyle = '#00eaff'
+  画整框()
+
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.9)'
+  ctx.shadowBlur = Math.max(4, 大小 * 0.12)
+  ctx.lineWidth = 外线宽 + Math.max(2, 大小 * 0.04)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.98)'
+  画四角()
 
   ctx.shadowColor = 'transparent'
   ctx.lineWidth = 内线宽
   ctx.strokeStyle = '#ffffff'
-  画圆环(Math.max(2, 半径 - 外线宽 * 0.95))
+  画四角()
+
+  ctx.lineWidth = Math.max(2, 大小 * 0.05)
+  ctx.strokeStyle = `rgba(255, 246, 92, ${0.65 + 脉冲 * 0.35})`
+  画边缘定位线()
 
   画选中倒计时()
   ctx.restore()
 
-  function 画圆环(半径) {
+  function 画整框() {
     ctx.beginPath()
-    ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
+    ctx.rect(
+      x + 内缩,
+      y + 内缩,
+      Math.max(1, 格宽 - 内缩 * 2),
+      Math.max(1, 格高 - 内缩 * 2),
+    )
+    ctx.stroke()
+  }
+
+  function 画四角() {
+    const 左 = x + 内缩
+    const 上 = y + 内缩
+    const 右 = x + 格宽 - 内缩
+    const 下 = y + 格高 - 内缩
+
+    ctx.beginPath()
+    ctx.moveTo(左, 上 + 角长)
+    ctx.lineTo(左, 上)
+    ctx.lineTo(左 + 角长, 上)
+    ctx.moveTo(右 - 角长, 上)
+    ctx.lineTo(右, 上)
+    ctx.lineTo(右, 上 + 角长)
+    ctx.moveTo(右, 下 - 角长)
+    ctx.lineTo(右, 下)
+    ctx.lineTo(右 - 角长, 下)
+    ctx.moveTo(左 + 角长, 下)
+    ctx.lineTo(左, 下)
+    ctx.lineTo(左, 下 - 角长)
+    ctx.stroke()
+  }
+
+  function 画边缘定位线() {
+    const 偏移 = Math.max(1, 大小 * 0.03)
+    ctx.beginPath()
+    ctx.moveTo(中心x, y + 偏移)
+    ctx.lineTo(中心x, y + Math.max(5, 大小 * 0.22))
+    ctx.moveTo(中心x, y + 格高 - 偏移)
+    ctx.lineTo(中心x, y + 格高 - Math.max(5, 大小 * 0.22))
+    ctx.moveTo(x + 偏移, 中心y)
+    ctx.lineTo(x + Math.max(5, 大小 * 0.22), 中心y)
+    ctx.moveTo(x + 格宽 - 偏移, 中心y)
+    ctx.lineTo(x + 格宽 - Math.max(5, 大小 * 0.22), 中心y)
     ctx.stroke()
   }
 
@@ -218,11 +273,11 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
     ctx.font = `900 ${字号}px Arial, sans-serif`
     const 徽标宽 = Math.max(徽标高, ctx.measureText(文本).width + 徽标高 * 0.44)
     const x = Math.min(
-      中心x + 半径 * 0.45,
+      中心x + 大小 * 0.18,
       列 * 格宽 + 格宽 - 徽标宽 - Math.max(1, 大小 * 0.04),
     )
     const y = Math.min(
-      中心y + 半径 * 0.45,
+      中心y + 大小 * 0.18,
       行 * 格高 + 格高 - 徽标高 - Math.max(1, 大小 * 0.04),
     )
     const 圆角 = Math.max(3, 徽标高 * 0.22)
