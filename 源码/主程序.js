@@ -211,8 +211,9 @@ function 标记注入成功按钮() {
   const 主菜单 = document.querySelector('#main-menu')
   if (!主菜单) return
   for (const 元素 of 主菜单.querySelectorAll('button, input, .button')) {
-    const 文本 = 元素.value || 元素.textContent || ''
-    if (!['开始游戏', 'Play'].includes(文本.trim())) continue
+    const 文本 = (元素.value || 元素.textContent || '').trim()
+    const 小写文本 = 文本.toLowerCase()
+    if (文本 !== '开始游戏' && 小写文本 !== 'play') continue
     元素.classList.add('gio-注入成功按钮')
   }
 }
