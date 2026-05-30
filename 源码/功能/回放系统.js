@@ -297,7 +297,7 @@ function 恢复状态快照(快照) {
 }
 
 function 复制值(值, 字段) {
-  if (字段 === '地图数组' && Array.isArray(值)) return 值
+  if (字段 === '地图数组' && Array.isArray(值)) return [...值]
   if (字段 === '战场数据快照' && 值 instanceof Map) {
     return new Map(
       Array.from(值, ([键, 项]) => {

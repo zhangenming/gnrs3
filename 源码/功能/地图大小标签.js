@@ -236,7 +236,6 @@ function 启动长任务API统计() {
   长任务API观察器.observe({
     type: 'longtask',
     buffered: true,
-    zem: true,
   })
 }
 
