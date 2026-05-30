@@ -19,12 +19,6 @@ let 采样帧数 = 0
 let 采样开始时间 = 0
 let 上次帧时间 = 0
 let 当前主线程执行时间 = 0
-let 当前帧时间 = 0
-let 最大帧间隔 = 0
-let 最小帧间隔 = 0
-let 平均帧间隔 = 0
-let 帧间隔样本数 = 0
-let 帧间隔总和 = 0
 let 帧率计时编号 = 0
 let 长任务API观察器 = null
 let 当前长任务API耗时 = 0
@@ -98,8 +92,6 @@ function 更新地图大小标签(标签, 地图元素) {
     `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率}` +
     ` | 地图大小: ${长} * ${宽} = ${长 * 宽}` +
     ` | 长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms` +
-    ` | 最大间隔: ${最大帧间隔}ms 实时值: ${当前帧时间}ms` +
-    ` 最小值: ${最小帧间隔}ms 平均值: ${平均帧间隔}ms 个数: ${帧间隔样本数}` +
     ` | API最大间隔: ${最大长任务API耗时}ms API实时值: ${当前长任务API耗时}ms` +
     ` API最小值: ${最小长任务API耗时}ms API平均值: ${平均长任务API耗时}ms API个数: ${长任务API样本数}`
   if (标签.dataset.文本 !== 文本) {
@@ -109,9 +101,6 @@ function 更新地图大小标签(标签, 地图元素) {
     第二排.className = 'gio-map-size-row gio-map-size-diagnostics-row'
     const 第三排 = document.createElement('span')
     第三排.className =
-      'gio-map-size-row gio-map-size-diagnostics-row gio-map-size-wrap-row'
-    const 第四排 = document.createElement('span')
-    第四排.className =
       'gio-map-size-row gio-map-size-long-task-api-row gio-map-size-wrap-row'
     const 长任务元素 = document.createElement('span')
     长任务元素.className = 'gio-map-size-long-task'
@@ -119,21 +108,6 @@ function 更新地图大小标签(标签, 地图元素) {
     const 主线程元素 = document.createElement('span')
     主线程元素.className = 'gio-map-size-main-thread'
     主线程元素.textContent = `主线程:${当前主线程执行时间}ms`
-    const 最大间隔元素 = document.createElement('span')
-    最大间隔元素.className = 'gio-map-size-frame-time'
-    最大间隔元素.textContent = `最大:${最大帧间隔}ms`
-    const 实时值元素 = document.createElement('span')
-    实时值元素.className = 'gio-map-size-frame-time'
-    实时值元素.textContent = `实时:${当前帧时间}ms`
-    const 最小值元素 = document.createElement('span')
-    最小值元素.className = 'gio-map-size-frame-time'
-    最小值元素.textContent = `最小:${最小帧间隔}ms`
-    const 平均值元素 = document.createElement('span')
-    平均值元素.className = 'gio-map-size-frame-time'
-    平均值元素.textContent = `平均:${平均帧间隔}ms`
-    const 统计个数元素 = document.createElement('span')
-    统计个数元素.className = 'gio-map-size-frame-time'
-    统计个数元素.textContent = `个数:${帧间隔样本数}`
     const API最大间隔元素 = document.createElement('span')
     API最大间隔元素.className = 'gio-map-size-long-task-api'
     API最大间隔元素.textContent = `最大:${最大长任务API耗时}ms`
@@ -172,20 +146,13 @@ function 更新地图大小标签(标签, 地图元素) {
     )
     第二排.replaceChildren(长任务元素, 主线程元素)
     第三排.replaceChildren(
-      最大间隔元素,
-      实时值元素,
-      最小值元素,
-      平均值元素,
-      统计个数元素,
-    )
-    第四排.replaceChildren(
       API最大间隔元素,
       API实时值元素,
       API最小值元素,
       API平均值元素,
       API统计个数元素,
     )
-    标签.replaceChildren(第一排, 第二排, 第三排, 第四排)
+    标签.replaceChildren(第一排, 第二排, 第三排)
     标签.dataset.文本 = 文本
   }
   if (标签.style.display !== 'block') 标签.style.display = 'block'
@@ -227,9 +194,7 @@ function 统计帧率(时间) {
 
   if (上次帧时间) {
     采样帧数 += 1
-    当前帧时间 = Math.round(时间 - 上次帧时间)
-    当前主线程执行时间 = 当前帧时间
-    记录帧间隔样本(当前帧时间)
+    当前主线程执行时间 = Math.round(时间 - 上次帧时间)
   }
   上次帧时间 = 时间
   const 间隔 = 时间 - 采样开始时间
@@ -256,14 +221,6 @@ function 更新游戏节奏统计() {
   游戏回合数 = Number.isFinite(状态.当前回合) ? Math.max(0, 状态.当前回合) : 0
   if (游戏开始时间 && 帧率计时编号) 游戏时间 = performance.now() - 游戏开始时间
   平均每回合时间 = 游戏回合数 ? 游戏时间 / 游戏回合数 : 0
-}
-
-function 记录帧间隔样本(帧间隔) {
-  帧间隔样本数 += 1
-  帧间隔总和 += 帧间隔
-  最大帧间隔 = 帧间隔样本数 === 1 ? 帧间隔 : Math.max(最大帧间隔, 帧间隔)
-  最小帧间隔 = 帧间隔样本数 === 1 ? 帧间隔 : Math.min(最小帧间隔, 帧间隔)
-  平均帧间隔 = Math.round(帧间隔总和 / 帧间隔样本数)
 }
 
 function 启动长任务API统计() {
@@ -324,12 +281,6 @@ function 清空帧率统计数据() {
   游戏回合数 = 0
   平均每回合时间 = 0
   当前主线程执行时间 = 0
-  当前帧时间 = 0
-  最大帧间隔 = 0
-  最小帧间隔 = 0
-  平均帧间隔 = 0
-  帧间隔样本数 = 0
-  帧间隔总和 = 0
   重置长任务API统计()
 }
 
@@ -427,7 +378,6 @@ function 安装地图大小标签样式() {
 #${地图大小元素编号} .gio-map-size-game-time,
 #${地图大小元素编号} .gio-map-size-long-task,
 #${地图大小元素编号} .gio-map-size-main-thread,
-#${地图大小元素编号} .gio-map-size-frame-time,
 #${地图大小元素编号} .gio-map-size-long-task-api {
     display: inline-block !important;
     box-sizing: border-box !important;
