@@ -56,6 +56,8 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
 
   const 格子数 = 状态.宽度 * 状态.高度
   const 地图数组 = 状态.地图数组
+  const 边框宽度 = Math.max(2, Math.min(3, 大小 * 0.08))
+  const 半边框宽度 = 边框宽度 / 2
 
   ctx.save()
   ctx.fillStyle = '#000000'
@@ -78,16 +80,42 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
     const y = 行 * 格高
     ctx.fillStyle = '#000000'
     ctx.fillRect(x, y, 格宽, 格高)
-    ctx.lineWidth = Math.max(2, Math.min(3, 大小 * 0.08))
-    ctx.strokeStyle = '#ffd84d'
-    ctx.strokeRect(
-      x + ctx.lineWidth / 2,
-      y + ctx.lineWidth / 2,
-      格宽 - ctx.lineWidth,
-      格高 - ctx.lineWidth,
-    )
+    if (是确认山(障碍物索引)) 画山边框(障碍物索引, 行, 列, x, y)
   })
   ctx.restore()
+
+  function 是确认山(索引) {
+    return (
+      状态.已知障碍物集合.has(索引) &&
+      状态.已确认视野集合.has(索引) &&
+      !状态.已知塔集合.has(索引)
+    )
+  }
+
+  function 画山边框(索引, 行, 列, x, y) {
+    ctx.beginPath()
+    ctx.lineWidth = 边框宽度
+    ctx.strokeStyle = '#ffd84d'
+
+    if (行 === 0 || !是确认山(索引 - 状态.宽度)) {
+      ctx.moveTo(x + 半边框宽度, y + 半边框宽度)
+      ctx.lineTo(x + 格宽 - 半边框宽度, y + 半边框宽度)
+    }
+    if (行 === 状态.高度 - 1 || !是确认山(索引 + 状态.宽度)) {
+      ctx.moveTo(x + 半边框宽度, y + 格高 - 半边框宽度)
+      ctx.lineTo(x + 格宽 - 半边框宽度, y + 格高 - 半边框宽度)
+    }
+    if (列 === 0 || !是确认山(索引 - 1)) {
+      ctx.moveTo(x + 半边框宽度, y + 半边框宽度)
+      ctx.lineTo(x + 半边框宽度, y + 格高 - 半边框宽度)
+    }
+    if (列 === 状态.宽度 - 1 || !是确认山(索引 + 1)) {
+      ctx.moveTo(x + 格宽 - 半边框宽度, y + 半边框宽度)
+      ctx.lineTo(x + 格宽 - 半边框宽度, y + 格高 - 半边框宽度)
+    }
+
+    ctx.stroke()
+  }
 }
 
 function 画障碍物文字({ ctx, 格宽, 格高, 大小 }) {
