@@ -23,6 +23,7 @@ export const socket功能 = {
   id: 功能定义.id,
   新局重置() {
     状态.已知障碍物集合.clear()
+    状态.不可达区域集合.clear()
   },
 }
 
@@ -64,6 +65,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   ctx.fillStyle = '#000000'
   状态.已知障碍物集合.forEach((障碍物索引) => {
     const 当前地形 = 读取地图归属(地图数组, 障碍物索引)
+    const 是不可达区域 = 状态.不可达区域集合.has(障碍物索引)
     if (
       !Number.isInteger(障碍物索引) ||
       障碍物索引 < 0 ||
@@ -73,7 +75,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
       return
     }
     if (地图可读(地图数组)) {
-      if (Number.isInteger(当前地形) && 当前地形 >= -1) return
+      if (Number.isInteger(当前地形) && 当前地形 >= -1 && !是不可达区域) return
     }
     const 行 = Math.floor(障碍物索引 / 状态.宽度)
     const 列 = 障碍物索引 % 状态.宽度
@@ -92,7 +94,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   function 是确认山(索引) {
     return (
       状态.已知障碍物集合.has(索引) &&
-      状态.已确认视野集合.has(索引) &&
+      (状态.已确认视野集合.has(索引) || 状态.不可达区域集合.has(索引)) &&
       !状态.已知塔集合.has(索引)
     )
   }
@@ -237,6 +239,7 @@ function 画障碍物文字({ ctx, 格宽, 格高, 大小 }) {
       障碍物索引 < 0 ||
       障碍物索引 >= 格子数 ||
       状态.已知塔集合.has(障碍物索引) ||
+      状态.不可达区域集合.has(障碍物索引) ||
       状态.已确认视野集合.has(障碍物索引)
     ) {
       return
@@ -274,6 +277,10 @@ export function 记录已知障碍物(数据包) {
   if (!地图可读(地图数组)) return
 
   const 格子数 = 取得地图格子数(地图数组)
+  状态.不可达区域集合.forEach((索引) => {
+    状态.已知障碍物集合.delete(索引)
+  })
+  状态.不可达区域集合.clear()
 
   const 塔索引集合 = new Set(状态.已知塔集合)
   const 当前塔信息 = 取得本次塔列表(数据包)
@@ -291,6 +298,76 @@ export function 记录已知障碍物(数据包) {
     } else if (Number.isInteger(地形) && 地形 >= -1) {
       状态.已知障碍物集合.delete(idx)
     }
+  }
+  记录不可达区域()
+
+  function 记录不可达区域() {
+    const 已访问集合 = new Set()
+    for (let idx = 0; idx < 格子数; idx += 1) {
+      if (已访问集合.has(idx) || !是可标记不可达格(idx)) continue
+
+      const 区域列表 = []
+      const 队列 = [idx]
+      let 队列头 = 0
+      let 被确认山包围 = true
+      已访问集合.add(idx)
+
+      while (队列头 < 队列.length) {
+        const 当前索引 = 队列[队列头]
+        队列头 += 1
+        区域列表.push(当前索引)
+
+        检查相邻(当前索引, -1, 0)
+        检查相邻(当前索引, 1, 0)
+        检查相邻(当前索引, 0, -1)
+        检查相邻(当前索引, 0, 1)
+      }
+
+      if (!被确认山包围) continue
+      区域列表.forEach((区域索引) => {
+        状态.不可达区域集合.add(区域索引)
+        状态.已知障碍物集合.add(区域索引)
+      })
+
+      function 检查相邻(当前索引, 行偏移, 列偏移) {
+        const 相邻索引 = 取得相邻索引(当前索引, 行偏移, 列偏移)
+        if (!Number.isInteger(相邻索引)) {
+          被确认山包围 = false
+          return
+        }
+        if (是可标记不可达格(相邻索引)) {
+          if (!已访问集合.has(相邻索引)) {
+            已访问集合.add(相邻索引)
+            队列.push(相邻索引)
+          }
+        } else if (!是确认阻挡山(相邻索引)) {
+          被确认山包围 = false
+        }
+      }
+    }
+  }
+
+  function 是可标记不可达格(索引) {
+    if (状态.已知障碍物集合.has(索引)) return false
+    if (塔索引集合.has(索引)) return false
+    if (状态.已知基地集合.has(索引)) return false
+    if (状态.已知敌方基地集合.has(索引)) return false
+    return 读取地图归属(地图数组, 索引) === -1
+  }
+
+  function 是确认阻挡山(索引) {
+    return (
+      状态.已知障碍物集合.has(索引) &&
+      状态.已确认视野集合.has(索引) &&
+      !塔索引集合.has(索引)
+    )
+  }
+
+  function 取得相邻索引(索引, 行偏移, 列偏移) {
+    const 行 = Math.floor(索引 / 状态.宽度) + 行偏移
+    const 列 = (索引 % 状态.宽度) + 列偏移
+    if (行 < 0 || 行 >= 状态.高度 || 列 < 0 || 列 >= 状态.宽度) return null
+    return 行 * 状态.宽度 + 列
   }
 }
 
