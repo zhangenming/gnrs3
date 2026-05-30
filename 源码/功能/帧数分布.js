@@ -379,6 +379,16 @@ function 取得图表配置(分布列表) {
         barMinWidth: 3,
         barMaxWidth: 16,
         data: 分布列表.map((数据点) => 数据点.数量),
+        label: {
+          show: true,
+          position: 'top',
+          color: '#f7fbff',
+          fontWeight: 900,
+          fontSize: 11,
+          formatter(参数) {
+            return String(参数.value)
+          },
+        },
         itemStyle: {
           color: 柱状图颜色,
           borderRadius: [2, 2, 0, 0],
