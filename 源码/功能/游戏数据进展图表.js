@@ -272,7 +272,7 @@ function 加载ECharts() {
 
 function 渲染图表(echarts, 面板) {
   const 图表元素 = 面板.querySelector(`.${图表类名}`)
-  if (!图表元素) return
+  if (!图表元素可用(图表元素)) return
 
   if (图表实例 && 图表实例.getDom?.() !== 图表元素) {
     图表实例.dispose()
@@ -286,8 +286,13 @@ function 渲染图表(echarts, 面板) {
   图表实例.setOption(取得图表配置(), true)
   图表渲染签名 = 渲染签名
   requestAnimationFrame(() => {
+    if (!图表元素可用(图表实例?.getDom?.())) return
     图表实例?.resize()
   })
+}
+
+function 图表元素可用(图表元素) {
+  return Boolean(图表元素?.isConnected && 图表元素.offsetParent)
 }
 
 function 取得图表渲染签名(图表元素) {

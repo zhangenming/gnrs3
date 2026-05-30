@@ -283,7 +283,7 @@ function 加载ECharts() {
 
 function 渲染图表(echarts, 面板) {
   const 图表元素 = 面板.querySelector(`.${图表类名}`)
-  if (!图表元素) return
+  if (!图表元素可用(图表元素)) return
 
   const 分布列表 = 取得帧耗时分布()
   更新面板状态(面板, 分布列表)
@@ -304,13 +304,18 @@ function 渲染图表(echarts, 面板) {
     return
   }
 
-  if (!图表实例 || 图表实例.isDisposed?.()) {
-    图表实例 = echarts.init(图表元素)
-  } else {
-    图表实例.resize()
+  if (图表实例 && 图表实例.getDom?.() !== 图表元素) {
+    图表实例.dispose()
+    图表实例 = null
+    图表渲染签名 = ''
   }
+  图表实例 ??= echarts.getInstanceByDom(图表元素) ?? echarts.init(图表元素)
   图表实例.setOption(取得图表配置(分布列表), true)
   图表渲染签名 = 渲染签名
+}
+
+function 图表元素可用(图表元素) {
+  return Boolean(图表元素?.isConnected && 图表元素.offsetParent)
 }
 
 function 取得图表配置(分布列表) {
