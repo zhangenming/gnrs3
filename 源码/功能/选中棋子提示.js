@@ -21,6 +21,7 @@ let 已安装选中监听 = false
 
 export const 覆盖层功能 = {
   id: 功能定义.id,
+  层级: 1000,
   需要绘制() {
     return Number.isInteger(取得选中棋子索引())
   },
