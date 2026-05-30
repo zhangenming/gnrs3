@@ -19,7 +19,6 @@ const ECharts地址 =
 const 图表更新间隔 = 1000
 const 柱状图颜色 = 我方蓝色
 
-let 帧数分布面板 = null
 let 图表实例 = null
 let ECharts加载Promise = null
 let 正在等待ECharts = false
@@ -173,10 +172,7 @@ function 停止帧数采样() {
 }
 
 function 确保面板() {
-  let 面板 = 帧数分布面板
-  if (!面板 || !document.documentElement.contains(面板)) {
-    面板 = document.querySelector(`.${面板类名}`)
-  }
+  let 面板 = document.querySelector(`.${面板类名}`)
   if (!面板) {
     面板 = document.createElement('section')
     面板.className = 面板类名
@@ -194,12 +190,10 @@ function 确保面板() {
   const 宿主 = 取得右侧宿主()
   if (!宿主) {
     面板.remove()
-    帧数分布面板 = null
     return null
   }
   if (面板.parentElement !== 宿主) 宿主.appendChild(面板)
 
-  帧数分布面板 = 面板
   return 面板
 }
 
@@ -395,8 +389,7 @@ function 取得图表配置(分布列表) {
 }
 
 function 移除帧数分布面板() {
-  帧数分布面板?.remove()
-  帧数分布面板 = null
+  document.querySelector(`.${面板类名}`)?.remove()
   图表实例?.dispose()
   图表实例 = null
   图表渲染签名 = ''
