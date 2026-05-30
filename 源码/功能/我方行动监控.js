@@ -320,12 +320,12 @@ function 同步我方行动监控UI() {
       面板.innerHTML =
         '<div class="gio-action-watch-head">' +
         '<span class="gio-action-watch-title">我方行动监控</span>' +
-        '</div>' +
         '<div class="gio-action-watch-legend">' +
         '<span data-gio-action-watch-kind="idle">空闲</span>' +
         '<span data-gio-action-watch-kind="gather">集兵</span>' +
         '<span data-gio-action-watch-kind="expand">扩地(开塔)</span>' +
         '<span data-gio-action-watch-kind="fight">吃地(抢塔)</span>' +
+        '</div>' +
         '</div>' +
         `<div class="gio-action-watch-list"><canvas class="${画布类名}"></canvas><span class="gio-action-watch-empty">等待回合</span></div>`
     }
@@ -624,8 +624,8 @@ function 安装样式() {
 .gio-action-watch-legend {
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 4px;
-    margin-bottom: 6px;
 }
 .gio-action-watch-legend span {
     box-sizing: border-box;
