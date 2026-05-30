@@ -19,14 +19,13 @@ const ECharts地址 =
 const 图表更新间隔 = 1000
 const 柱状图颜色 = 我方蓝色
 
-const raf = []
+let 帧数分布面板 = null
 let 图表实例 = null
 let ECharts加载Promise = null
 let 正在等待ECharts = false
 let 采样动画帧编号 = 0
 let 上次图表更新时间 = 0
 let 图表渲染签名 = ''
-let 对局正在记录 = false
 
 export const 功能定义 = {
   id: '帧数分布',
@@ -60,19 +59,21 @@ export const socket功能 = {
 
 export function 更新帧数分布() {
   if (!功能已启用('帧数分布')) {
+    状态.帧数分布数据.正在记录 = false
     移除帧数分布面板()
     停止帧数采样()
     return
   }
   if (!document.body) return
   if (!document.querySelector('#game-page #gameMap')) {
+    状态.帧数分布数据.正在记录 = false
     移除帧数分布面板()
     停止帧数采样()
     return
   }
 
   安装样式()
-  if (对局正在记录) {
+  if (状态.帧数分布数据.正在记录) {
     启动帧数采样()
   } else {
     停止帧数采样()
@@ -81,7 +82,7 @@ export function 更新帧数分布() {
   if (!面板) return
 
   更新面板状态(面板)
-  if (raf.length < 2) return
+  if (状态.帧数分布数据.raf.length < 2) return
 
   if (globalThis.echarts?.init) {
     渲染图表(globalThis.echarts, 面板)
@@ -103,27 +104,29 @@ export function 更新帧数分布() {
 }
 
 export function 重置帧数分布() {
-  对局正在记录 = false
+  状态.帧数分布数据.正在记录 = false
   停止帧数采样()
   清空帧数分布数据()
   更新帧数分布()
 }
 
 function 开始帧数分布新局() {
-  对局正在记录 = true
+  状态.帧数分布数据.正在记录 = true
   停止帧数采样()
   清空帧数分布数据()
 }
 
 function 结束帧数分布记录() {
-  if (!对局正在记录 && !采样动画帧编号) return
-  对局正在记录 = false
+  if (!状态.帧数分布数据.正在记录 && !采样动画帧编号) return
+  状态.帧数分布数据.正在记录 = false
   停止帧数采样()
   更新帧数分布()
 }
 
 function 清空帧数分布数据() {
-  raf.length = 0
+  状态.帧数分布数据.raf.length = 0
+  状态.帧数分布数据.耗时分布 = []
+  状态.帧数分布数据.样本数 = 0
   上次图表更新时间 = 0
   图表渲染签名 = ''
   图表实例?.clear()
@@ -133,14 +136,14 @@ function 启动帧数采样() {
   if (采样动画帧编号) return
 
   采样动画帧编号 = requestAnimationFrame(function 统计帧数分布(时间) {
-    raf.push(时间)
+    状态.帧数分布数据.raf.push(时间)
     if (时间 - 上次图表更新时间 >= 图表更新间隔) {
       上次图表更新时间 = 时间
       更新帧数分布()
     }
 
     if (
-      对局正在记录 &&
+      状态.帧数分布数据.正在记录 &&
       功能已启用('帧数分布') &&
       document.querySelector('#game-page #gameMap')
     ) {
@@ -170,7 +173,7 @@ function 停止帧数采样() {
 }
 
 function 确保面板() {
-  let 面板 = 状态.帧数分布面板
+  let 面板 = 帧数分布面板
   if (!面板 || !document.documentElement.contains(面板)) {
     面板 = document.querySelector(`.${面板类名}`)
   }
@@ -191,12 +194,12 @@ function 确保面板() {
   const 宿主 = 取得右侧宿主()
   if (!宿主) {
     面板.remove()
-    状态.帧数分布面板 = null
+    帧数分布面板 = null
     return null
   }
   if (面板.parentElement !== 宿主) 宿主.appendChild(面板)
 
-  状态.帧数分布面板 = 面板
+  帧数分布面板 = 面板
   return 面板
 }
 
@@ -214,7 +217,9 @@ function 取得右侧宿主() {
 
 function 更新面板状态(面板, 已有分布列表 = null) {
   const 分布列表 = 已有分布列表 ?? 取得帧耗时分布()
-  const 样本数 = Math.max(0, raf.length - 1)
+  const 样本数 = Math.max(0, 状态.帧数分布数据.raf.length - 1)
+  状态.帧数分布数据.耗时分布 = 分布列表
+  状态.帧数分布数据.样本数 = 样本数
   const 空状态 = 分布列表.length ? 'false' : 'true'
   if (面板.dataset.gioFrameDistributionEmpty !== 空状态) {
     面板.dataset.gioFrameDistributionEmpty = 空状态
@@ -226,6 +231,7 @@ function 更新面板状态(面板, 已有分布列表 = null) {
 }
 
 function 取得帧耗时分布() {
+  const raf = 状态.帧数分布数据.raf
   const 分组 = Object.groupBy(
     raf.map((e, i, a) => (a[i + 1] - e).toFixed(1)).slice(0, -1),
     (e) => e,
@@ -389,8 +395,8 @@ function 取得图表配置(分布列表) {
 }
 
 function 移除帧数分布面板() {
-  状态.帧数分布面板?.remove()
-  状态.帧数分布面板 = null
+  帧数分布面板?.remove()
+  帧数分布面板 = null
   图表实例?.dispose()
   图表实例 = null
   图表渲染签名 = ''
