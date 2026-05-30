@@ -95,6 +95,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   function 画山边框(索引, 行, 列, x, y) {
     ctx.beginPath()
     ctx.lineWidth = 边框宽度
+    ctx.lineCap = 'square'
     ctx.strokeStyle = '#ffd84d'
 
     if (行 === 0 || !是确认山(索引 - 状态.宽度)) {
@@ -115,6 +116,34 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
     }
 
     ctx.stroke()
+    画对角山连接(索引, 行, 列, x, y)
+  }
+
+  function 画对角山连接(索引, 行, 列, x, y) {
+    const 半径 = 边框宽度 * 0.72
+    ctx.fillStyle = '#ffd84d'
+    if (
+      行 < 状态.高度 - 1 &&
+      列 < 状态.宽度 - 1 &&
+      是确认山(索引 + 状态.宽度 + 1) &&
+      !是确认山(索引 + 1) &&
+      !是确认山(索引 + 状态.宽度)
+    ) {
+      ctx.beginPath()
+      ctx.arc(x + 格宽, y + 格高, 半径, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    if (
+      行 > 0 &&
+      列 < 状态.宽度 - 1 &&
+      是确认山(索引 - 状态.宽度 + 1) &&
+      !是确认山(索引 + 1) &&
+      !是确认山(索引 - 状态.宽度)
+    ) {
+      ctx.beginPath()
+      ctx.arc(x + 格宽, y, 半径, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 }
 
