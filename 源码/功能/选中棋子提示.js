@@ -185,27 +185,27 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
   ctx.save()
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.shadowColor = 'rgba(255, 255, 255, 0.9)'
+  ctx.shadowColor = 'rgba(255, 38, 38, 0.92)'
   ctx.shadowBlur = Math.max(6, 大小 * (0.18 + 扩张比例 * 0.12))
 
   ctx.globalAlpha = 1
   ctx.lineWidth = 外线宽 + Math.max(4, 大小 * 0.1)
-  ctx.strokeStyle = '#000000'
+  ctx.strokeStyle = '#4b0000'
   画整框()
 
   ctx.lineWidth = 外线宽
-  ctx.strokeStyle = '#ffffff'
+  ctx.strokeStyle = '#ff3030'
   画整框()
 
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.72)'
+  ctx.shadowColor = 'rgba(80, 0, 0, 0.76)'
   ctx.shadowBlur = Math.max(4, 大小 * 0.12)
   ctx.lineWidth = 外线宽 + Math.max(2, 大小 * 0.04)
-  ctx.strokeStyle = '#000000'
+  ctx.strokeStyle = '#4b0000'
   画四角()
 
   ctx.shadowColor = 'transparent'
   ctx.lineWidth = 内线宽
-  ctx.strokeStyle = '#ffffff'
+  ctx.strokeStyle = '#ffb3b3'
   画四角()
 
   画选中倒计时()
