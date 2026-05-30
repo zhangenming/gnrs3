@@ -174,45 +174,43 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
   const y = 行 * 格高
   const 中心x = 列 * 格宽 + 格宽 / 2
   const 中心y = 行 * 格高 + 格高 / 2
-  const 显示白框 = Math.floor(当前动画时间 / 140) % 2 === 0
+  const 动画相位 = (当前动画时间 % 820) / 820
+  const 扩张比例 = 0.5 - Math.cos(动画相位 * Math.PI * 2) / 2
   const 边距 = Math.max(2, 大小 * 0.06)
-  const 外线宽 = Math.max(4, 大小 * 0.14)
+  const 外线宽 = Math.max(4, 大小 * (0.12 + 扩张比例 * 0.04))
   const 内线宽 = Math.max(2, 大小 * 0.055)
-  const 角长 = Math.max(9, 大小 * 0.34)
-  const 内缩 = 边距 + 外线宽 / 2
-  const 主色 = 显示白框 ? '#ffffff' : '#000000'
-  const 描边色 = 显示白框 ? '#000000' : '#ffffff'
+  const 角长 = Math.max(9, 大小 * (0.3 + 扩张比例 * 0.08))
+  const 扩张 = Math.max(3, 大小 * 0.13) * 扩张比例
+  const 内缩 = Math.max(1, 边距 + 外线宽 / 2 - 扩张)
 
   ctx.save()
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.shadowColor = 显示白框
-    ? 'rgba(255, 255, 255, 0.95)'
-    : 'rgba(0, 0, 0, 0.95)'
-  ctx.shadowBlur = Math.max(8, 大小 * 0.28)
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.9)'
+  ctx.shadowBlur = Math.max(6, 大小 * (0.18 + 扩张比例 * 0.12))
 
   ctx.globalAlpha = 1
   ctx.lineWidth = 外线宽 + Math.max(4, 大小 * 0.1)
-  ctx.strokeStyle = 描边色
+  ctx.strokeStyle = '#000000'
   画整框()
 
   ctx.lineWidth = 外线宽
-  ctx.strokeStyle = 主色
+  ctx.strokeStyle = '#ffffff'
   画整框()
 
-  ctx.shadowColor = 显示白框 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)'
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.72)'
   ctx.shadowBlur = Math.max(4, 大小 * 0.12)
   ctx.lineWidth = 外线宽 + Math.max(2, 大小 * 0.04)
-  ctx.strokeStyle = 描边色
+  ctx.strokeStyle = '#000000'
   画四角()
 
   ctx.shadowColor = 'transparent'
   ctx.lineWidth = 内线宽
-  ctx.strokeStyle = 主色
+  ctx.strokeStyle = '#ffffff'
   画四角()
 
   ctx.lineWidth = Math.max(2, 大小 * 0.05)
-  ctx.strokeStyle = 主色
+  ctx.strokeStyle = '#000000'
   画边缘定位线()
 
   画选中倒计时()
