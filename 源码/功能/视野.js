@@ -46,6 +46,7 @@ export const 覆盖层功能 = {
 export function 有未到达视野标记() {
   if (!任一功能已启用('未到达视野', '敌方基地推测')) return false
   if (!状态.宽度 || !状态.高度) return false
+  if (状态.已知敌方基地集合.size) return false
   return 状态.已到达视野集合.size < 状态.宽度 * 状态.高度
 }
 
