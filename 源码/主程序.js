@@ -6,7 +6,7 @@ import { 挂钩socket } from './socket挂钩.js'
 import { 安装功能控制UI } from './功能控制面板.js'
 import { 安装功能恢复 } from './功能恢复.js'
 import { 初始化功能开关 } from './功能开关.js'
-import { 主程序功能列表 } from './功能注册.js'
+import { 主程序功能列表, 功能样式列表 } from './功能注册.js'
 
 let 已请求页面同步 = false
 
@@ -22,6 +22,7 @@ function 启动() {
   初始化功能开关()
   暴露调试接口(请求渲染, 清空覆盖层)
   安装注入成功样式()
+  安装功能样式()
   安装功能控制UI()
   安装功能恢复()
   执行主程序Hook('启动')
@@ -200,6 +201,10 @@ function 安装注入成功样式() {
     }
   `,
   )
+}
+
+function 安装功能样式() {
+  安装样式('gio-功能样式', 功能样式列表.join('\n'))
 }
 
 function 标记注入成功按钮() {

@@ -6,7 +6,7 @@
 // 具体功能的判断、绘制和动画状态放在对应功能文件里。
 import { 样式编号, 覆盖层类名, 覆盖层层级 } from './配置.js'
 import { 功能已启用 } from './功能状态.js'
-import { 覆盖层功能列表, 功能样式列表 } from './功能注册.js'
+import { 覆盖层功能列表 } from './功能注册.js'
 import { 状态 } from './状态.js'
 import { 安装样式 as 注入样式 } from './工具.js'
 import { 取游戏画布, 取宿主 } from './游戏工具.js'
@@ -268,7 +268,6 @@ function 安装样式() {
 .gio-tower-memory-host {
     position: relative !important;
 }
-${功能样式列表.join('\n')}
 `,
   )
 }
