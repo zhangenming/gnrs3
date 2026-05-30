@@ -51,7 +51,7 @@ const 障碍物文字覆盖层功能 = {
   绘制: 画障碍物文字,
 }
 
-export function 画障碍物底色({ ctx, 格宽, 格高 }) {
+export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   if (!状态.已知障碍物集合.size) return
 
   const 格子数 = 状态.宽度 * 状态.高度
@@ -78,6 +78,14 @@ export function 画障碍物底色({ ctx, 格宽, 格高 }) {
     const y = 行 * 格高
     ctx.fillStyle = '#000000'
     ctx.fillRect(x, y, 格宽, 格高)
+    ctx.lineWidth = Math.max(2, Math.min(3, 大小 * 0.08))
+    ctx.strokeStyle = '#ffd84d'
+    ctx.strokeRect(
+      x + ctx.lineWidth / 2,
+      y + ctx.lineWidth / 2,
+      格宽 - ctx.lineWidth,
+      格高 - ctx.lineWidth,
+    )
   })
   ctx.restore()
 }
