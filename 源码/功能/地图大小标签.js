@@ -420,9 +420,7 @@ function 安装地图大小标签样式() {
 }
 
 #${地图大小元素编号} .gio-map-size-wrap-row {
-    flex-wrap: wrap !important;
-    max-width: 330px !important;
-    row-gap: 2px !important;
+    flex-wrap: nowrap !important;
 }
 
 #${地图大小元素编号} .gio-map-size-min-fps,
