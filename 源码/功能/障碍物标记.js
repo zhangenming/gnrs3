@@ -58,6 +58,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   const 地图数组 = 状态.地图数组
   const 边框宽度 = Math.max(2, Math.min(3, 大小 * 0.08))
   const 圆角半径 = 边框宽度 * 1.1
+  const 确认山交点集合 = new Set()
 
   ctx.save()
   ctx.fillStyle = '#000000'
@@ -80,8 +81,12 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
     const y = 行 * 格高
     ctx.fillStyle = '#000000'
     ctx.fillRect(x, y, 格宽, 格高)
-    if (是确认山(障碍物索引)) 画山边框(障碍物索引, 行, 列, x, y)
+    if (是确认山(障碍物索引)) {
+      记录确认山交点(行, 列)
+      画山边框(障碍物索引, 行, 列, x, y)
+    }
   })
+  画确认山交点连接()
   ctx.restore()
 
   function 是确认山(索引) {
@@ -90,6 +95,38 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
       状态.已确认视野集合.has(索引) &&
       !状态.已知塔集合.has(索引)
     )
+  }
+
+  function 记录确认山交点(行, 列) {
+    确认山交点集合.add(`${行},${列}`)
+    确认山交点集合.add(`${行},${列 + 1}`)
+    确认山交点集合.add(`${行 + 1},${列}`)
+    确认山交点集合.add(`${行 + 1},${列 + 1}`)
+  }
+
+  function 画确认山交点连接() {
+    ctx.fillStyle = '#ffd84d'
+    确认山交点集合.forEach((交点键) => {
+      const 分隔位置 = 交点键.indexOf(',')
+      const 行 = Number.parseInt(交点键.slice(0, 分隔位置), 10)
+      const 列 = Number.parseInt(交点键.slice(分隔位置 + 1), 10)
+      if (取得交点周围确认山数量(行, 列) < 2) return
+      画圆角连接(列 * 格宽, 行 * 格高)
+    })
+  }
+
+  function 取得交点周围确认山数量(交点行, 交点列) {
+    let 数量 = 0
+    for (let 行偏移 = -1; 行偏移 <= 0; 行偏移 += 1) {
+      const 山行 = 交点行 + 行偏移
+      if (山行 < 0 || 山行 >= 状态.高度) continue
+      for (let 列偏移 = -1; 列偏移 <= 0; 列偏移 += 1) {
+        const 山列 = 交点列 + 列偏移
+        if (山列 < 0 || 山列 >= 状态.宽度) continue
+        if (是确认山(山行 * 状态.宽度 + 山列)) 数量 += 1
+      }
+    }
+    return 数量
   }
 
   function 画山边框(索引, 行, 列, x, y) {
@@ -111,11 +148,6 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
     if (有右边) {
       ctx.fillRect(x + 格宽 - 边框宽度, y, 边框宽度, 格高)
     }
-
-    if (有上边 && 有左边) 画圆角连接(x, y)
-    if (有上边 && 有右边) 画圆角连接(x + 格宽, y)
-    if (有下边 && 有左边) 画圆角连接(x, y + 格高)
-    if (有下边 && 有右边) 画圆角连接(x + 格宽, y + 格高)
 
     画对角山连接(索引, 行, 列, x, y)
   }
