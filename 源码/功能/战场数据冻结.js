@@ -1,13 +1,7 @@
 // 功能目的:
 // 游戏结束时冻结右侧战场数据表，保留结束前一回合的塔数、Army 和 Land。
 import { 状态 } from '../状态.js'
-
-const 游戏结束事件集合 = new Set([
-  'game_lost',
-  'game_won',
-  'game_over',
-  'game_end',
-])
+import { 是游戏结束事件 } from '../游戏工具.js'
 
 export const socket功能 = {
   id: '战场数据冻结',
@@ -24,7 +18,7 @@ export function 处理战场数据冻结事件(事件名, 数据包) {
 }
 
 export function 是战场数据冻结事件(事件名, 数据包) {
-  return 游戏结束事件集合.has(事件名) || 包含已结束分数(数据包)
+  return 是游戏结束事件(事件名) || 包含已结束分数(数据包)
 }
 
 export function 重置战场数据冻结() {

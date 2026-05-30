@@ -7,6 +7,7 @@ import { 我方蓝色, 样式编号 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 安装样式 as 注入样式 } from '../工具.js'
+import { 是游戏结束事件 } from '../游戏工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
 
 const 面板类名 = 'gio-frame-distribution-panel'
@@ -17,12 +18,6 @@ const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
 const 图表更新间隔 = 1000
 const 柱状图颜色 = 我方蓝色
-const 游戏结束事件集合 = new Set([
-  'game_lost',
-  'game_won',
-  'game_over',
-  'game_end',
-])
 
 const raf = []
 let 图表实例 = null
@@ -157,7 +152,7 @@ function 启动帧数采样() {
 }
 
 function 是游戏结束数据(事件名, 数据包) {
-  return 游戏结束事件集合.has(事件名) || 包含死亡分数(数据包)
+  return 是游戏结束事件(事件名) || 包含死亡分数(数据包)
 }
 
 function 包含死亡分数(数据包) {
