@@ -6,6 +6,7 @@
 // 覆盖层会把未到达视野的区域铺上背景色，帮助 1v1 中判断哪些方向仍缺少侦察信息。
 import { 玩家最小距离 } from '../配置.js'
 import { 取得地图格子数, 地图可读, 是我方或队友 } from '../游戏.js'
+import { 是迷雾地形 } from '../游戏工具.js'
 import { 任一功能已启用 } from '../功能状态.js'
 import { 未到达视野背景色 } from '../配置.js'
 import { 状态 } from '../状态.js'
@@ -92,6 +93,11 @@ export function 记录已到达视野(数据包) {
 
   const 格子数 = 取得地图格子数(地图数组)
 
+  if (地图已完全揭开(地图数组, 格子数)) {
+    记录全图已确认(格子数)
+    return
+  }
+
   if (Array.isArray(数据包?.generals)) {
     for (let 玩家索引 = 0; 玩家索引 < 数据包.generals.length; 玩家索引 += 1) {
       const 基地索引 = 数据包.generals[玩家索引]
@@ -138,6 +144,20 @@ export function 记录已到达视野(数据包) {
         if (列 < 0 || 列 >= 状态.宽度) continue
         状态.已到达视野集合.add(行 * 状态.宽度 + 列)
       }
+    }
+  }
+
+  function 地图已完全揭开(地图数组, 格子数) {
+    for (let idx = 0; idx < 格子数; idx += 1) {
+      if (是迷雾地形(地图数组[2 + 格子数 + idx])) return false
+    }
+    return true
+  }
+
+  function 记录全图已确认(格子数) {
+    for (let idx = 0; idx < 格子数; idx += 1) {
+      状态.已到达视野集合.add(idx)
+      状态.已确认视野集合.add(idx)
     }
   }
 }

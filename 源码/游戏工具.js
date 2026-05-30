@@ -24,6 +24,7 @@ const 游戏结束事件集合 = new Set([
   'game_end',
 ])
 const 阻挡地形集合 = new Set([-2, -4, -5, -6])
+const 迷雾地形 = -3
 
 export function 是游戏结束事件(事件名) {
   return 游戏结束事件集合.has(事件名)
@@ -31,6 +32,10 @@ export function 是游戏结束事件(事件名) {
 
 export function 是阻挡地形(地形) {
   return 阻挡地形集合.has(地形)
+}
+
+export function 是迷雾地形(地形) {
+  return 地形 === 迷雾地形
 }
 
 export function 取得周期增长次数(起始回合, 目标回合, 周期) {
