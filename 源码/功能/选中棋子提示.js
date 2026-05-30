@@ -176,12 +176,11 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
   const 中心y = 行 * 格高 + 格高 / 2
   const 动画相位 = (当前动画时间 % 820) / 820
   const 扩张比例 = 0.5 - Math.cos(动画相位 * Math.PI * 2) / 2
-  const 边距 = Math.max(2, 大小 * 0.06)
   const 外线宽 = Math.max(4, 大小 * (0.12 + 扩张比例 * 0.04))
   const 内线宽 = Math.max(2, 大小 * 0.055)
-  const 角长 = Math.max(9, 大小 * (0.3 + 扩张比例 * 0.08))
-  const 扩张 = Math.max(3, 大小 * 0.13) * 扩张比例
-  const 内缩 = Math.max(1, 边距 + 外线宽 / 2 - 扩张)
+  const 角长 = Math.max(7, 大小 * (0.22 + 扩张比例 * 0.04))
+  const 扩张 = Math.max(2, 大小 * 0.08) * 扩张比例
+  const 内缩 = Math.max(0.5, 外线宽 / 2 + 0.5 - 扩张)
 
   ctx.save()
   ctx.lineCap = 'round'
@@ -208,10 +207,6 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
   ctx.lineWidth = 内线宽
   ctx.strokeStyle = '#ffffff'
   画四角()
-
-  ctx.lineWidth = Math.max(2, 大小 * 0.05)
-  ctx.strokeStyle = '#000000'
-  画边缘定位线()
 
   画选中倒计时()
   ctx.restore()
@@ -246,20 +241,6 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
     ctx.moveTo(左 + 角长, 下)
     ctx.lineTo(左, 下)
     ctx.lineTo(左, 下 - 角长)
-    ctx.stroke()
-  }
-
-  function 画边缘定位线() {
-    const 偏移 = Math.max(1, 大小 * 0.03)
-    ctx.beginPath()
-    ctx.moveTo(中心x, y + 偏移)
-    ctx.lineTo(中心x, y + Math.max(5, 大小 * 0.22))
-    ctx.moveTo(中心x, y + 格高 - 偏移)
-    ctx.lineTo(中心x, y + 格高 - Math.max(5, 大小 * 0.22))
-    ctx.moveTo(x + 偏移, 中心y)
-    ctx.lineTo(x + Math.max(5, 大小 * 0.22), 中心y)
-    ctx.moveTo(x + 格宽 - 偏移, 中心y)
-    ctx.lineTo(x + 格宽 - Math.max(5, 大小 * 0.22), 中心y)
     ctx.stroke()
   }
 
