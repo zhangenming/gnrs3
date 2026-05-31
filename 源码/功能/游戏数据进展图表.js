@@ -186,7 +186,6 @@ function 确保面板() {
   }
 
   面板.className = 'gio-data-progress-panel'
-  面板.title = '每回合统计一次我方减敌方的 Army 和 Land'
 
   const 挂载点 = 取得右侧挂载点()
   if (挂载点) {
