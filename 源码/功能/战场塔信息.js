@@ -53,14 +53,14 @@ export const 功能样式 = `
 }
 .${战场塔信息类名} .gio-battle-tower-pill {
     display: inline-flex;
-    flex-direction: column;
-    align-items: stretch;
+    align-items: center;
+    justify-content: center;
     margin: 0 auto;
-    padding: 3px 6px;
-    border-radius: 10px;
+    padding: 5px 10px;
+    border-radius: 12px;
     background-color: #d8d8d8;
     color: #000000 !important;
-    font: 700 10px/1.12 Arial, sans-serif;
+    font: 700 13px/1.15 Arial, sans-serif;
     text-shadow: none !important;
 }
 .${战场塔信息类名}[data-gio-tower-diff="advantage"] .gio-battle-tower-pill {
@@ -76,7 +76,7 @@ export const 功能样式 = `
     display: flex;
     align-items: baseline;
     justify-content: center;
-    gap: 3px;
+    gap: 4px;
     color: #ffffff !important;
 }
 .${战场塔信息类名} .gio-battle-tower-item {
@@ -122,10 +122,8 @@ export function 更新战场塔信息() {
   const 差值状态 =
     当前塔差 > 0 ? 'advantage' : 当前塔差 < 0 ? 'disadvantage' : 'even'
   const 开塔差文本 = 取得差值文本(开塔差)
-  const 当前塔差文本 = 取得差值文本(当前塔差)
   const 开塔文本 = `${开塔差文本} [${我方开塔数} ${敌方开塔数}]`
-  const 当前文本 = `${当前塔差文本} [${我方塔数} ${敌方塔数}]`
-  const 文本 = `开塔 ${开塔文本} 当前 ${当前文本}`
+  const 文本 = `开塔 ${开塔文本}`
 
   if (
     玩家表头格.classList.contains(战场塔信息类名) &&
@@ -139,17 +137,12 @@ export function 更新战场塔信息() {
   玩家表头格.dataset.gioBattlePlayerColumn = 'true'
   玩家表头格.dataset.gioTowerSummary = 文本
   玩家表头格.dataset.gioTowerDiff = 差值状态
-  玩家表头格.title =
-    '我方当前塔数/开塔数、敌方当前塔数/开塔数、塔差（我方减敌方）'
+  玩家表头格.title = '我方开塔数、敌方开塔数、开塔差（我方减敌方）'
   玩家表头格.innerHTML =
     `<span class="gio-battle-tower-pill">` +
     `<span class="gio-battle-tower-group">` +
     `<span class="gio-battle-tower-item">开塔:</span>` +
     `<span class="gio-battle-tower-value">${开塔文本}</span>` +
-    `</span>` +
-    `<span class="gio-battle-tower-group">` +
-    `<span class="gio-battle-tower-item">当前:</span>` +
-    `<span class="gio-battle-tower-value">${当前文本}</span>` +
     `</span>` +
     `</span>`
   记录战场塔信息快照(玩家表头格, 文本, 差值状态)
@@ -168,5 +161,5 @@ import { 注册功能 } from '../注册中心.js'
 注册功能({ 功能定义, 主程序功能, 功能恢复, socket功能, 功能样式 })
 
 function 取得差值文本(差值) {
-  return 差值 > 0 ? `+${差值}` : String(差值)
+  return 差值 >= 0 ? `+${差值}` : String(差值)
 }
