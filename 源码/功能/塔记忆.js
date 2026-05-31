@@ -264,23 +264,26 @@ function 是低兵中立塔(塔索引) {
 
 function 画低兵中立塔提示(ctx, x, y, 大小, 当前动画时间) {
   const 动画进度 = (当前动画时间 % 1100) / 1100
-  const 缩放 = 1 + 动画进度 * 0.5
-  const 半径 = (大小 * 0.54 * 缩放) / 2
-  const 中心x = x + 大小 / 2
-  const 中心y = y + 大小 / 2
-  const alpha = 0.82 - 动画进度 * 0.56
+  const 外扩 = 大小 * (0.14 + 动画进度 * 0.42)
+  const alpha = 0.95 - 动画进度 * 0.62
+  const 内层alpha = 0.18 + (1 - 动画进度) * 0.18
 
   ctx.save()
-  ctx.globalAlpha = Math.max(0.18, alpha)
-  ctx.fillStyle = 'rgba(255, 216, 77, 0.34)'
-  ctx.beginPath()
-  ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.lineWidth = Math.max(2, 大小 * 0.08)
-  ctx.strokeStyle = 'rgba(255, 244, 170, 0.95)'
+  ctx.globalAlpha = Math.max(0.24, 内层alpha)
+  ctx.fillStyle = 'rgba(255, 216, 77, 0.42)'
+  ctx.fillRect(x + 1, y + 1, Math.max(1, 大小 - 2), Math.max(1, 大小 - 2))
+
+  ctx.globalAlpha = Math.max(0.22, alpha)
+  ctx.lineWidth = Math.max(3, 大小 * 0.11)
+  ctx.strokeStyle = 'rgba(255, 244, 170, 1)'
   ctx.shadowColor = 'rgba(255, 216, 77, 0.9)'
-  ctx.shadowBlur = Math.max(6, 大小 * 0.22)
-  ctx.stroke()
+  ctx.shadowBlur = Math.max(10, 大小 * 0.36)
+  ctx.strokeRect(
+    x - 外扩,
+    y - 外扩,
+    Math.max(1, 大小 + 外扩 * 2),
+    Math.max(1, 大小 + 外扩 * 2),
+  )
   ctx.restore()
 }
 
