@@ -49,6 +49,7 @@ function 启动() {
     状态.页面观察器.observe(document.body, {
       childList: true,
       subtree: true,
+      zem: true,
     })
     标记注入成功按钮()
 
