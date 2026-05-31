@@ -339,10 +339,45 @@ export function 记录已知障碍物(数据包) {
       状态.已知障碍物集合.delete(idx)
     }
   }
-  记录不可达区域()
+  const 我方可达集合 = 取得我方可达集合()
+  记录不可达区域(我方可达集合)
 
-  function 记录不可达区域() {
+  function 取得我方可达集合() {
+    const 可达集合 = new Set()
+    const 起点索引 = 状态.我方基地索引
+    if (!Number.isInteger(起点索引) || 起点索引 < 0 || 起点索引 >= 格子数) {
+      return 可达集合
+    }
+    if (!是可通行格(起点索引)) return 可达集合
+
+    const 队列 = [起点索引]
+    let 队列头 = 0
+    可达集合.add(起点索引)
+
+    while (队列头 < 队列.length) {
+      const 当前索引 = 队列[队列头]
+      队列头 += 1
+
+      检查可达相邻(当前索引, -1, 0)
+      检查可达相邻(当前索引, 1, 0)
+      检查可达相邻(当前索引, 0, -1)
+      检查可达相邻(当前索引, 0, 1)
+    }
+
+    return 可达集合
+
+    function 检查可达相邻(当前索引, 行偏移, 列偏移) {
+      const 相邻索引 = 取得相邻索引(当前索引, 行偏移, 列偏移)
+      if (!Number.isInteger(相邻索引)) return
+      if (可达集合.has(相邻索引) || !是可通行格(相邻索引)) return
+      可达集合.add(相邻索引)
+      队列.push(相邻索引)
+    }
+  }
+
+  function 记录不可达区域(我方可达集合) {
     const 已访问集合 = new Set()
+    const 有我方基地可达信息 = 我方可达集合.size > 0
     for (let idx = 0; idx < 格子数; idx += 1) {
       if (已访问集合.has(idx) || !是可标记不可达格(idx)) continue
 
@@ -350,12 +385,16 @@ export function 记录已知障碍物(数据包) {
       const 队列 = [idx]
       let 队列头 = 0
       let 被确认山包围 = true
+      let 区域可从我方基地到达 = 我方可达集合.has(idx)
       已访问集合.add(idx)
 
       while (队列头 < 队列.length) {
         const 当前索引 = 队列[队列头]
         队列头 += 1
         区域列表.push(当前索引)
+        if (我方可达集合.has(当前索引)) {
+          区域可从我方基地到达 = true
+        }
 
         检查相邻(当前索引, -1, 0)
         检查相邻(当前索引, 1, 0)
@@ -363,7 +402,8 @@ export function 记录已知障碍物(数据包) {
         检查相邻(当前索引, 0, 1)
       }
 
-      if (!被确认山包围) continue
+      const 是我方基地不可达区域 = 有我方基地可达信息 && !区域可从我方基地到达
+      if (!被确认山包围 && !是我方基地不可达区域) continue
       区域列表.forEach((区域索引) => {
         状态.不可达区域集合.add(区域索引)
         状态.已知障碍物集合.add(区域索引)
@@ -380,6 +420,8 @@ export function 记录已知障碍物(数据包) {
             已访问集合.add(相邻索引)
             队列.push(相邻索引)
           }
+        } else if (我方可达集合.has(相邻索引)) {
+          区域可从我方基地到达 = true
         } else if (!是确认阻挡山(相邻索引)) {
           被确认山包围 = false
         }
@@ -401,6 +443,13 @@ export function 记录已知障碍物(数据包) {
       状态.已确认视野集合.has(索引) &&
       !塔索引集合.has(索引)
     )
+  }
+
+  function 是可通行格(索引) {
+    if (!Number.isInteger(索引) || 索引 < 0 || 索引 >= 格子数) return false
+    if (状态.已知障碍物集合.has(索引)) return false
+    const 归属 = 读取地图归属(地图数组, 索引)
+    return Number.isInteger(归属) && !是阻挡地形(归属)
   }
 
   function 取得相邻索引(索引, 行偏移, 列偏移) {
