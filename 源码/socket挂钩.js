@@ -42,7 +42,7 @@ export function 挂钩socket(socket, 请求渲染) {
     socket.onevent = function (包) {
       安全执行('onevent入站预处理', () => {
         const 数据 = Array.isArray(包?.data) ? 包.data : null
-        if (数据) 预处理入站事件(数据[0], 数据[1])
+        if (数据) 预处理入站事件(数据[0], ...数据.slice(1))
       })
       return 原onevent.call(this, 包)
     }
@@ -53,7 +53,9 @@ export function 挂钩socket(socket, 请求渲染) {
     socket.__塔记忆emitEvent已挂钩 = true
     socket.emitEvent = function (参数列表) {
       安全执行('emitEvent入站预处理', () => {
-        if (Array.isArray(参数列表)) 预处理入站事件(参数列表[0], 参数列表[1])
+        if (Array.isArray(参数列表)) {
+          预处理入站事件(参数列表[0], ...参数列表.slice(1))
+        }
       })
       return 原emitEvent.call(this, 参数列表)
     }
@@ -83,8 +85,8 @@ export function 挂钩socket(socket, 请求渲染) {
     })
   })
 
-  function 预处理入站事件(事件名, 数据包) {
-    执行socketHook('入站预处理', 取得事件上下文(事件名, 数据包))
+  function 预处理入站事件(事件名, ...参数) {
+    执行socketHook('入站预处理', 取得事件上下文(事件名, 参数[0], 参数))
   }
 
   function 重置本局(上下文) {
@@ -109,13 +111,13 @@ export function 挂钩socket(socket, 请求渲染) {
     清空覆盖层()
   }
 
-  function 取得事件上下文(事件名, 数据包) {
+  function 取得事件上下文(事件名, 数据包, 参数 = []) {
     const 安全数据包 = 数据包 ?? {}
     return {
       socket,
       事件名,
       数据包: 安全数据包,
-      参数: [],
+      参数,
       请求渲染,
       延后执行,
       我方死亡: 是我方死亡事件(事件名, 安全数据包),
