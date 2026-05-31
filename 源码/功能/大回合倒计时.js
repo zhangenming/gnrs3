@@ -64,13 +64,6 @@ export const 功能样式 = `
     font: 800 18px/1 Arial, sans-serif;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
 }
-.${大回合倒计时类名} .gio-big-turn-index {
-    display: inline-block;
-    margin-left: 2px;
-    font: 700 10px/1 Arial, sans-serif;
-    vertical-align: baseline;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
-}
 #turn-counter {
     display: none !important;
 }
@@ -120,7 +113,7 @@ export function 更新大回合倒计时() {
   if (倒计时 == null || !Number.isInteger(总回合)) return
 
   移除左上角倒计时()
-  const 文本 = `${String(倒计时)}.${总回合}`
+  const 文本 = String(倒计时)
   let 目标元素 = 取得大回合倒计时元素()
   if (!目标元素) 目标元素 = 状态.大回合倒计时元素
   if (!目标元素 || !document.documentElement.contains(目标元素)) return
@@ -128,13 +121,13 @@ export function 更新大回合倒计时() {
   if (
     状态.上次大回合倒计时文本 !== 文本 ||
     !目标元素.classList.contains(大回合倒计时类名) ||
-    !倒计时内容已同步(目标元素, 倒计时, 总回合)
+    !倒计时内容已同步(目标元素, 倒计时)
   ) {
-    目标元素.innerHTML = `<span class="gio-big-turn-main">${倒计时}</span><span class="gio-big-turn-index">${总回合}</span>`
+    目标元素.innerHTML = `<span class="gio-big-turn-main">${倒计时}</span>`
   }
   目标元素.classList.add(大回合倒计时类名)
-  if (目标元素.title !== '距离所有兵力+1的大回合；小号数字是总回合') {
-    目标元素.title = '距离所有兵力+1的大回合；小号数字是总回合'
+  if (目标元素.title !== '距离所有兵力+1的大回合') {
+    目标元素.title = '距离所有兵力+1的大回合'
   }
   状态.上次大回合倒计时文本 = 文本
 
@@ -201,13 +194,9 @@ export function 更新大回合倒计时() {
     )
   }
 
-  function 倒计时内容已同步(元素, 倒计时, 总回合) {
+  function 倒计时内容已同步(元素, 倒计时) {
     const 倒计时元素 = 元素.querySelector('.gio-big-turn-main')
-    const 总回合元素 = 元素.querySelector('.gio-big-turn-index')
-    return (
-      (倒计时元素?.textContent ?? '').trim() === String(倒计时) &&
-      (总回合元素?.textContent ?? '').trim() === String(总回合)
-    )
+    return (倒计时元素?.textContent ?? '').trim() === String(倒计时)
   }
 }
 
