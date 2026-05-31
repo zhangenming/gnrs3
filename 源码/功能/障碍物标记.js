@@ -342,22 +342,30 @@ export function 记录已知障碍物(数据包) {
     }
   }
   if (!状态.围死区域已初始化) {
-    初始化围死区域()
-    状态.围死区域已初始化 = true
+    if (Number.isInteger(状态.我方基地索引) && 状态.我方基地索引 >= 0) {
+      初始化围死区域()
+      状态.围死区域已初始化 = true
+    }
   }
   更新围死区域()
 
   function 初始化围死区域() {
     const 初始围墙集合 = new Set(状态.已知障碍物集合)
+    const 初始可达集合 = 取得可达集合(初始围墙集合)
     const 已访问集合 = new Set()
     const 围死区域列表 = []
     for (let 起点索引 = 0; 起点索引 < 格子数; 起点索引 += 1) {
-      if (已访问集合.has(起点索引) || 初始围墙集合.has(起点索引)) continue
+      if (
+        已访问集合.has(起点索引) ||
+        初始围墙集合.has(起点索引) ||
+        初始可达集合.has(起点索引)
+      ) {
+        continue
+      }
 
       const 区域列表 = []
       const 队列 = [起点索引]
       let 队列头 = 0
-      let 被围死 = true
       已访问集合.add(起点索引)
 
       while (队列头 < 队列.length) {
@@ -371,8 +379,6 @@ export function 记录已知障碍物(数据包) {
         检查相邻(当前索引, 0, 1)
       }
 
-      if (!被围死) continue
-
       const 可渲染区域列表 = 区域列表.filter((索引) => {
         return !是关键格(索引)
       })
@@ -382,11 +388,8 @@ export function 记录已知障碍物(数据包) {
 
       function 检查相邻(当前索引, 行偏移, 列偏移) {
         const 相邻索引 = 取得相邻索引(当前索引, 行偏移, 列偏移)
-        if (!Number.isInteger(相邻索引)) {
-          被围死 = false
-          return
-        }
-        if (初始围墙集合.has(相邻索引)) return
+        if (!Number.isInteger(相邻索引)) return
+        if (初始围墙集合.has(相邻索引) || 初始可达集合.has(相邻索引)) return
         if (已访问集合.has(相邻索引)) return
         已访问集合.add(相邻索引)
         队列.push(相邻索引)
@@ -401,52 +404,21 @@ export function 记录已知障碍物(数据包) {
       状态.围死区域集合.clear()
       return
     }
+    const 当前可达集合 = 取得可达集合(状态.已知障碍物集合)
     状态.围死区域列表 = 状态.围死区域列表.filter((区域列表) => {
-      return 区域仍然围死(区域列表)
+      return 区域仍然围死(区域列表, 当前可达集合)
     })
     刷新围死区域集合()
   }
 
-  function 区域仍然围死(区域列表) {
+  function 区域仍然围死(区域列表, 当前可达集合) {
     if (!Array.isArray(区域列表) || !区域列表.length) return false
-    const 已访问集合 = new Set()
-    const 队列 = []
     for (const 索引 of 区域列表) {
-      if (状态.已知障碍物集合.has(索引) || 已访问集合.has(索引)) continue
-      已访问集合.add(索引)
-      队列.push(索引)
+      if (状态.已知障碍物集合.has(索引)) continue
+      if (当前可达集合.has(索引)) return false
+      return true
     }
-    if (!队列.length) return false
-
-    let 队列头 = 0
-    while (队列头 < 队列.length) {
-      const 当前索引 = 队列[队列头]
-      队列头 += 1
-      const 当前行 = Math.floor(当前索引 / 状态.宽度)
-      const 当前列 = 当前索引 % 状态.宽度
-      if (
-        当前行 === 0 ||
-        当前行 === 状态.高度 - 1 ||
-        当前列 === 0 ||
-        当前列 === 状态.宽度 - 1
-      ) {
-        return false
-      }
-
-      检查相邻(当前索引, -1, 0)
-      检查相邻(当前索引, 1, 0)
-      检查相邻(当前索引, 0, -1)
-      检查相邻(当前索引, 0, 1)
-    }
-    return true
-
-    function 检查相邻(当前索引, 行偏移, 列偏移) {
-      const 相邻索引 = 取得相邻索引(当前索引, 行偏移, 列偏移)
-      if (!Number.isInteger(相邻索引)) return
-      if (状态.已知障碍物集合.has(相邻索引) || 已访问集合.has(相邻索引)) return
-      已访问集合.add(相邻索引)
-      队列.push(相邻索引)
-    }
+    return false
   }
 
   function 刷新围死区域集合() {
@@ -464,6 +436,42 @@ export function 记录已知障碍物(数据包) {
       状态.已知基地集合.has(索引) ||
       状态.已知敌方基地集合.has(索引)
     )
+  }
+
+  function 取得可达集合(围墙集合) {
+    const 可达集合 = new Set()
+    const 起点索引 = 状态.我方基地索引
+    if (
+      !Number.isInteger(起点索引) ||
+      起点索引 < 0 ||
+      起点索引 >= 格子数 ||
+      围墙集合.has(起点索引)
+    ) {
+      return 可达集合
+    }
+
+    const 队列 = [起点索引]
+    let 队列头 = 0
+    可达集合.add(起点索引)
+
+    while (队列头 < 队列.length) {
+      const 当前索引 = 队列[队列头]
+      队列头 += 1
+      检查相邻(当前索引, -1, 0)
+      检查相邻(当前索引, 1, 0)
+      检查相邻(当前索引, 0, -1)
+      检查相邻(当前索引, 0, 1)
+    }
+
+    return 可达集合
+
+    function 检查相邻(当前索引, 行偏移, 列偏移) {
+      const 相邻索引 = 取得相邻索引(当前索引, 行偏移, 列偏移)
+      if (!Number.isInteger(相邻索引)) return
+      if (围墙集合.has(相邻索引) || 可达集合.has(相邻索引)) return
+      可达集合.add(相邻索引)
+      队列.push(相邻索引)
+    }
   }
 
   function 取得相邻索引(索引, 行偏移, 列偏移) {
