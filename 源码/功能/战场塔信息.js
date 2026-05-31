@@ -11,12 +11,10 @@
 import { 战场塔信息类名 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 同步我方玩家索引 } from '../游戏.js'
-import { 状态 } from '../状态.js'
 import {
   记录原始战场节点,
   恢复原始战场节点,
   取得表头行,
-  是战场数据行,
   取得单元格列表,
   取得玩家列索引,
 } from '../战场DOM工具.js'
@@ -50,19 +48,19 @@ export const socket功能 = {
 export const 功能样式 = `
 .${战场塔信息类名} {
     text-align: center !important;
-    white-space: nowrap !important;
+    white-space: normal !important;
     color: #000000 !important;
 }
 .${战场塔信息类名} .gio-battle-tower-pill {
     display: inline-flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    align-items: stretch;
     margin: 0 auto;
-    padding: 2px 8px;
-    border-radius: 999px;
+    padding: 4px 8px;
+    border-radius: 10px;
     background-color: #d8d8d8;
     color: #000000 !important;
-    font: 700 10px/1.05 Arial, sans-serif;
+    font: 700 11px/1.15 Arial, sans-serif;
     text-shadow: none !important;
 }
 .${战场塔信息类名}[data-gio-tower-diff="advantage"] .gio-battle-tower-pill {
@@ -76,34 +74,23 @@ export const 功能样式 = `
 }
 .${战场塔信息类名} .gio-battle-tower-group {
     display: flex;
-    align-items: center;
-    gap: 2px;
+    align-items: baseline;
+    justify-content: center;
+    gap: 4px;
     color: #ffffff !important;
-}
-.${战场塔信息类名} .gio-battle-tower-values {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
 }
 .${战场塔信息类名} .gio-battle-tower-item {
-    display: flex;
-    align-items: center;
+    flex: 0 0 auto;
     color: #ffffff !important;
+    opacity: 0.92;
 }
-.${战场塔信息类名} .gio-battle-tower-total,
-.${战场塔信息类名} .gio-battle-tower-open,
-.${战场塔信息类名} .gio-battle-tower-diff {
+.${战场塔信息类名} .gio-battle-tower-value {
     display: inline-block;
     color: #ffffff !important;
 }
-.${战场塔信息类名} .gio-battle-tower-open {
-    font-weight: 700;
-}
-.${战场塔信息类名} .gio-battle-tower-diff {
-    font-size: 15px;
-    font-weight: 900;
-    line-height: 1;
+.${战场塔信息类名} .gio-battle-tower-value {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.15px;
 }
 `
 
@@ -130,10 +117,15 @@ export function 更新战场塔信息() {
   if (读取冻结战场塔信息(玩家表头格)) return
 
   const { 我方塔数, 敌方塔数, 我方开塔数, 敌方开塔数 } = 统计塔数()
-  const 塔差 = 我方塔数 - 敌方塔数
-  const 差值状态 = 塔差 > 0 ? 'advantage' : 塔差 < 0 ? 'disadvantage' : 'even'
-  const 差值文本 = 塔差 > 0 ? `+${塔差}` : String(塔差)
-  const 文本 = `敌${敌方塔数}/${敌方开塔数} 我${我方塔数}/${我方开塔数} 差${差值文本}`
+  const 开塔差 = 我方开塔数 - 敌方开塔数
+  const 当前塔差 = 我方塔数 - 敌方塔数
+  const 差值状态 =
+    当前塔差 > 0 ? 'advantage' : 当前塔差 < 0 ? 'disadvantage' : 'even'
+  const 开塔差文本 = 取得差值文本(开塔差)
+  const 当前塔差文本 = 取得差值文本(当前塔差)
+  const 开塔文本 = `${开塔差文本} [${我方开塔数} ${敌方开塔数}]`
+  const 当前文本 = `${当前塔差文本} [${我方塔数} ${敌方塔数}]`
+  const 文本 = `开塔 ${开塔文本} 当前 ${当前文本}`
 
   if (
     玩家表头格.classList.contains(战场塔信息类名) &&
@@ -152,21 +144,12 @@ export function 更新战场塔信息() {
   玩家表头格.innerHTML =
     `<span class="gio-battle-tower-pill">` +
     `<span class="gio-battle-tower-group">` +
-    `<span class="gio-battle-tower-diff">${差值文本}</span>` +
+    `<span class="gio-battle-tower-item">开塔:</span>` +
+    `<span class="gio-battle-tower-value">${开塔文本}</span>` +
     `</span>` +
     `<span class="gio-battle-tower-group">` +
-    `<span class="gio-battle-tower-item">我</span>` +
-    `<span class="gio-battle-tower-values">` +
-    `<span class="gio-battle-tower-open">开塔${我方开塔数}</span>` +
-    `<span class="gio-battle-tower-total">当前塔${我方塔数}</span>` +
-    `</span>` +
-    `</span>` +
-    `<span class="gio-battle-tower-group">` +
-    `<span class="gio-battle-tower-item">敌</span>` +
-    `<span class="gio-battle-tower-values">` +
-    `<span class="gio-battle-tower-open">开塔${敌方开塔数}</span>` +
-    `<span class="gio-battle-tower-total">当前塔${敌方塔数}</span>` +
-    `</span>` +
+    `<span class="gio-battle-tower-item">当前:</span>` +
+    `<span class="gio-battle-tower-value">${当前文本}</span>` +
     `</span>` +
     `</span>`
   记录战场塔信息快照(玩家表头格, 文本, 差值状态)
@@ -183,3 +166,7 @@ export function 恢复战场塔信息() {
 
 import { 注册功能 } from '../注册中心.js'
 注册功能({ 功能定义, 主程序功能, 功能恢复, socket功能, 功能样式 })
+
+function 取得差值文本(差值) {
+  return 差值 > 0 ? `+${差值}` : String(差值)
+}
