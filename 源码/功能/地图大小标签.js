@@ -1,5 +1,6 @@
 ﻿import { 功能已启用 } from '../功能状态.js'
 import { 地图标签层级 } from '../配置.js'
+import { 取游戏画布 } from '../游戏工具.js'
 import { 状态 } from '../状态.js'
 
 const 地图大小元素编号 = 'gio-tower-memory-style-map-size'
@@ -74,7 +75,9 @@ export function 同步地图大小标签(地图元素) {
 }
 
 function 更新地图大小标签(标签, 地图元素) {
-  if (!标签 || !地图元素?.isConnected) return
+  if (!标签) return
+  const 当前地图 = 读取当前地图元素(地图元素)
+  if (!当前地图?.isConnected) return
 
   if (!状态.宽度 || !状态.高度) {
     标签.style.display = 'none'
@@ -158,7 +161,7 @@ function 更新地图大小标签(标签, 地图元素) {
   if (标签.style.display !== 'block') 标签.style.display = 'block'
 
   const 间距 = 8
-  const 地图矩形 = 地图元素.getBoundingClientRect()
+  const 地图矩形 = 当前地图.getBoundingClientRect()
   const 标签矩形 = 标签.getBoundingClientRect()
   const 右侧x = 地图矩形.right + 间距
   const 内侧x = 地图矩形.right - 标签矩形.width - 间距
@@ -296,15 +299,27 @@ function 重置帧率统计(保留地图元素 = false) {
 }
 
 function 正在游戏中() {
+  const 当前地图 = 读取当前地图元素()
   return Boolean(
     !状态.在主页面 &&
     !状态.战场数据已冻结 &&
     !状态.回放正在显示 &&
     状态.宽度 &&
     状态.高度 &&
-    当前地图元素?.isConnected &&
-    当前地图元素.closest('#game-page'),
+    当前地图?.isConnected &&
+    当前地图.closest('#game-page'),
   )
+}
+
+function 读取当前地图元素(候选地图元素 = 当前地图元素) {
+  if (候选地图元素?.isConnected) {
+    当前地图元素 = 候选地图元素
+    return 候选地图元素
+  }
+  const 画布 = 取游戏画布()
+  const 当前地图 = 画布?.closest('#gameMap') ?? null
+  if (当前地图) 当前地图元素 = 当前地图
+  return 当前地图
 }
 
 function 读取最长长任务时间() {
