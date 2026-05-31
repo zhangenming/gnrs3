@@ -4,7 +4,6 @@
 // 作用范围:
 // 根据 50 turn 一个大回合的规则，把当前回合转换成倒计时。
 // 只更新页面中的倒计时展示，不影响游戏数据，用于 1v1 中把握全图涨兵节奏。
-import { 大回合倒计时元素编号, 大回合倒计时类名 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 取得大回合倒计时 } from '../工具.js'
@@ -31,7 +30,6 @@ export const 主程序功能 = {
 export const 功能恢复 = {
   id: 功能定义.id,
   关闭() {
-    移除大回合倒计时()
     清除回合结束提示()
   },
 }
@@ -46,17 +44,6 @@ export const socket功能 = {
 }
 
 export const 功能样式 = `
-#${大回合倒计时元素编号} {
-    display: none !important;
-}
-.${大回合倒计时类名} {
-    text-align: center !important;
-    vertical-align: middle !important;
-    white-space: nowrap !important;
-    min-width: 38px !important;
-    padding-left: 2px !important;
-    padding-right: 2px !important;
-}
 #turn-counter {
     display: none !important;
 }
@@ -96,7 +83,6 @@ function 安装回放回合动画同步() {
 
 export function 更新大回合倒计时() {
   if (!功能已启用('大回合倒计时')) {
-    移除大回合倒计时()
     清除回合结束提示()
     return
   }
@@ -104,15 +90,6 @@ export function 更新大回合倒计时() {
   const 倒计时 = 取得大回合倒计时(总回合)
   更新回合结束提示(倒计时)
   if (倒计时 == null || !Number.isInteger(总回合)) return
-
-  移除左上角倒计时()
-  移除排行榜倒计时()
-
-  function 移除左上角倒计时() {
-    if (!document.body) return
-    const 旧元素 = document.getElementById(大回合倒计时元素编号)
-    旧元素?.remove()
-  }
 }
 
 export function 读取显示回合() {
@@ -164,22 +141,6 @@ function 是网页回放中() {
     globalThis.location?.pathname?.startsWith('/replays/') ||
     document.getElementById('replay-turn-jump-input'),
   )
-}
-
-export function 移除大回合倒计时() {
-  状态.大回合倒计时元素?.classList.remove(大回合倒计时类名)
-  状态.大回合倒计时元素?.removeAttribute('title')
-  状态.大回合倒计时元素 = null
-  状态.上次大回合倒计时文本 = ''
-  const 旧元素 = document.getElementById(大回合倒计时元素编号)
-  旧元素?.remove()
-}
-
-function 移除排行榜倒计时() {
-  状态.大回合倒计时元素?.classList.remove(大回合倒计时类名)
-  状态.大回合倒计时元素?.removeAttribute('title')
-  状态.大回合倒计时元素 = null
-  状态.上次大回合倒计时文本 = ''
 }
 
 import { 注册功能 } from '../注册中心.js'
