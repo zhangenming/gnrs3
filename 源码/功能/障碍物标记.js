@@ -221,6 +221,8 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   function 画对角顺滑连接(x, y, 方向) {
     const 弧长 = Math.max(边框宽度 * 3.8, Math.min(格宽, 格高) * 0.18)
     const 线宽 = 边框宽度 * 1.75
+    const 黑线长 = 弧长 * 0.95
+    const 黑线宽 = Math.max(1.5, 边框宽度 * 0.9)
     ctx.save()
     ctx.lineWidth = 线宽
     ctx.lineCap = 'round'
@@ -239,6 +241,18 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
       画弧线(x, y - 弧长, x + 弧长, y, x - 弧长, y + 弧长)
       画弧线(x - 弧长, y, x, y + 弧长, x + 弧长, y - 弧长)
     }
+
+    ctx.lineWidth = 黑线宽
+    ctx.strokeStyle = '#000000'
+    ctx.beginPath()
+    if (方向 === '左上右下') {
+      ctx.moveTo(x - 黑线长, y - 黑线长)
+      ctx.lineTo(x + 黑线长, y + 黑线长)
+    } else {
+      ctx.moveTo(x + 黑线长, y - 黑线长)
+      ctx.lineTo(x - 黑线长, y + 黑线长)
+    }
+    ctx.stroke()
     ctx.restore()
 
     function 画弧线(起点x, 起点y, 终点x, 终点y, 控制x, 控制y) {
