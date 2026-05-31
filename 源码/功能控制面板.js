@@ -256,7 +256,7 @@ body.gio-离开游戏 [class^="gio-"]:not(.gio-feature-toggle-badge):not(.gio-fe
 #${控制按钮编号} {
     position: fixed;
     right: 12px;
-    top: 12px;
+    bottom: 12px;
     z-index: ${控制面板层级};
     display: inline-flex;
     align-items: center;
@@ -287,7 +287,7 @@ body.gio-离开游戏 [class^="gio-"]:not(.gio-feature-toggle-badge):not(.gio-fe
 #${控制面板编号} {
     position: fixed;
     right: 12px;
-    top: 56px;
+    bottom: 56px;
     z-index: ${控制面板层级};
     box-sizing: border-box;
     width: min(380px, calc(100vw - 24px));
