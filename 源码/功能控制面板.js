@@ -152,9 +152,7 @@ function 刷新控制按钮() {
   按钮.title = 总开关已开
     ? `功能控制：${已开启数量}/${总数量} 已开启`
     : '功能控制：总开关已关闭'
-  按钮.innerHTML =
-    '<span class="gio-feature-toggle-badge">功能</span>' +
-    `<span class="gio-feature-toggle-count">${总开关已开 ? `${已开启数量}/${总数量}` : '已关闭'}</span>`
+  按钮.innerHTML = `<span class="gio-feature-toggle-count">${总开关已开 ? `${已开启数量}/${总数量}` : '已关闭'}</span>`
 }
 
 function 刷新控制面板() {
@@ -255,16 +253,17 @@ body.gio-离开游戏 [class^="gio-"]:not(.gio-feature-toggle-badge):not(.gio-fe
 }
 #${控制按钮编号} {
     position: fixed;
-    right: 12px;
-    bottom: 12px;
+    right: 0;
+    bottom: 0;
     z-index: ${控制面板层级};
     display: inline-flex;
     align-items: center;
-    gap: 8px;
     min-height: 36px;
-    padding: 0 12px;
+    padding: 0 8px;
     border: 1px solid rgba(160, 183, 208, 0.5);
-    border-radius: 999px;
+    border-right: 0;
+    border-bottom: 0;
+    border-radius: 14px 0 0 0;
     background: rgba(10, 16, 24, 0.92);
     color: #f6fbff;
     font: 900 12px/1 Arial, sans-serif;
@@ -275,9 +274,6 @@ body.gio-离开游戏 [class^="gio-"]:not(.gio-feature-toggle-badge):not(.gio-fe
     border-color: rgba(255, 116, 116, 0.62);
     background: rgba(44, 10, 10, 0.94);
 }
-.gio-feature-toggle-badge {
-    color: #8ecbff;
-}
 .gio-feature-toggle-count {
     padding: 4px 8px;
     border-radius: 999px;
@@ -286,11 +282,11 @@ body.gio-离开游戏 [class^="gio-"]:not(.gio-feature-toggle-badge):not(.gio-fe
 }
 #${控制面板编号} {
     position: fixed;
-    right: 12px;
-    bottom: 56px;
+    right: 0;
+    bottom: 36px;
     z-index: ${控制面板层级};
     box-sizing: border-box;
-    width: min(380px, calc(100vw - 24px));
+    width: min(380px, 100vw);
     max-height: min(78vh, 920px);
     overflow: auto;
     padding: 12px;
