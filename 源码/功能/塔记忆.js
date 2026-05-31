@@ -66,6 +66,7 @@ export const 覆盖层功能 = {
     for (const 塔索引 of 状态.已知塔集合) {
       const 类型 = 状态.已知塔类型.get(塔索引)
       if (类型 === '敌方塔' || 类型 === '我方塔') return true
+      if (类型 === '中立塔' && 是低兵中立塔(塔索引)) return true
     }
     return false
   },
@@ -115,6 +116,9 @@ function 画塔记忆({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
     const x = 列 * 格宽
     const y = 行 * 格高
 
+    if (类型 === '中立塔' && 是低兵中立塔(塔索引)) {
+      画低兵中立塔提示(ctx, x, y, 大小, 当前动画时间)
+    }
     画塔标记(ctx, x, y, 大小, 类型, 当前动画时间)
     if (类型 === '中立塔') {
       画中立塔兵力(ctx, 塔索引, x, y, 大小)
@@ -251,6 +255,33 @@ function 画我方开塔增长(ctx, 塔索引, x, y, 大小) {
 
 function 取得可见地块兵力(索引) {
   return 读取地图兵力(状态.地图数组, 索引)
+}
+
+function 是低兵中立塔(塔索引) {
+  const 兵力 = 状态.中立塔兵力表.get(塔索引)
+  return Number.isInteger(兵力) && 兵力 >= 0 && 兵力 <= 5
+}
+
+function 画低兵中立塔提示(ctx, x, y, 大小, 当前动画时间) {
+  const 动画进度 = (当前动画时间 % 1100) / 1100
+  const 缩放 = 1 + 动画进度 * 0.5
+  const 半径 = (大小 * 0.54 * 缩放) / 2
+  const 中心x = x + 大小 / 2
+  const 中心y = y + 大小 / 2
+  const alpha = 0.82 - 动画进度 * 0.56
+
+  ctx.save()
+  ctx.globalAlpha = Math.max(0.18, alpha)
+  ctx.fillStyle = 'rgba(255, 216, 77, 0.34)'
+  ctx.beginPath()
+  ctx.arc(中心x, 中心y, 半径, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.lineWidth = Math.max(2, 大小 * 0.08)
+  ctx.strokeStyle = 'rgba(255, 244, 170, 0.95)'
+  ctx.shadowColor = 'rgba(255, 216, 77, 0.9)'
+  ctx.shadowBlur = Math.max(6, 大小 * 0.22)
+  ctx.stroke()
+  ctx.restore()
 }
 
 function 取得我方开塔增长(塔索引) {
