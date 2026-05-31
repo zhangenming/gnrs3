@@ -22,6 +22,7 @@ const ECharts地址 =
 const 陆地线颜色 = '#ffbf3f'
 const 地差劣势文字颜色 = '#ff3d5a'
 const 地差持平文字颜色 = '#000'
+const 底部标签列表 = ['陆地差', '兵力差', '耗兵差']
 
 let 图表实例 = null
 let ECharts加载Promise = null
@@ -172,6 +173,13 @@ function 确保面板() {
       '</span>' +
       '</div>' +
       '<div class="gio-data-progress-body">' +
+      '<div class="gio-data-progress-row-labels" aria-hidden="true">' +
+      底部标签列表
+        .map(
+          (标签) => `<span class="gio-data-progress-row-label">${标签}</span>`,
+        )
+        .join('') +
+      '</div>' +
       `<div class="${图表类名}"></div>` +
       '<div class="gio-data-progress-empty">等待回合</div>' +
       '</div>'
@@ -405,7 +413,7 @@ function 取得图表配置() {
       selected: 图表显示系列,
     },
     grid: {
-      left: 42,
+      left: 56,
       right: 12,
       top: 14,
       bottom: 76,
@@ -624,6 +632,24 @@ function 安装样式() {
 .gio-data-progress-body {
     position: relative;
     height: 188px;
+}
+.gio-data-progress-row-labels {
+    position: absolute;
+    left: 2px;
+    bottom: 16px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    color: rgba(220, 232, 248, 0.82);
+    font: 900 10px/1 Arial, sans-serif;
+    pointer-events: none;
+}
+.gio-data-progress-row-label {
+    display: block;
+    min-width: 48px;
+    text-align: left;
 }
 .${图表类名} {
     width: 100%;
