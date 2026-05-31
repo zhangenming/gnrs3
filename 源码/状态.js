@@ -26,7 +26,6 @@ export const 状态 = {
   已到达视野集合: new Set(),
   已确认视野集合: new Set(),
   已知障碍物集合: new Set(),
-  不可达区域集合: new Set(),
   地图数组: null,
   原始兵力文本: new Map(),
   兵力分布着色列表: [],
