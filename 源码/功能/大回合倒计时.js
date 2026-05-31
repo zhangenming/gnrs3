@@ -10,8 +10,6 @@ import { 状态 } from '../状态.js'
 import { 取得大回合倒计时 } from '../工具.js'
 import { 更新回合结束提示, 清除回合结束提示 } from './回合结束提示.js'
 import { 更新我方行动监控UI, 结算我方行动回合 } from './我方行动监控.js'
-import { 取得战场数据表格 } from './战场表格.js'
-import { 取得单元格列表, 取得玩家列索引 } from '../战场DOM工具.js'
 
 let 已请求更新大回合倒计时 = false
 let 回放回合动画帧编号 = null
@@ -58,11 +56,6 @@ export const 功能样式 = `
     min-width: 38px !important;
     padding-left: 2px !important;
     padding-right: 2px !important;
-}
-.${大回合倒计时类名} .gio-big-turn-main {
-    display: inline-block;
-    font: 800 18px/1 Arial, sans-serif;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
 }
 #turn-counter {
     display: none !important;
@@ -113,90 +106,12 @@ export function 更新大回合倒计时() {
   if (倒计时 == null || !Number.isInteger(总回合)) return
 
   移除左上角倒计时()
-  const 文本 = String(倒计时)
-  let 目标元素 = 取得大回合倒计时元素()
-  if (!目标元素) 目标元素 = 状态.大回合倒计时元素
-  if (!目标元素 || !document.documentElement.contains(目标元素)) return
-
-  if (
-    状态.上次大回合倒计时文本 !== 文本 ||
-    !目标元素.classList.contains(大回合倒计时类名) ||
-    !倒计时内容已同步(目标元素, 倒计时)
-  ) {
-    目标元素.innerHTML = `<span class="gio-big-turn-main">${倒计时}</span>`
-  }
-  目标元素.classList.add(大回合倒计时类名)
-  if (目标元素.title !== '距离所有兵力+1的大回合') {
-    目标元素.title = '距离所有兵力+1的大回合'
-  }
-  状态.上次大回合倒计时文本 = 文本
-
-  function 取得大回合倒计时元素() {
-    const 排行榜标识元素 = 取得排行榜标识元素()
-    if (排行榜标识元素) {
-      状态.大回合倒计时元素 = 排行榜标识元素
-      return 排行榜标识元素
-    }
-    return null
-  }
+  移除排行榜倒计时()
 
   function 移除左上角倒计时() {
     if (!document.body) return
     const 旧元素 = document.getElementById(大回合倒计时元素编号)
     旧元素?.remove()
-  }
-
-  function 取得排行榜标识元素() {
-    const 表格 = 取得战场数据表格()
-    if (!表格) return null
-
-    const 回放标识格 = 取得回放排行榜标识格(表格)
-    if (回放标识格) return 回放标识格
-
-    const 行列表 = 表格.querySelectorAll('tr')
-    for (const 行 of 行列表) {
-      const 单元格列表 = 取得单元格列表(行)
-      const 玩家列 = 取得玩家列索引(单元格列表)
-      if (玩家列 <= 0) continue
-
-      const 标识格 = 单元格列表[玩家列 - 1]
-      if (是排行榜标识格(标识格)) return 标识格
-    }
-
-    return null
-  }
-
-  function 取得回放排行榜标识格(表格) {
-    const 行列表 = 表格.querySelectorAll('tr')
-    for (const 行 of 行列表) {
-      const 单元格列表 = 取得单元格列表(行)
-      const 视角列 = 单元格列表.findIndex((单元格) => {
-        return (单元格.textContent ?? '').trim() === 'POV'
-      })
-      if (视角列 < 0) continue
-
-      const 标识格 = 单元格列表.find((单元格, idx) => {
-        return idx > 视角列 && 是排行榜标识格(单元格)
-      })
-      if (标识格) return 标识格
-    }
-    return null
-  }
-
-  function 是排行榜标识格(单元格) {
-    const 文本 = (单元格?.textContent ?? '').trim()
-    return (
-      单元格?.classList.contains(大回合倒计时类名) ||
-      单元格?.classList.contains('lb-star-col') ||
-      文本 === '★' ||
-      文本 === '*' ||
-      Boolean(单元格?.querySelector('.star, .icon, svg'))
-    )
-  }
-
-  function 倒计时内容已同步(元素, 倒计时) {
-    const 倒计时元素 = 元素.querySelector('.gio-big-turn-main')
-    return (倒计时元素?.textContent ?? '').trim() === String(倒计时)
   }
 }
 
@@ -253,10 +168,18 @@ function 是网页回放中() {
 
 export function 移除大回合倒计时() {
   状态.大回合倒计时元素?.classList.remove(大回合倒计时类名)
+  状态.大回合倒计时元素?.removeAttribute('title')
   状态.大回合倒计时元素 = null
   状态.上次大回合倒计时文本 = ''
   const 旧元素 = document.getElementById(大回合倒计时元素编号)
   旧元素?.remove()
+}
+
+function 移除排行榜倒计时() {
+  状态.大回合倒计时元素?.classList.remove(大回合倒计时类名)
+  状态.大回合倒计时元素?.removeAttribute('title')
+  状态.大回合倒计时元素 = null
+  状态.上次大回合倒计时文本 = ''
 }
 
 import { 注册功能 } from '../注册中心.js'
