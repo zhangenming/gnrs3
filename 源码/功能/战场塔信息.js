@@ -56,11 +56,11 @@ export const 功能样式 = `
     flex-direction: column;
     align-items: stretch;
     margin: 0 auto;
-    padding: 4px 8px;
+    padding: 3px 6px;
     border-radius: 10px;
     background-color: #d8d8d8;
     color: #000000 !important;
-    font: 700 11px/1.15 Arial, sans-serif;
+    font: 700 10px/1.12 Arial, sans-serif;
     text-shadow: none !important;
 }
 .${战场塔信息类名}[data-gio-tower-diff="advantage"] .gio-battle-tower-pill {
@@ -76,7 +76,7 @@ export const 功能样式 = `
     display: flex;
     align-items: baseline;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     color: #ffffff !important;
 }
 .${战场塔信息类名} .gio-battle-tower-item {

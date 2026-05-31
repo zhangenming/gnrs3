@@ -57,6 +57,38 @@ export const 功能样式 = `
 .${战场数据差类名}[data-gio-battle-diff="disadvantage"] {
     background-color: ${敌方红色} !important;
 }
+table[data-gio-battle-compact="true"],
+.leaderboard[data-gio-battle-compact="true"],
+#leaderboard[data-gio-battle-compact="true"],
+#game-leaderboard[data-gio-battle-compact="true"] {
+    table-layout: fixed !important;
+    width: 430px !important;
+    min-width: 430px !important;
+    max-width: 430px !important;
+}
+[data-gio-battle-compact="true"] th,
+[data-gio-battle-compact="true"] td {
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    white-space: nowrap !important;
+}
+[data-gio-battle-compact="true"] th:nth-child(1),
+[data-gio-battle-compact="true"] td:nth-child(1) {
+    width: 40px !important;
+}
+[data-gio-battle-compact="true"] th:nth-child(2),
+[data-gio-battle-compact="true"] td:nth-child(2) {
+    width: 190px !important;
+}
+[data-gio-battle-compact="true"] th:nth-child(3),
+[data-gio-battle-compact="true"] td:nth-child(3),
+[data-gio-battle-compact="true"] th:nth-child(4),
+[data-gio-battle-compact="true"] td:nth-child(4) {
+    width: 100px !important;
+    font-variant-numeric: tabular-nums !important;
+}
 `
 
 export function 更新战场数据差() {
@@ -69,6 +101,7 @@ export function 更新战场数据差() {
 
   const 表格 = 取得战场数据表格()
   if (!表格) return
+  表格.dataset.gioBattleCompact = 'true'
 
   const 表头行 = 取得表头行(表格)
   if (!表头行) return
@@ -200,6 +233,11 @@ export function 更新战场数据差() {
 }
 
 export function 恢复战场数据差() {
+  document
+    .querySelectorAll('[data-gio-battle-compact="true"]')
+    .forEach((表格) => {
+      delete 表格.dataset.gioBattleCompact
+    })
   document.querySelectorAll(`.${战场数据差类名}`).forEach((单元格) => {
     恢复原始战场节点(单元格)
     单元格.classList.remove(战场数据差类名)
