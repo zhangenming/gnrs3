@@ -53,35 +53,16 @@ export function 有未到达视野标记() {
 
 function 画未到达视野背景({ ctx, 格宽, 格高, 格子数 }) {
   if (!有未到达视野标记()) return
-  const 敌方基地候选集合 = 取得敌方基地候选集合()
 
   ctx.save()
   ctx.fillStyle = 未到达视野背景色
   for (let idx = 0; idx < 格子数; idx += 1) {
     if (状态.已到达视野集合.has(idx)) continue
-    if (敌方基地候选集合 && !敌方基地候选集合.has(idx)) continue
     const 行 = Math.floor(idx / 状态.宽度)
     const 列 = idx % 状态.宽度
     ctx.fillRect(列 * 格宽, 行 * 格高, 格宽, 格高)
   }
   ctx.restore()
-
-  function 取得敌方基地候选集合() {
-    if (!状态.敌方基地接触列表.length) return null
-    if (状态.已知敌方基地集合.size) return null
-
-    const 候选集合 = new Set()
-    状态.敌方基地候选列表.forEach((候选) => {
-      if (
-        Number.isInteger(候选?.索引) &&
-        候选.索引 >= 0 &&
-        候选.索引 < 格子数
-      ) {
-        候选集合.add(候选.索引)
-      }
-    })
-    return 候选集合
-  }
 }
 
 export function 记录已到达视野(数据包) {
