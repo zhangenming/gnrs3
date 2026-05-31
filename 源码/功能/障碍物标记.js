@@ -23,6 +23,9 @@ export const socket功能 = {
   id: 功能定义.id,
   新局重置() {
     状态.已知障碍物集合.clear()
+    状态.围死区域集合.clear()
+    状态.围死区域列表 = []
+    状态.围死区域已初始化 = false
   },
 }
 
@@ -37,7 +40,7 @@ export const 覆盖层功能 = {
   id: 功能定义.id,
   层级: -100,
   需要绘制() {
-    return 状态.已知障碍物集合.size > 0
+    return 状态.已知障碍物集合.size > 0 || 状态.围死区域集合.size > 0
   },
   绘制: 画障碍物底色,
 }
@@ -52,18 +55,23 @@ const 障碍物文字覆盖层功能 = {
 }
 
 export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
-  if (!状态.已知障碍物集合.size) return
+  if (!状态.已知障碍物集合.size && !状态.围死区域集合.size) return
 
   const 格子数 = 状态.宽度 * 状态.高度
   const 地图数组 = 状态.地图数组
   const 边框宽度 = Math.max(2, Math.min(3, 大小 * 0.08))
   const 圆角半径 = 边框宽度 * 1.1
   const 确认山交点集合 = new Set()
+  const 山样式集合 = new Set(状态.已知障碍物集合)
+  状态.围死区域集合.forEach((索引) => {
+    山样式集合.add(索引)
+  })
 
   ctx.save()
   ctx.fillStyle = '#000000'
-  状态.已知障碍物集合.forEach((障碍物索引) => {
+  山样式集合.forEach((障碍物索引) => {
     const 当前地形 = 读取地图归属(地图数组, 障碍物索引)
+    const 是围死格 = 状态.围死区域集合.has(障碍物索引)
     if (
       !Number.isInteger(障碍物索引) ||
       障碍物索引 < 0 ||
@@ -73,7 +81,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
       return
     }
     if (地图可读(地图数组)) {
-      if (Number.isInteger(当前地形) && 当前地形 >= -1) return
+      if (!是围死格 && Number.isInteger(当前地形) && 当前地形 >= -1) return
     }
     const 行 = Math.floor(障碍物索引 / 状态.宽度)
     const 列 = 障碍物索引 % 状态.宽度
@@ -90,6 +98,7 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   ctx.restore()
 
   function 是确认山(索引) {
+    if (状态.围死区域集合.has(索引)) return true
     return (
       状态.已知障碍物集合.has(索引) &&
       状态.已确认视野集合.has(索引) &&
@@ -276,6 +285,7 @@ function 画障碍物文字({ ctx, 格宽, 格高, 大小 }) {
       !Number.isInteger(障碍物索引) ||
       障碍物索引 < 0 ||
       障碍物索引 >= 格子数 ||
+      状态.围死区域集合.has(障碍物索引) ||
       状态.已知塔集合.has(障碍物索引) ||
       状态.已确认视野集合.has(障碍物索引)
     ) {
@@ -330,6 +340,137 @@ export function 记录已知障碍物(数据包) {
     } else if (Number.isInteger(地形) && 地形 >= -1) {
       状态.已知障碍物集合.delete(idx)
     }
+  }
+  if (!状态.围死区域已初始化) {
+    初始化围死区域()
+    状态.围死区域已初始化 = true
+  }
+  更新围死区域()
+
+  function 初始化围死区域() {
+    const 初始围墙集合 = new Set(状态.已知障碍物集合)
+    const 已访问集合 = new Set()
+    const 围死区域列表 = []
+    for (let 起点索引 = 0; 起点索引 < 格子数; 起点索引 += 1) {
+      if (已访问集合.has(起点索引) || 初始围墙集合.has(起点索引)) continue
+
+      const 区域列表 = []
+      const 队列 = [起点索引]
+      let 队列头 = 0
+      let 被围死 = true
+      已访问集合.add(起点索引)
+
+      while (队列头 < 队列.length) {
+        const 当前索引 = 队列[队列头]
+        队列头 += 1
+        区域列表.push(当前索引)
+
+        检查相邻(当前索引, -1, 0)
+        检查相邻(当前索引, 1, 0)
+        检查相邻(当前索引, 0, -1)
+        检查相邻(当前索引, 0, 1)
+      }
+
+      if (!被围死) continue
+
+      const 可渲染区域列表 = 区域列表.filter((索引) => {
+        return !是关键格(索引)
+      })
+      if (可渲染区域列表.length) {
+        围死区域列表.push(可渲染区域列表)
+      }
+
+      function 检查相邻(当前索引, 行偏移, 列偏移) {
+        const 相邻索引 = 取得相邻索引(当前索引, 行偏移, 列偏移)
+        if (!Number.isInteger(相邻索引)) {
+          被围死 = false
+          return
+        }
+        if (初始围墙集合.has(相邻索引)) return
+        if (已访问集合.has(相邻索引)) return
+        已访问集合.add(相邻索引)
+        队列.push(相邻索引)
+      }
+    }
+    状态.围死区域列表 = 围死区域列表
+    刷新围死区域集合()
+  }
+
+  function 更新围死区域() {
+    if (!状态.围死区域列表.length) {
+      状态.围死区域集合.clear()
+      return
+    }
+    状态.围死区域列表 = 状态.围死区域列表.filter((区域列表) => {
+      return 区域仍然围死(区域列表)
+    })
+    刷新围死区域集合()
+  }
+
+  function 区域仍然围死(区域列表) {
+    if (!Array.isArray(区域列表) || !区域列表.length) return false
+    const 已访问集合 = new Set()
+    const 队列 = []
+    for (const 索引 of 区域列表) {
+      if (状态.已知障碍物集合.has(索引) || 已访问集合.has(索引)) continue
+      已访问集合.add(索引)
+      队列.push(索引)
+    }
+    if (!队列.length) return false
+
+    let 队列头 = 0
+    while (队列头 < 队列.length) {
+      const 当前索引 = 队列[队列头]
+      队列头 += 1
+      const 当前行 = Math.floor(当前索引 / 状态.宽度)
+      const 当前列 = 当前索引 % 状态.宽度
+      if (
+        当前行 === 0 ||
+        当前行 === 状态.高度 - 1 ||
+        当前列 === 0 ||
+        当前列 === 状态.宽度 - 1
+      ) {
+        return false
+      }
+
+      检查相邻(当前索引, -1, 0)
+      检查相邻(当前索引, 1, 0)
+      检查相邻(当前索引, 0, -1)
+      检查相邻(当前索引, 0, 1)
+    }
+    return true
+
+    function 检查相邻(当前索引, 行偏移, 列偏移) {
+      const 相邻索引 = 取得相邻索引(当前索引, 行偏移, 列偏移)
+      if (!Number.isInteger(相邻索引)) return
+      if (状态.已知障碍物集合.has(相邻索引) || 已访问集合.has(相邻索引)) return
+      已访问集合.add(相邻索引)
+      队列.push(相邻索引)
+    }
+  }
+
+  function 刷新围死区域集合() {
+    状态.围死区域集合.clear()
+    状态.围死区域列表.forEach((区域列表) => {
+      区域列表.forEach((索引) => {
+        if (!是关键格(索引)) 状态.围死区域集合.add(索引)
+      })
+    })
+  }
+
+  function 是关键格(索引) {
+    return (
+      塔索引集合.has(索引) ||
+      状态.已知基地集合.has(索引) ||
+      状态.已知敌方基地集合.has(索引)
+    )
+  }
+
+  function 取得相邻索引(索引, 行偏移, 列偏移) {
+    const 行 = Math.floor(索引 / 状态.宽度) + 行偏移
+    const 列 = (索引 % 状态.宽度) + 列偏移
+    if (行 < 0 || 行 >= 状态.高度 || 列 < 0 || 列 >= 状态.宽度) return null
+    return 行 * 状态.宽度 + 列
   }
 }
 

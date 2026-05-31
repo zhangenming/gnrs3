@@ -168,7 +168,12 @@ export function 更新敌方基地推测(数据包, 请求渲染) {
     function 尝试加入相邻(相邻索引, 当前距离, 在地图内) {
       if (!在地图内) return
       if (距离表[相邻索引] >= 0) return
-      if (状态.已知障碍物集合.has(相邻索引)) return
+      if (
+        状态.已知障碍物集合.has(相邻索引) ||
+        状态.围死区域集合.has(相邻索引)
+      ) {
+        return
+      }
       距离表[相邻索引] = 当前距离 + 1
       队列.push(相邻索引)
     }
@@ -176,7 +181,7 @@ export function 更新敌方基地推测(数据包, 请求渲染) {
 
   function 是可作为基地候选(idx, 地图信息) {
     if (状态.已到达视野集合.has(idx)) return false
-    if (状态.已知障碍物集合.has(idx)) return false
+    if (状态.已知障碍物集合.has(idx) || 状态.围死区域集合.has(idx)) return false
     if (状态.已知塔集合.has(idx)) return false
     if (状态.已知基地集合.has(idx)) return false
     if (状态.已知敌方基地集合.has(idx)) return false
