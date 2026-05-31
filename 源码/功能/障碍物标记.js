@@ -220,10 +220,10 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
 
   function 画对角顺滑连接(x, y, 方向) {
     const 弧长 = Math.max(边框宽度 * 3.8, Math.min(格宽, 格高) * 0.18)
-    const 线宽 = 边框宽度 * 1.75
+    const 线宽 = 边框宽度 * 1.55
     const 黄线长 = 弧长 * 0.82
     const 黑线长 = 弧长
-    const 黑线宽 = Math.max(2.8, 边框宽度 * 1.45)
+    const 黑线宽 = Math.max(3.2, 边框宽度 * 1.65)
     ctx.save()
     ctx.lineWidth = 线宽
     ctx.lineCap = 'round'
