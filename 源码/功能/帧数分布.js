@@ -321,6 +321,7 @@ function 图表元素可用(图表元素) {
 function 取得图表配置(分布列表) {
   const 类目数量 = 分布列表.length
   const x轴标签间隔 = 类目数量 > 24 ? Math.ceil(类目数量 / 16) : 0
+  const 最后一个类目idx = 类目数量 - 1
 
   return {
     backgroundColor: 'transparent',
@@ -357,7 +358,10 @@ function 取得图表配置(分布列表) {
       axisLabel: {
         color: 'rgba(220, 232, 248, 0.82)',
         fontWeight: 800,
-        interval: x轴标签间隔,
+        interval(idx) {
+          return idx === 最后一个类目idx || idx % (x轴标签间隔 + 1) === 0
+        },
+        showMaxLabel: true,
       },
       axisLine: {
         lineStyle: { color: 'rgba(220, 232, 248, 0.32)' },
