@@ -221,8 +221,9 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
   function 画对角顺滑连接(x, y, 方向) {
     const 弧长 = Math.max(边框宽度 * 3.8, Math.min(格宽, 格高) * 0.18)
     const 线宽 = 边框宽度 * 1.75
-    const 黑线长 = 弧长 * 0.95
-    const 黑线宽 = Math.max(1.5, 边框宽度 * 0.9)
+    const 黄线长 = 弧长 * 0.82
+    const 黑线长 = 弧长
+    const 黑线宽 = Math.max(2.2, 边框宽度 * 1.15)
     ctx.save()
     ctx.lineWidth = 线宽
     ctx.lineCap = 'round'
@@ -235,11 +236,11 @@ export function 画障碍物底色({ ctx, 格宽, 格高, 大小 }) {
     ctx.fill()
 
     if (方向 === '左上右下') {
-      画弧线(x - 弧长, y, x, y - 弧长, x + 弧长, y + 弧长)
-      画弧线(x, y + 弧长, x + 弧长, y, x - 弧长, y - 弧长)
+      画弧线(x - 黄线长, y, x, y - 黄线长, x + 黄线长, y + 黄线长)
+      画弧线(x, y + 黄线长, x + 黄线长, y, x - 黄线长, y - 黄线长)
     } else {
-      画弧线(x, y - 弧长, x + 弧长, y, x - 弧长, y + 弧长)
-      画弧线(x - 弧长, y, x, y + 弧长, x + 弧长, y - 弧长)
+      画弧线(x, y - 黄线长, x + 黄线长, y, x - 黄线长, y + 黄线长)
+      画弧线(x - 黄线长, y, x, y + 黄线长, x + 黄线长, y - 黄线长)
     }
 
     ctx.lineWidth = 黑线宽
