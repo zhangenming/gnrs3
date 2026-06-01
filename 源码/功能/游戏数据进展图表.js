@@ -5,11 +5,13 @@
 // 每回合采样数据，并维护一个 ECharts 折线图。
 import { 我方蓝色, 样式编号 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 同步我方玩家索引 } from '../游戏.js'
+import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 读取分数玩家数据, 读取快照玩家数据 } from '../战场工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
 import { 读取当前回合 } from '../游戏工具.js'
+import { 读取显示回合 } from './大回合倒计时.js'
+import { 取得单元格列表, 取得玩家列索引, 取得表头行 } from '../战场DOM工具.js'
 import { 安装样式 as 注入样式 } from '../工具.js'
 
 const 面板编号 = 'gio-data-progress-chart-panel'
@@ -29,6 +31,7 @@ let ECharts加载Promise = null
 let 正在等待ECharts = false
 let 图表渲染签名 = ''
 let 图表显示系列 = { 兵力差: true, 陆地差: false }
+let 网页回放同步动画帧编号 = null
 
 export const 功能定义 = {
   id: '游戏数据进展图表',
@@ -39,7 +42,8 @@ export const 功能定义 = {
 
 export const 主程序功能 = {
   id: 功能定义.id,
-  页面同步: 更新游戏数据进展图表,
+  启动: 安装网页回放数据进展同步,
+  页面同步: 同步游戏数据进展图表,
   窗口尺寸变化: 更新游戏数据进展图表,
 }
 
@@ -63,11 +67,36 @@ export const socket功能 = {
 export function 记录游戏数据进展(数据包) {
   if (!功能已启用('游戏数据进展图表')) return
   const 回合 = 读取当前回合(数据包)
+  记录游戏数据进展点(回合, () => 读取数据差(数据包))
+}
+
+function 同步游戏数据进展图表() {
+  记录网页回放数据进展()
+  更新游戏数据进展图表()
+}
+
+function 记录网页回放数据进展() {
+  if (!是网页回放页()) return
+  const 回合 = 读取显示回合()
+  记录游戏数据进展点(回合, 读取页面数据差)
+}
+
+function 安装网页回放数据进展同步() {
+  if (网页回放同步动画帧编号 !== null) return
+  function 同步网页回放数据进展() {
+    if (功能已启用('游戏数据进展图表') && 是网页回放页()) {
+      记录网页回放数据进展()
+    }
+    网页回放同步动画帧编号 = window.requestAnimationFrame(同步网页回放数据进展)
+  }
+  网页回放同步动画帧编号 = window.requestAnimationFrame(同步网页回放数据进展)
+}
+
+function 记录游戏数据进展点(回合, 读取差值) {
   if (!Number.isInteger(回合) || 回合 <= 0) return
-  if (是游戏结束数据(数据包)) return
   if (状态.游戏数据进展上次统计回合 === 回合) return
 
-  const 差值 = 读取数据差(数据包)
+  const 差值 = 读取差值()
   if (!差值) return
 
   状态.游戏数据进展上次统计回合 = 回合
@@ -140,6 +169,7 @@ export function 更新游戏数据进展图表() {
 }
 
 function 读取数据差(数据包) {
+  if (是游戏结束数据(数据包)) return null
   同步我方玩家索引()
   const 玩家数据 = 读取分数玩家数据(数据包) ?? 读取快照玩家数据()
   if (!玩家数据) return null
@@ -148,6 +178,73 @@ function 读取数据差(数据包) {
     兵力差: 玩家数据.我方.兵力 - 玩家数据.敌方.兵力,
     陆地差: 玩家数据.我方.陆地 - 玩家数据.敌方.陆地,
   }
+}
+
+function 读取页面数据差() {
+  同步我方玩家索引()
+  const 表格 = 取得战场数据表格()
+  if (!表格) return null
+
+  const 表头行 = 取得表头行(表格)
+  if (!表头行) return null
+
+  const 表头格列表 = 取得单元格列表(表头行)
+  const 玩家列 = 取得玩家列索引(表头格列表)
+  const 兵力列 = 取得列索引(表头格列表, 'Army', 'army')
+  const 陆地列 = 取得列索引(表头格列表, 'Land', 'land')
+  if (玩家列 < 0 || 兵力列 < 0 || 陆地列 < 0) return null
+
+  const 玩家行列表 = Array.from(表格.querySelectorAll('tr')).filter((行) => {
+    return 行 !== 表头行 && 取得单元格列表(行).length > 陆地列
+  })
+  const 玩家数据 = 玩家行列表.map(读取玩家行数据).filter((玩家) => 玩家)
+  const 我方 = 玩家数据.find((玩家) => 是我方或队友(玩家.索引))
+  const 敌方 = 玩家数据.find((玩家) => {
+    return Number.isInteger(玩家.索引) && !是我方或队友(玩家.索引)
+  })
+  if (!我方 || !敌方) return null
+
+  return {
+    兵力差: 我方.兵力 - 敌方.兵力,
+    陆地差: 我方.陆地 - 敌方.陆地,
+  }
+
+  function 取得列索引(单元格列表, 原文本, 类型) {
+    return 单元格列表.findIndex((单元格) => {
+      if (单元格.dataset.gioBattleKind === 类型) return true
+      return (单元格.textContent ?? '').trim() === 原文本
+    })
+  }
+
+  function 读取玩家行数据(行) {
+    const 单元格列表 = 取得单元格列表(行)
+    const 玩家名 = (单元格列表[玩家列]?.textContent ?? '').trim()
+    if (!玩家名) return null
+
+    const 索引 = Array.isArray(状态.玩家名列表)
+      ? 状态.玩家名列表.indexOf(玩家名)
+      : -1
+    if (索引 < 0) return null
+
+    const 兵力 = 读取页面数字(单元格列表[兵力列])
+    const 陆地 = 读取页面数字(单元格列表[陆地列])
+    if (!Number.isInteger(兵力) || !Number.isInteger(陆地)) return null
+    return { 索引, 兵力, 陆地 }
+  }
+
+  function 读取页面数字(单元格) {
+    const 文本 = (单元格?.textContent ?? '').trim()
+    if (/^[+-]\d+$/.test(文本)) return null
+    const 数字 = Number.parseInt(文本, 10)
+    return Number.isInteger(数字) ? 数字 : null
+  }
+}
+
+function 是网页回放页() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
 }
 
 function 是游戏结束数据(数据包) {
