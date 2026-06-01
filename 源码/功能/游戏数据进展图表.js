@@ -30,7 +30,7 @@ let 图表实例 = null
 let ECharts加载Promise = null
 let 正在等待ECharts = false
 let 图表渲染签名 = ''
-let 图表显示系列 = { 兵力差: true, 陆地差: true }
+let 图表显示系列 = { 兵力差: true, 陆地差: false }
 let 网页回放同步动画帧编号 = null
 
 export const 功能定义 = {
