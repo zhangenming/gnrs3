@@ -197,16 +197,28 @@ function 读取页面数据差() {
   const 玩家行列表 = Array.from(表格.querySelectorAll('tr')).filter((行) => {
     return 行 !== 表头行 && 取得单元格列表(行).length > 陆地列
   })
-  const 玩家数据 = 玩家行列表.map(读取玩家行数据).filter((玩家) => 玩家)
-  const 我方 = 玩家数据.find((玩家) => 是我方或队友(玩家.索引))
-  const 敌方 = 玩家数据.find((玩家) => {
-    return Number.isInteger(玩家.索引) && !是我方或队友(玩家.索引)
-  })
-  if (!我方 || !敌方) return null
+  const 我方行 = 取得我方行(玩家行列表)
+  const 敌方行 = 取得敌方行(玩家行列表, 我方行)
+  if (!我方行 || !敌方行) return null
+
+  const 我方格列表 = 取得单元格列表(我方行)
+  const 敌方格列表 = 取得单元格列表(敌方行)
+  const 我方兵力 = 读取页面数字(我方格列表[兵力列])
+  const 敌方兵力 = 读取页面数字(敌方格列表[兵力列])
+  const 我方陆地 = 读取页面数字(我方格列表[陆地列])
+  const 敌方陆地 = 读取页面数字(敌方格列表[陆地列])
+  if (
+    !Number.isInteger(我方兵力) ||
+    !Number.isInteger(敌方兵力) ||
+    !Number.isInteger(我方陆地) ||
+    !Number.isInteger(敌方陆地)
+  ) {
+    return null
+  }
 
   return {
-    兵力差: 我方.兵力 - 敌方.兵力,
-    陆地差: 我方.陆地 - 敌方.陆地,
+    兵力差: 我方兵力 - 敌方兵力,
+    陆地差: 我方陆地 - 敌方陆地,
   }
 
   function 取得列索引(单元格列表, 原文本, 类型) {
@@ -216,20 +228,62 @@ function 读取页面数据差() {
     })
   }
 
-  function 读取玩家行数据(行) {
-    const 单元格列表 = 取得单元格列表(行)
-    const 玩家名 = (单元格列表[玩家列]?.textContent ?? '').trim()
-    if (!玩家名) return null
+  function 取得我方行(玩家行列表) {
+    return (
+      玩家行列表.find((行) => {
+        const 玩家索引 = 取得行玩家索引(行)
+        return Number.isInteger(玩家索引) && 是我方或队友(玩家索引)
+      }) ??
+      玩家行列表.find((行) => {
+        return 是我方玩家格(取得单元格列表(行)[玩家列])
+      }) ??
+      玩家行列表[0] ??
+      null
+    )
+  }
 
-    const 索引 = Array.isArray(状态.玩家名列表)
-      ? 状态.玩家名列表.indexOf(玩家名)
-      : -1
-    if (索引 < 0) return null
+  function 取得敌方行(玩家行列表, 我方行) {
+    return (
+      玩家行列表.find((行) => {
+        const 玩家索引 = 取得行玩家索引(行)
+        return Number.isInteger(玩家索引) && !是我方或队友(玩家索引)
+      }) ??
+      玩家行列表.find((行) => {
+        return 是敌方玩家格(取得单元格列表(行)[玩家列])
+      }) ??
+      玩家行列表.find((行) => 行 !== 我方行) ??
+      null
+    )
+  }
 
-    const 兵力 = 读取页面数字(单元格列表[兵力列])
-    const 陆地 = 读取页面数字(单元格列表[陆地列])
-    if (!Number.isInteger(兵力) || !Number.isInteger(陆地)) return null
-    return { 索引, 兵力, 陆地 }
+  function 取得行玩家索引(行) {
+    const 玩家名 = (取得单元格列表(行)[玩家列]?.textContent ?? '').trim()
+    if (!玩家名 || !Array.isArray(状态.玩家名列表)) return null
+    const 玩家索引 = 状态.玩家名列表.indexOf(玩家名)
+    return 玩家索引 >= 0 ? 玩家索引 : null
+  }
+
+  function 是我方玩家格(单元格) {
+    return 有颜色类(单元格, [
+      'blue',
+      'lightblue',
+      'selected-blue',
+      'selected-lightblue',
+    ])
+  }
+
+  function 是敌方玩家格(单元格) {
+    return 有颜色类(单元格, ['red', 'selected-red'])
+  }
+
+  function 有颜色类(单元格, 类名列表) {
+    if (!单元格) return false
+    return 类名列表.some((类名) => {
+      return (
+        单元格.classList.contains(类名) ||
+        Boolean(单元格.querySelector(`.${类名}`))
+      )
+    })
   }
 
   function 读取页面数字(单元格) {
