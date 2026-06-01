@@ -48,7 +48,7 @@ export const socket功能 = {
 export const 功能样式 = `
 .${战场塔信息类名} {
     text-align: center !important;
-    white-space: normal !important;
+    white-space: nowrap !important;
     color: #000000 !important;
 }
 .${战场塔信息类名} .gio-battle-tower-pill {
@@ -56,12 +56,14 @@ export const 功能样式 = `
     align-items: center;
     justify-content: center;
     margin: 0 auto;
-    padding: 5px 10px;
-    border-radius: 12px;
+    min-width: 64px;
+    padding: 3px 5px;
+    border-radius: 8px;
     background-color: #d8d8d8;
     color: #000000 !important;
     font: 700 13px/1.15 Arial, sans-serif;
     text-shadow: none !important;
+    white-space: nowrap !important;
 }
 .${战场塔信息类名}[data-gio-tower-diff="advantage"] .gio-battle-tower-pill {
     background-color: #2792ff;
