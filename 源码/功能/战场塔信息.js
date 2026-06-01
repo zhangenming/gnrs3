@@ -56,7 +56,7 @@ export const 功能样式 = `
     align-items: center;
     justify-content: center;
     margin: 0 auto;
-    min-width: 64px;
+    width: 108px;
     padding: 3px 5px;
     border-radius: 8px;
     background-color: #d8d8d8;
