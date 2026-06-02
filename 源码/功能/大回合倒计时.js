@@ -7,8 +7,10 @@
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 取得大回合倒计时 } from '../工具.js'
+import { 取得单元格列表 } from '../战场DOM工具.js'
 import { 更新回合结束提示, 清除回合结束提示 } from './回合结束提示.js'
 import { 更新我方行动监控UI, 结算我方行动回合 } from './我方行动监控.js'
+import { 取得战场数据表格 } from './战场表格.js'
 
 let 已请求更新大回合倒计时 = false
 let 回放回合动画帧编号 = null
@@ -84,11 +86,13 @@ function 安装回放回合动画同步() {
 export function 更新大回合倒计时() {
   if (!功能已启用('大回合倒计时')) {
     清除回合结束提示()
+    清除回放POV回合()
     return
   }
   const 总回合 = 读取显示回合()
   const 倒计时 = 取得大回合倒计时(总回合)
   更新回合结束提示(倒计时)
+  更新回放POV回合(总回合)
   if (倒计时 == null || !Number.isInteger(总回合)) return
 }
 
@@ -141,6 +145,50 @@ function 是网页回放中() {
     globalThis.location?.pathname?.startsWith('/replays/') ||
     document.getElementById('replay-turn-jump-input'),
   )
+}
+
+function 更新回放POV回合(总回合) {
+  if (!是网页回放中() || !Number.isInteger(总回合)) {
+    清除回放POV回合()
+    return
+  }
+
+  const 单元格 = 取得POV表头格()
+  if (!单元格) return
+  if (!单元格.dataset.gioReplayTurnOriginalText) {
+    单元格.dataset.gioReplayTurnOriginalText = (单元格.textContent ?? '').trim()
+  }
+  单元格.dataset.gioReplayTurnCell = 'true'
+  单元格.textContent = String(总回合)
+
+  function 取得POV表头格() {
+    const 表格 = 取得战场数据表格()
+    const 行列表 = 表格?.querySelectorAll('tr') ?? []
+    for (const 行 of 行列表) {
+      const 单元格列表 = 取得单元格列表(行)
+      const 已标记格 = 单元格列表.find((单元格) => {
+        return 单元格.dataset.gioReplayTurnCell === 'true'
+      })
+      if (已标记格) return 已标记格
+
+      const POV格 = 单元格列表.find((单元格) => {
+        return (单元格.textContent ?? '').trim() === 'POV'
+      })
+      if (POV格) return POV格
+    }
+    return null
+  }
+}
+
+function 清除回放POV回合() {
+  document
+    .querySelectorAll('[data-gio-replay-turn-cell="true"]')
+    .forEach((单元格) => {
+      const 原始文本 = 单元格.dataset.gioReplayTurnOriginalText
+      if (原始文本) 单元格.textContent = 原始文本
+      delete 单元格.dataset.gioReplayTurnCell
+      delete 单元格.dataset.gioReplayTurnOriginalText
+    })
 }
 
 import { 注册功能 } from '../注册中心.js'

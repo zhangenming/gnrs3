@@ -56,6 +56,7 @@ export function 同步我方玩家索引() {
 
       const 表头格列表 = 取得单元格列表(表头行)
       const 视角列 = 表头格列表.findIndex((单元格) => {
+        if (单元格.dataset.gioReplayTurnCell === 'true') return true
         return (单元格.textContent ?? '').trim() === 'POV'
       })
       const 玩家列 = 表头格列表.findIndex((单元格) => {
@@ -103,6 +104,7 @@ export function 同步我方玩家索引() {
       const 文本列表 = 取得单元格列表(行).map((单元格) => {
         return (单元格.textContent ?? '').trim()
       })
+      if (行.querySelector('[data-gio-replay-turn-cell="true"]')) return 行
       if (文本列表.includes('POV')) return 行
     }
     return null
