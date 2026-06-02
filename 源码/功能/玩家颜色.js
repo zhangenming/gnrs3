@@ -18,6 +18,26 @@ export const 功能定义 = {
   描述: '把我方固定成蓝色，敌方固定成红色',
 }
 
+const 原始地图颜色列表 = [
+  '#ff0000',
+  '#2792ff',
+  '#008000',
+  '#008080',
+  '#fa8c01',
+  '#f032e6',
+  '#800080',
+  '#9b0101',
+  '#b3ac32',
+  '#9a5e24',
+  '#1031ff',
+  '#594ca5',
+  '#85a91c',
+  '#ff6668',
+  '#b47fca',
+  '#b49971',
+]
+let 已安装地图画布颜色替换 = false
+
 export const 功能样式 = `
 :root {
     --map-rgb-p1: 255,0,0;
@@ -41,7 +61,7 @@ export const 功能样式 = `
 
 export const 主程序功能 = {
   id: 功能定义.id,
-  启动: 同步页面颜色,
+  启动: 启动玩家颜色统一,
   页面同步: 同步页面颜色,
 }
 
@@ -54,6 +74,11 @@ export const socket功能 = {
   新局重置() {
     状态.已处理颜色数据包 = new WeakSet()
   },
+}
+
+function 启动玩家颜色统一() {
+  安装地图画布颜色替换()
+  同步页面颜色()
 }
 
 export function 重构玩家颜色(数据包) {
@@ -96,13 +121,11 @@ function 同步地图颜色变量() {
   const 样式 = document.body?.style
   if (!样式) return
 
-  const 我方索引 = Number.isInteger(状态.我方索引) ? 状态.我方索引 : 1
-  for (let idx = 0; idx < 16; idx += 1) {
-    const 是我方 = idx === 我方索引
+  原始地图颜色列表.forEach((颜色, idx) => {
     const 编号 = idx + 1
-    样式.setProperty(`--map-rgb-p${编号}`, 是我方 ? '39,146,255' : '255,0,0')
-    样式.setProperty(`--map-color-p${编号}`, 是我方 ? 我方蓝色 : 敌方红色)
-  }
+    样式.setProperty(`--map-rgb-p${编号}`, 颜色转RGB文本(颜色))
+    样式.setProperty(`--map-color-p${编号}`, 颜色)
+  })
 }
 
 let 已请求同步页面颜色 = false
@@ -137,14 +160,13 @@ function 同步战场面板颜色() {
   const 数据行列表 = Array.from(表格.querySelectorAll('tr')).filter((行) => {
     return 行 !== 表头行
   })
-  const 回放我方行 = 取得回放我方行(数据行列表, 表头行)
-  if (回放我方行) {
-    const 回放我方索引 = 数据行列表.indexOf(回放我方行)
-    if (回放我方索引 >= 0) 状态.我方索引 = 回放我方索引
-    固定指定数据第一行(数据行列表, 回放我方行)
+  const 回放我方 = 取得回放我方(数据行列表, 表头行)
+  if (回放我方) {
+    状态.我方索引 = 回放我方.玩家索引
+    固定指定数据第一行(数据行列表, 回放我方.行)
     数据行列表.forEach((行) => {
       const 玩家格 = 取得单元格列表(行)[玩家列]
-      if (玩家格) 应用玩家格颜色(玩家格, 行 === 回放我方行)
+      if (玩家格) 应用玩家格颜色(玩家格, 行 === 回放我方.行)
     })
     return
   }
@@ -163,7 +185,7 @@ function 同步战场面板颜色() {
     应用玩家格颜色(玩家格, 是我方)
   })
 
-  function 取得回放我方行(数据行列表, 表头行) {
+  function 取得回放我方(数据行列表, 表头行) {
     const 表头格列表 = 取得单元格列表(表头行)
     const 视角列 = 表头格列表.findIndex((单元格) => {
       if (单元格.dataset.gioReplayTurnCell === 'true') return true
@@ -171,15 +193,24 @@ function 同步战场面板颜色() {
     })
     if (视角列 < 0) return null
 
-    const 勾选行 = 数据行列表.find((行) => {
-      const 视角格 = 取得单元格列表(行)[视角列]
-      return 读取POV勾选框(视角格)?.checked === true
-    })
-    if (勾选行) return 勾选行
+    const 勾选结果 = 读取回放玩家行(数据行列表, 视角列, true)
+    if (勾选结果) return 勾选结果
 
-    return 数据行列表.find((行) => {
-      return 取得单元格列表(行)[玩家列]
-    })
+    return 读取回放玩家行(数据行列表, 视角列, false)
+  }
+
+  function 读取回放玩家行(数据行列表, 视角列, 只取勾选) {
+    for (const 行 of 数据行列表) {
+      const 视角格 = 取得单元格列表(行)[视角列]
+      const 勾选框 = 读取POV勾选框(视角格)
+      if (只取勾选 && 勾选框?.checked !== true) continue
+      if (!只取勾选 && !勾选框) continue
+
+      const 玩家索引 = Number.parseInt(勾选框.id, 10)
+      if (!Number.isInteger(玩家索引)) continue
+      return { 行, 玩家索引 }
+    }
+    return null
   }
 
   function 读取POV勾选框(单元格) {
@@ -241,6 +272,72 @@ function 清理颜色类名(节点) {
     'lightblue',
     'selected-lightblue',
   )
+}
+
+function 安装地图画布颜色替换() {
+  if (已安装地图画布颜色替换) return
+  const 原型 = globalThis.CanvasRenderingContext2D?.prototype
+  const 描述 = 原型 && Object.getOwnPropertyDescriptor(原型, 'fillStyle')
+  if (!原型 || !描述?.get || !描述?.set) return
+
+  已安装地图画布颜色替换 = true
+  Object.defineProperty(原型, 'fillStyle', {
+    configurable: 描述.configurable,
+    enumerable: 描述.enumerable,
+    get: 描述.get,
+    set(颜色) {
+      return 描述.set.call(this, 转换地图画布颜色(this, 颜色))
+    },
+  })
+}
+
+function 转换地图画布颜色(ctx, 颜色) {
+  if (!功能已启用('玩家颜色统一')) return 颜色
+  if (!ctx?.canvas?.classList?.contains('game-map-canvas')) return 颜色
+  if (!Number.isInteger(状态.我方索引)) return 颜色
+
+  const 颜色索引 = 取得原始地图颜色索引(颜色)
+  if (颜色索引 < 0) return 颜色
+  return 颜色索引 === 状态.我方索引 ? 我方蓝色 : 敌方红色
+}
+
+function 取得原始地图颜色索引(颜色) {
+  const 标准颜色 = 标准化颜色(颜色)
+  if (!标准颜色) return -1
+
+  return 原始地图颜色列表.findIndex((原始颜色) => {
+    return 标准化颜色(原始颜色) === 标准颜色
+  })
+}
+
+function 标准化颜色(颜色) {
+  if (typeof 颜色 !== 'string') return ''
+  const 文本 = 颜色.trim().toLowerCase()
+  if (/^#[0-9a-f]{6}$/.test(文本)) return 文本
+  if (/^#[0-9a-f]{3}$/.test(文本)) {
+    return `#${文本[1]}${文本[1]}${文本[2]}${文本[2]}${文本[3]}${文本[3]}`
+  }
+
+  const rgb匹配 = 文本.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/)
+  if (!rgb匹配) return 文本
+  return `#${转两位十六进制(rgb匹配[1])}${转两位十六进制(rgb匹配[2])}${转两位十六进制(rgb匹配[3])}`
+}
+
+function 转两位十六进制(值) {
+  return Math.max(0, Math.min(255, Number.parseInt(值, 10) || 0))
+    .toString(16)
+    .padStart(2, '0')
+}
+
+function 颜色转RGB文本(颜色) {
+  const 文本 = 标准化颜色(颜色)
+  if (!/^#[0-9a-f]{6}$/.test(文本)) return '255,0,0'
+
+  return [
+    Number.parseInt(文本.slice(1, 3), 16),
+    Number.parseInt(文本.slice(3, 5), 16),
+    Number.parseInt(文本.slice(5, 7), 16),
+  ].join(',')
 }
 
 import { 注册功能 } from '../注册中心.js'
