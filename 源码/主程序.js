@@ -1,3 +1,4 @@
+import { 控制面板层级 } from './配置.js'
 import { 状态 } from './状态.js'
 import { 安全执行, 安装样式 } from './工具.js'
 import { 暴露调试接口 } from './调试接口.js'
@@ -198,6 +199,13 @@ function 安装注入成功样式() {
     `
     .gio-注入成功按钮 {
       background: #00d5d5 !important;
+    }
+    .popup-background,
+    .fixed-fullscreen {
+      z-index: ${控制面板层级 + 10} !important;
+    }
+    .alert {
+      z-index: ${控制面板层级 + 11} !important;
     }
   `,
   )
