@@ -76,11 +76,11 @@ table[data-gio-battle-compact="true"],
 }
 [data-gio-battle-compact="true"] th:nth-child(1),
 [data-gio-battle-compact="true"] td:nth-child(1) {
-    width: 72px !important;
+    width: 64px !important;
 }
 [data-gio-battle-compact="true"] th:nth-child(2),
 [data-gio-battle-compact="true"] td:nth-child(2) {
-    width: 120px !important;
+    width: 128px !important;
 }
 [data-gio-battle-compact="true"] th:nth-child(3),
 [data-gio-battle-compact="true"] td:nth-child(3) {

@@ -56,12 +56,13 @@ export const 功能样式 = `
     align-items: center;
     justify-content: center;
     margin: 0 auto;
-    width: 108px;
-    padding: 3px 5px;
-    border-radius: 8px;
+    width: auto;
+    max-width: 100%;
+    padding: 3px 2px;
+    border-radius: 4px;
     background-color: #d8d8d8;
     color: #000000 !important;
-    font: 700 13px/1.15 Arial, sans-serif;
+    font: 700 12px/1.15 Arial, sans-serif;
     text-shadow: none !important;
     white-space: nowrap !important;
 }
