@@ -3,7 +3,7 @@
 //
 // 作用范围:
 // 每回合采样数据，并维护一个 ECharts 折线图。
-import { 我方蓝色, 样式编号 } from '../配置.js'
+import { 我方蓝色, 样式编号, 覆盖层层级 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
@@ -724,7 +724,7 @@ function 安装样式() {
     position: fixed;
     right: 12px;
     top: 104px;
-    z-index: 2147482998;
+    z-index: ${覆盖层层级 + 1};
     width: 300px;
 }
 .gio-data-progress-head {

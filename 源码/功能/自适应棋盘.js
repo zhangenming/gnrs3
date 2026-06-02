@@ -1,4 +1,5 @@
-﻿import { 功能已启用 } from '../功能状态.js'
+﻿import { 覆盖层层级 } from '../配置.js'
+import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 取游戏画布 } from '../游戏工具.js'
 import { 同步地图大小标签 } from './地图大小标签.js'
@@ -235,7 +236,7 @@ body:has(#game-page #gameMap.gio-adaptive-map) #game-leaderboard-container {
     width: var(--gio-battle-panel-width, 360px) !important;
     max-width: calc(100vw - 16px) !important;
     text-align: left !important;
-    z-index: 26 !important;
+    z-index: ${覆盖层层级 + 1} !important;
 }
 body:has(#game-page #gameMap.gio-adaptive-map) #game-leaderboard {
     width: 100% !important;
