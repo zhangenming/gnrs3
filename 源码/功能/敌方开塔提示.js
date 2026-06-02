@@ -363,10 +363,6 @@ function 记录敌方开塔日志({
     ` 成功:${候选结果.是敌方成功开塔}`
 
   const 控制台 = globalThis.console
-  控制台?.log('[gio敌方开塔回合]', {
-    上次回合: 上次快照.回合,
-    当前回合: 当前快照.回合,
-  })
   if (typeof 控制台?.groupCollapsed === 'function') {
     控制台.groupCollapsed(标签)
     控制台.log('结论', 日志.结论)
