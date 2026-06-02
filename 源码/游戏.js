@@ -32,16 +32,18 @@ export function 读取玩家信息(数据包) {
 }
 
 export function 同步我方玩家索引() {
+  const 回放POV玩家索引 = 读取回放POV玩家索引()
+  if (Number.isInteger(回放POV玩家索引)) {
+    状态.我方索引 = 回放POV玩家索引
+    return 状态.我方索引
+  }
+
   const 本地玩家索引 = 取得本地玩家索引()
   if (Number.isInteger(本地玩家索引)) {
     状态.我方索引 = 本地玩家索引
     return 状态.我方索引
   }
 
-  const 回放POV玩家索引 = 读取回放POV玩家索引()
-  if (Number.isInteger(回放POV玩家索引)) {
-    状态.我方索引 = 回放POV玩家索引
-  }
   return 状态.我方索引
 
   function 读取回放POV玩家索引() {

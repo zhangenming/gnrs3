@@ -5,7 +5,7 @@
 // 只处理带 playerColors 的入站数据包，并用 WeakSet 避免同一对象重复处理。
 // 颜色统一后，排行榜识别、地图显示和战场数据差功能都能用稳定的敌我颜色规则。
 import { 敌方红色, 敌方红色索引, 我方蓝色, 我方蓝色索引 } from '../配置.js'
-import { 读取玩家信息, 是我方或队友 } from '../游戏.js'
+import { 读取玩家信息, 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 取得表头行, 取得单元格列表, 取得玩家列索引 } from '../战场DOM工具.js'
@@ -121,6 +121,7 @@ function 同步页面颜色() {
 function 同步战场面板颜色() {
   if (!功能已启用('玩家颜色统一')) return
   if (!Array.isArray(状态.玩家名列表)) return
+  同步我方玩家索引()
 
   const 表格 = 取得战场数据表格()
   if (!表格) return
