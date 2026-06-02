@@ -76,7 +76,7 @@ table[data-gio-battle-compact="true"],
 }
 [data-gio-battle-compact="true"] th:nth-child(1),
 [data-gio-battle-compact="true"] td:nth-child(1) {
-    width: 40px !important;
+    width: 72px !important;
 }
 [data-gio-battle-compact="true"] th:nth-child(2),
 [data-gio-battle-compact="true"] td:nth-child(2) {
@@ -84,7 +84,7 @@ table[data-gio-battle-compact="true"],
 }
 [data-gio-battle-compact="true"] th:nth-child(3),
 [data-gio-battle-compact="true"] td:nth-child(3) {
-    width: 176px !important;
+    width: 144px !important;
 }
 [data-gio-battle-compact="true"] th:nth-child(4),
 [data-gio-battle-compact="true"] td:nth-child(4),
