@@ -96,10 +96,13 @@ function 同步地图颜色变量() {
   const 样式 = document.body?.style
   if (!样式) return
 
-  样式.setProperty('--map-rgb-p1', '255,0,0')
-  样式.setProperty('--map-color-p1', '#ff0000')
-  样式.setProperty('--map-rgb-p2', '39,146,255')
-  样式.setProperty('--map-color-p2', '#2792ff')
+  const 我方索引 = Number.isInteger(状态.我方索引) ? 状态.我方索引 : 1
+  for (let idx = 0; idx < 16; idx += 1) {
+    const 是我方 = idx === 我方索引
+    const 编号 = idx + 1
+    样式.setProperty(`--map-rgb-p${编号}`, 是我方 ? '39,146,255' : '255,0,0')
+    样式.setProperty(`--map-color-p${编号}`, 是我方 ? 我方蓝色 : 敌方红色)
+  }
 }
 
 let 已请求同步页面颜色 = false
@@ -114,8 +117,8 @@ function 请求同步页面颜色() {
 }
 
 function 同步页面颜色() {
-  同步地图颜色变量()
   同步战场面板颜色()
+  同步地图颜色变量()
 }
 
 function 同步战场面板颜色() {
@@ -136,6 +139,8 @@ function 同步战场面板颜色() {
   })
   const 回放我方行 = 取得回放我方行(数据行列表, 表头行)
   if (回放我方行) {
+    const 回放我方索引 = 数据行列表.indexOf(回放我方行)
+    if (回放我方索引 >= 0) 状态.我方索引 = 回放我方索引
     固定指定数据第一行(数据行列表, 回放我方行)
     数据行列表.forEach((行) => {
       const 玩家格 = 取得单元格列表(行)[玩家列]
