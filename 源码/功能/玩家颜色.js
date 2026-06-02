@@ -293,12 +293,20 @@ function 安装地图画布颜色替换() {
 
 function 转换地图画布颜色(ctx, 颜色) {
   if (!功能已启用('玩家颜色统一')) return 颜色
+  if (!是网页回放中()) return 颜色
   if (!ctx?.canvas?.classList?.contains('game-map-canvas')) return 颜色
   if (!Number.isInteger(状态.我方索引)) return 颜色
 
   const 颜色索引 = 取得原始地图颜色索引(颜色)
   if (颜色索引 < 0) return 颜色
   return 颜色索引 === 状态.我方索引 ? 我方蓝色 : 敌方红色
+}
+
+function 是网页回放中() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
 }
 
 function 取得原始地图颜色索引(颜色) {
