@@ -120,8 +120,7 @@ function 同步页面颜色() {
 
 function 同步战场面板颜色() {
   if (!功能已启用('玩家颜色统一')) return
-  if (!Array.isArray(状态.玩家名列表)) return
-  同步我方玩家索引()
+  if (Array.isArray(状态.玩家名列表)) 同步我方玩家索引()
 
   const 表格 = 取得战场数据表格()
   if (!表格) return
@@ -135,6 +134,17 @@ function 同步战场面板颜色() {
   const 数据行列表 = Array.from(表格.querySelectorAll('tr')).filter((行) => {
     return 行 !== 表头行
   })
+  const 回放我方行 = 取得回放我方行(数据行列表, 表头行)
+  if (回放我方行) {
+    固定指定数据第一行(数据行列表, 回放我方行)
+    数据行列表.forEach((行) => {
+      const 玩家格 = 取得单元格列表(行)[玩家列]
+      if (玩家格) 应用玩家格颜色(玩家格, 行 === 回放我方行)
+    })
+    return
+  }
+
+  if (!Array.isArray(状态.玩家名列表)) return
   固定我方数据第一行(数据行列表)
 
   数据行列表.forEach((行) => {
@@ -148,6 +158,48 @@ function 同步战场面板颜色() {
     应用玩家格颜色(玩家格, 是我方)
   })
 
+  function 取得回放我方行(数据行列表, 表头行) {
+    const 表头格列表 = 取得单元格列表(表头行)
+    const 视角列 = 表头格列表.findIndex((单元格) => {
+      if (单元格.dataset.gioReplayTurnCell === 'true') return true
+      return (单元格.textContent ?? '').trim() === 'POV'
+    })
+    if (视角列 < 0) return null
+
+    const 勾选行 = 数据行列表.find((行) => {
+      const 视角格 = 取得单元格列表(行)[视角列]
+      return 读取POV勾选框(视角格)?.checked === true
+    })
+    if (勾选行) return 勾选行
+
+    return 数据行列表.find((行) => {
+      return 取得单元格列表(行)[玩家列]
+    })
+  }
+
+  function 读取POV勾选框(单元格) {
+    const 勾选框列表 = Array.from(
+      单元格?.querySelectorAll('input[type="checkbox"]') ?? [],
+    )
+    return (
+      勾选框列表.find((勾选框) => {
+        return !勾选框.closest('.perspective-select')
+      }) ?? null
+    )
+  }
+
+  function 固定指定数据第一行(数据行列表, 我方行) {
+    const 第一行 = 数据行列表.find((行) => {
+      return 行.parentElement === 我方行.parentElement
+    })
+    if (第一行 && 第一行 !== 我方行) {
+      我方行.parentElement.insertBefore(我方行, 第一行)
+      return
+    }
+
+    if (表头行.parentElement === 我方行.parentElement) 表头行.after(我方行)
+  }
+
   function 固定我方数据第一行(数据行列表) {
     const 我方玩家名 = 状态.玩家名列表[状态.我方索引]
     if (!我方玩家名) return
@@ -158,15 +210,7 @@ function 同步战场面板颜色() {
     })
     if (!我方行) return
 
-    const 第一行 = 数据行列表.find((行) => {
-      return 行.parentElement === 我方行.parentElement
-    })
-    if (第一行 && 第一行 !== 我方行) {
-      我方行.parentElement.insertBefore(我方行, 第一行)
-      return
-    }
-
-    if (表头行.parentElement === 我方行.parentElement) 表头行.after(我方行)
+    固定指定数据第一行(数据行列表, 我方行)
   }
 }
 
