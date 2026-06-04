@@ -32,6 +32,7 @@ import './功能/自动保护基地.js'
 import './功能/自动吃基地.js'
 import './功能/战场数据冻结.js'
 import './功能/自动发送ggs.js'
+import './功能/结算星星变化.js'
 
 export {
   功能列表,
