@@ -13,6 +13,14 @@ const 样式编号 = `${面板编号}-style`
 const 一对一星星键 = 'duel'
 const 赛前星星读取延迟列表 = [80, 400, 1000]
 const 赛后星星读取延迟列表 = [800, 2500, 6000]
+const 星星变化容差 = 0.005
+const 星星来源优先级 = {
+  对局包: 20,
+  排行榜: 30,
+  本地缓存: 60,
+  账号接口: 90,
+  账号推送: 100,
+}
 
 let 本局星星数据 = null
 let 本局读取序号 = 0
@@ -48,10 +56,17 @@ export const socket功能 = {
       玩家名列表: Array.isArray(数据包?.usernames)
         ? 数据包.usernames.slice()
         : null,
-      赛前星星: 读取星星数组(数据包?.stars),
+      赛前星星: [],
+      赛前星星来源: [],
+      赛前星星优先级: [],
       赛后星星: [],
+      赛后星星来源: [],
+      赛后星星优先级: [],
+      胜利索引列表: null,
+      死亡索引列表: null,
       已结束: false,
     }
+    写入星星列表('赛前星星', 读取星星数组(数据包?.stars), false, '对局包')
     记录本地缓存赛前星星()
     赛前星星读取延迟列表.forEach((延迟) => {
       setTimeout(记录排行榜赛前星星, 延迟)
@@ -65,7 +80,7 @@ export const socket功能 = {
     if (事件名 === 'stars') 记录本账号赛后星星(数据包)
     if (事件名 === 'game_update') 记录赛前星星(数据包)
     if (是游戏结束事件(事件名) || 包含死亡分数(数据包)) {
-      标记游戏结束()
+      标记游戏结束(事件名, 数据包)
     }
   },
 }
@@ -101,7 +116,7 @@ function 记录赛前星星(数据包) {
 
   const 星星列表 = 读取星星数组(数据包?.stars)
   if (!星星列表) return
-  写入星星列表('赛前星星', 星星列表, false)
+  写入星星列表('赛前星星', 星星列表, false, '对局包')
 }
 
 function 记录本账号赛后星星(星星数据) {
@@ -112,12 +127,13 @@ function 记录本账号赛后星星(星星数据) {
   const 星星 = 读取星星值(星星数据?.[一对一星星键])
   if (!Number.isFinite(星星)) return
 
-  写入单个星星('赛后星星', 我方索引, 星星, true)
+  写入单个星星('赛后星星', 我方索引, 星星, true, '账号推送')
 }
 
-function 标记游戏结束() {
+function 标记游戏结束(事件名, 数据包) {
   if (!本局星星数据 || 本局星星数据.已结束) return
 
+  记录结束结果(事件名, 数据包)
   本局星星数据.已结束 = true
   赛后星星读取延迟列表.forEach((延迟) => {
     请求玩家星星列表('赛后星星', 延迟)
@@ -126,13 +142,36 @@ function 标记游戏结束() {
   setTimeout(更新结算星星变化, 120)
 }
 
+function 记录结束结果(事件名, 数据包) {
+  const 死亡索引列表 = 读取死亡索引列表(数据包)
+  if (死亡索引列表.length) {
+    本局星星数据.死亡索引列表 = 死亡索引列表
+    const 玩家名列表 = 读取玩家名列表()
+    if (Array.isArray(玩家名列表)) {
+      本局星星数据.胜利索引列表 = 玩家名列表
+        .map((玩家名, idx) => (玩家名 ? idx : null))
+        .filter((idx) => Number.isInteger(idx) && !死亡索引列表.includes(idx))
+    }
+  }
+
+  if (事件名 === 'game_won') {
+    const 我方索引 = 读取我方索引()
+    if (Number.isInteger(我方索引)) 本局星星数据.胜利索引列表 = [我方索引]
+  }
+
+  if (事件名 === 'game_lost') {
+    const 敌方索引 = 读取敌方索引()
+    if (Number.isInteger(敌方索引)) 本局星星数据.胜利索引列表 = [敌方索引]
+  }
+}
+
 function 记录本地缓存赛前星星() {
   const 我方索引 = 读取我方索引()
   if (!本局星星数据 || !Number.isInteger(我方索引)) return
 
   const 星星 = 读取本地缓存星星()
   if (Number.isFinite(星星)) {
-    写入单个星星('赛前星星', 我方索引, 星星, false)
+    写入单个星星('赛前星星', 我方索引, 星星, false, '本地缓存')
   }
 }
 
@@ -140,7 +179,7 @@ function 记录排行榜赛前星星() {
   if (!本局星星数据 || 本局星星数据.已结束) return
 
   const 星星列表 = 读取排行榜星星()
-  if (星星列表) 写入星星列表('赛前星星', 星星列表, false)
+  if (星星列表) 写入星星列表('赛前星星', 星星列表, false, '排行榜')
 }
 
 function 读取排行榜星星() {
@@ -175,7 +214,7 @@ function 请求玩家星星列表(字段, 延迟) {
       .then((星星列表) => {
         if (!本局星星数据 || 本局星星数据.读取序号 !== 读取序号) return
         if (字段 === '赛前星星' && 本局星星数据.已结束) return
-        写入星星列表(字段, 星星列表, 字段 === '赛后星星')
+        写入星星列表(字段, 星星列表, 字段 === '赛后星星', '账号接口')
       })
       .catch((错误) => {
         console.warn('[结算星星变化] 读取玩家星星失败:', 错误)
@@ -196,22 +235,32 @@ async function 读取玩家一对一星星(玩家名) {
   return 读取星星值(数据?.stars?.[一对一星星键])
 }
 
-function 写入星星列表(字段, 星星列表, 需要刷新) {
+function 写入星星列表(字段, 星星列表, 需要刷新, 来源) {
   if (!本局星星数据 || !Array.isArray(星星列表)) return
 
   for (let idx = 0; idx < 星星列表.length; idx += 1) {
-    写入单个星星(字段, idx, 星星列表[idx], false)
+    写入单个星星(字段, idx, 星星列表[idx], false, 来源)
   }
   if (需要刷新) 更新结算星星变化()
 }
 
-function 写入单个星星(字段, 玩家索引, 星星, 需要刷新) {
+function 写入单个星星(字段, 玩家索引, 星星, 需要刷新, 来源) {
   if (!本局星星数据) return
   if (!Number.isInteger(玩家索引) || 玩家索引 < 0) return
   if (!Number.isFinite(星星)) return
 
+  const 来源优先级 = 星星来源优先级[来源] ?? 0
+  const 优先级字段 = `${字段}优先级`
+  const 来源字段 = `${字段}来源`
+  const 当前优先级 = 本局星星数据[优先级字段]?.[玩家索引] ?? -1
+  if (当前优先级 > 来源优先级) return
+
   if (!Array.isArray(本局星星数据[字段])) 本局星星数据[字段] = []
+  if (!Array.isArray(本局星星数据[优先级字段])) 本局星星数据[优先级字段] = []
+  if (!Array.isArray(本局星星数据[来源字段])) 本局星星数据[来源字段] = []
   本局星星数据[字段][玩家索引] = 星星
+  本局星星数据[优先级字段][玩家索引] = 来源优先级
+  本局星星数据[来源字段][玩家索引] = 来源
   if (需要刷新) 更新结算星星变化()
 }
 
@@ -220,15 +269,15 @@ function 计算星星变化() {
   if (!Array.isArray(玩家名列表)) return null
 
   const 我方索引 = 读取我方索引()
-  const 敌方索引 = 玩家名列表.findIndex((玩家名, idx) => {
-    return 玩家名 && !是我方或队友(idx)
-  })
+  const 敌方索引 = 读取敌方索引()
   if (!Number.isInteger(我方索引) || 敌方索引 < 0) return null
 
-  return {
+  const 输出 = {
     我方: 读取玩家变化(我方索引, '我方'),
     敌方: 读取玩家变化(敌方索引, '敌方'),
   }
+  标记异常变化(输出)
+  return 输出
 
   function 读取玩家变化(玩家索引, 标签) {
     const 赛前 = 读取星星值(本局星星数据.赛前星星?.[玩家索引])
@@ -236,8 +285,50 @@ function 计算星星变化() {
     const 变化 =
       Number.isFinite(赛前) && Number.isFinite(赛后) ? 赛后 - 赛前 : null
     const 玩家名 = 玩家名列表[玩家索引] ?? 标签
-    return { 标签, 玩家名, 赛前, 赛后, 变化 }
+    return {
+      标签,
+      玩家名,
+      玩家索引,
+      赛前,
+      赛后,
+      变化,
+      赛前来源: 本局星星数据.赛前星星来源?.[玩家索引] ?? '',
+      赛后来源: 本局星星数据.赛后星星来源?.[玩家索引] ?? '',
+      变化可信: true,
+      异常原因: '',
+    }
   }
+}
+
+function 标记异常变化(变化数据) {
+  const 玩家列表 = [变化数据.我方, 变化数据.敌方]
+  const 我方变化 = 变化数据.我方.变化
+  const 敌方变化 = 变化数据.敌方.变化
+  if (
+    Math.abs(我方变化) > 星星变化容差 &&
+    Math.abs(敌方变化) > 星星变化容差 &&
+    Math.sign(我方变化) === Math.sign(敌方变化)
+  ) {
+    玩家列表.forEach((玩家) => 标记玩家变化异常(玩家, '敌我变化同向'))
+    return
+  }
+
+  const 胜利索引列表 = 本局星星数据?.胜利索引列表
+  const 死亡索引列表 = 本局星星数据?.死亡索引列表
+  玩家列表.forEach((玩家) => {
+    if (!Number.isFinite(玩家.变化)) return
+    if (胜利索引列表?.includes(玩家.玩家索引) && 玩家.变化 < -星星变化容差) {
+      标记玩家变化异常(玩家, '胜方变化为负')
+    }
+    if (死亡索引列表?.includes(玩家.玩家索引) && 玩家.变化 > 星星变化容差) {
+      标记玩家变化异常(玩家, '败方变化为正')
+    }
+  })
+}
+
+function 标记玩家变化异常(玩家, 原因) {
+  玩家.变化可信 = false
+  玩家.异常原因 = 原因
 }
 
 function 取得结算星星宿主() {
@@ -291,6 +382,7 @@ function 渲染面板(面板, 变化数据) {
 function 创建玩家行(玩家) {
   const 行 = document.createElement('div')
   行.className = 'gio-settlement-star-change-row'
+  行.title = 生成玩家星星来源说明(玩家)
 
   const 名称 = document.createElement('span')
   名称.className = 'gio-settlement-star-change-name'
@@ -299,7 +391,7 @@ function 创建玩家行(玩家) {
   const 变化 = document.createElement('span')
   变化.className = 'gio-settlement-star-change-diff'
   变化.textContent = 格式化变化(玩家)
-  变化.dataset.state = 读取变化状态(玩家.变化)
+  变化.dataset.state = 读取变化状态(玩家)
 
   const 总数 = document.createElement('span')
   总数.className = 'gio-settlement-star-change-total'
@@ -403,6 +495,16 @@ function 读取我方索引() {
   return 状态.我方索引
 }
 
+function 读取敌方索引() {
+  const 玩家名列表 = 读取玩家名列表()
+  if (!Array.isArray(玩家名列表)) return null
+  const 我方索引 = 读取我方索引()
+  const 敌方索引 = 玩家名列表.findIndex((玩家名, idx) => {
+    return 玩家名 && idx !== 我方索引 && !是我方或队友(idx)
+  })
+  return 敌方索引 >= 0 ? 敌方索引 : null
+}
+
 function 读取玩家名列表() {
   if (Array.isArray(本局星星数据?.玩家名列表)) return 本局星星数据.玩家名列表
   return 状态.玩家名列表
@@ -433,10 +535,21 @@ function 读取星星文本(文本) {
   return Number.isFinite(数字) ? 数字 : null
 }
 
+function 读取死亡索引列表(数据包) {
+  if (!Array.isArray(数据包?.scores)) return []
+  return 数据包.scores
+    .map((分数, idx) => {
+      if (分数?.dead !== true) return null
+      return Number.isInteger(分数.i) ? 分数.i : idx
+    })
+    .filter((idx) => Number.isInteger(idx))
+}
+
 function 格式化变化(玩家) {
   if (!Number.isFinite(玩家.赛后)) return '读取中'
   if (!Number.isFinite(玩家.赛前)) return '赛前 ?'
   if (!Number.isFinite(玩家.变化)) return '变化 ?'
+  if (!玩家.变化可信) return '待确认'
 
   const 文本 = 格式化小数(Math.abs(玩家.变化), 2)
   if (玩家.变化 > 0) return `+${文本}`
@@ -453,10 +566,19 @@ function 格式化小数(数字, 位数) {
   return Number(数字.toFixed(位数)).toString()
 }
 
-function 读取变化状态(变化) {
-  if (!Number.isFinite(变化)) return 'pending'
-  if (变化 === 0) return 'same'
-  return 变化 > 0 ? 'up' : 'down'
+function 读取变化状态(玩家) {
+  if (!Number.isFinite(玩家.变化) || !玩家.变化可信) return 'pending'
+  if (玩家.变化 === 0) return 'same'
+  return 玩家.变化 > 0 ? 'up' : 'down'
+}
+
+function 生成玩家星星来源说明(玩家) {
+  const 列表 = [
+    `赛前 ${格式化总星星(玩家.赛前)} 来源 ${玩家.赛前来源 || '?'}`,
+    `赛后 ${格式化总星星(玩家.赛后)} 来源 ${玩家.赛后来源 || '?'}`,
+  ]
+  if (玩家.异常原因) 列表.push(`状态 ${玩家.异常原因}`)
+  return 列表.join('\n')
 }
 
 function 包含死亡分数(数据包) {
