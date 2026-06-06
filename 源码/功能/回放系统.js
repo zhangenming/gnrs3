@@ -4,7 +4,13 @@
 // 实现原理:
 // 每次 game_start/game_update 处理完后，保存一份状态快照。
 // 复盘时恢复快照，让既有覆盖层渲染逻辑直接读取历史状态；地图底图按快照地图即时绘制。
-import { 样式编号, 我方蓝色, 敌方红色, 回放底图层级 } from '../配置.js'
+import {
+  样式编号,
+  我方蓝色,
+  敌方红色,
+  回放底图层级,
+  大回合turn数,
+} from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.js'
 import { 状态 } from '../状态.js'
@@ -16,6 +22,7 @@ import { 更新大回合倒计时 } from './大回合倒计时.js'
 const 元素类名 = 'gio-replay-frame'
 const 面板类名 = 'gio-replay-panel'
 const 样式元素编号 = `${样式编号}-replay-system`
+let 正在逐帧跳转大回合 = false
 
 export const 功能定义 = {
   id: '回放系统',
@@ -173,6 +180,18 @@ export function 安装回放快捷键(请求渲染) {
       if (事件.defaultPrevented || 是输入中(事件.target)) return
       if (!状态.回放已结束 || !状态.回放帧列表.length) return
 
+      if (事件.shiftKey && (事件.key === 'a' || 事件.key === 'A')) {
+        事件.preventDefault()
+        事件.stopImmediatePropagation()
+        void 逐帧移动到大回合(-1, 请求渲染)
+        return
+      }
+      if (事件.shiftKey && (事件.key === 'd' || 事件.key === 'D')) {
+        事件.preventDefault()
+        事件.stopImmediatePropagation()
+        void 逐帧移动到大回合(1, 请求渲染)
+        return
+      }
       if (事件.key === 'a' || 事件.key === 'A') {
         事件.preventDefault()
         事件.stopImmediatePropagation()
@@ -236,17 +255,71 @@ function 是移动操作事件(事件名) {
 
 function 移动回放帧(步数, 请求渲染) {
   const 最大索引 = 状态.回放帧列表.length - 1
-  if (最大索引 < 0) return
+  if (最大索引 < 0) return false
 
   const 当前索引 = Number.isInteger(状态.回放当前帧索引)
     ? 状态.回放当前帧索引
     : 最大索引
   const 目标索引 = Math.min(Math.max(当前索引 + 步数, 0), 最大索引)
-  if (目标索引 === 状态.回放当前帧索引 && 状态.回放正在显示) return
+  if (目标索引 === 状态.回放当前帧索引 && 状态.回放正在显示) {
+    return false
+  }
 
   状态.回放当前帧索引 = 目标索引
   状态.回放正在显示 = true
   应用当前回放帧(请求渲染)
+  return true
+}
+
+async function 逐帧移动到大回合(方向, 请求渲染) {
+  if (正在逐帧跳转大回合) return
+
+  const 当前回合 = 读取当前回放帧回合()
+  if (!Number.isInteger(当前回合)) return
+
+  const 目标回合 = 计算大回合目标(当前回合, 方向)
+  const 最大步数 = Math.abs(目标回合 - 当前回合) + 大回合turn数
+  if (最大步数 <= 0) return
+
+  正在逐帧跳转大回合 = true
+  try {
+    for (let idx = 0; idx < 最大步数; idx += 1) {
+      if (!状态.回放已结束 || !状态.回放帧列表.length) return
+      if (已到达大回合目标(目标回合, 方向)) return
+      if (!移动回放帧(方向, 请求渲染)) return
+      await 等待下一次绘制()
+    }
+  } finally {
+    正在逐帧跳转大回合 = false
+  }
+
+  function 等待下一次绘制() {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve)
+      })
+    })
+  }
+}
+
+function 读取当前回放帧回合() {
+  return 取得当前回放帧()?.回合 ?? null
+}
+
+function 计算大回合目标(当前回合, 方向) {
+  if (方向 > 0) {
+    return Math.floor(当前回合 / 大回合turn数) * 大回合turn数 + 大回合turn数
+  }
+  return Math.max(
+    0,
+    Math.ceil(当前回合 / 大回合turn数) * 大回合turn数 - 大回合turn数,
+  )
+}
+
+function 已到达大回合目标(目标回合, 方向) {
+  const 当前回合 = 读取当前回放帧回合()
+  if (!Number.isInteger(当前回合)) return false
+  return 方向 > 0 ? 当前回合 >= 目标回合 : 当前回合 <= 目标回合
 }
 
 function 应用当前回放帧(请求渲染) {
