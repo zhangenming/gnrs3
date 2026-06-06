@@ -183,13 +183,13 @@ export function 安装回放快捷键(请求渲染) {
       if (事件.shiftKey && (事件.key === 'a' || 事件.key === 'A')) {
         事件.preventDefault()
         事件.stopImmediatePropagation()
-        逐帧移动到大回合(-1, 请求渲染)
+        void 逐帧移动到大回合(-1, 请求渲染)
         return
       }
       if (事件.shiftKey && (事件.key === 'd' || 事件.key === 'D')) {
         事件.preventDefault()
         事件.stopImmediatePropagation()
-        逐帧移动到大回合(1, 请求渲染)
+        void 逐帧移动到大回合(1, 请求渲染)
         return
       }
       if (事件.key === 'a' || 事件.key === 'A') {
@@ -271,7 +271,7 @@ function 移动回放帧(步数, 请求渲染) {
   return true
 }
 
-function 逐帧移动到大回合(方向, 请求渲染) {
+async function 逐帧移动到大回合(方向, 请求渲染) {
   if (正在逐帧跳转大回合) return
 
   const 当前回合 = 读取当前回放帧回合()
@@ -282,28 +282,29 @@ function 逐帧移动到大回合(方向, 请求渲染) {
   if (最大步数 <= 0) return
 
   正在逐帧跳转大回合 = true
-  let 剩余步数 = 最大步数
-  requestAnimationFrame(移动一步)
-
-  function 移动一步() {
-    if (!状态.回放已结束 || !状态.回放帧列表.length) {
-      结束逐帧跳转()
-      return
+  try {
+    for (let idx = 0; idx < 最大步数; idx += 1) {
+      if (!状态.回放已结束 || !状态.回放帧列表.length) return
+      if (已到达大回合目标(目标回合, 方向)) return
+      if (!移动回放帧(方向, 请求渲染)) return
+      await 等待本步显示完成()
     }
-    if (已到达大回合目标(目标回合, 方向) || 剩余步数 <= 0) {
-      结束逐帧跳转()
-      return
-    }
-    剩余步数 -= 1
-    if (!移动回放帧(方向, 请求渲染)) {
-      结束逐帧跳转()
-      return
-    }
-    requestAnimationFrame(移动一步)
+  } finally {
+    正在逐帧跳转大回合 = false
   }
 
-  function 结束逐帧跳转() {
-    正在逐帧跳转大回合 = false
+  function 等待本步显示完成() {
+    return new Promise((resolve) => {
+      requestAnimationFrame(等待渲染完成)
+
+      function 等待渲染完成() {
+        if (状态.已请求渲染) {
+          requestAnimationFrame(等待渲染完成)
+          return
+        }
+        requestAnimationFrame(resolve)
+      }
+    })
   }
 }
 
