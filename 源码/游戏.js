@@ -130,7 +130,7 @@ function 取得本地玩家索引(玩家名列表 = 状态.玩家名列表) {
   return 忽略大小写索引 >= 0 ? 忽略大小写索引 : null
 }
 
-function 读取本地玩家名() {
+export function 读取本地玩家名() {
   const 玩家名 = globalThis.localStorage?.GIO_CACHED_USERNAME
   return typeof 玩家名 === 'string' ? 玩家名.trim() : ''
 }

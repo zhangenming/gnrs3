@@ -9,7 +9,7 @@
 // 会优先根据玩家索引和用户名识别我方与敌方行，并给差值格写入数据属性，供样式层区分优势和劣势。
 import { 我方蓝色, 战场数据差类名, 敌方红色 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
+import { 读取本地玩家名, 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import {
   记录原始战场节点,
@@ -31,6 +31,7 @@ export const 功能定义 = {
 
 export const 主程序功能 = {
   id: 功能定义.id,
+  启动: 安装网页回放数据差同步,
   页面同步: 更新战场数据差,
 }
 
@@ -95,6 +96,19 @@ table[data-gio-battle-compact="true"],
 }
 `
 
+let 回放数据差动画帧编号 = null
+
+function 安装网页回放数据差同步() {
+  if (回放数据差动画帧编号 !== null) return
+  function 同步网页回放数据差() {
+    if (功能已启用('战场数据差') && 是网页回放中()) {
+      更新战场数据差()
+    }
+    回放数据差动画帧编号 = window.requestAnimationFrame(同步网页回放数据差)
+  }
+  回放数据差动画帧编号 = window.requestAnimationFrame(同步网页回放数据差)
+}
+
 export function 更新战场数据差() {
   if (!功能已启用('战场数据差')) {
     恢复战场数据差()
@@ -122,28 +136,26 @@ export function 更新战场数据差() {
   const 玩家行列表 = 数据行列表.filter((行) => {
     return (取得单元格列表(行)[玩家列]?.textContent ?? '').trim()
   })
-  let 我方行 = 取得玩家行(状态.我方索引, 玩家行列表)
-  let 敌方行 = 玩家行列表.find((行) => {
-    const 玩家索引 = 取得行玩家索引(行)
-    return Number.isInteger(玩家索引) && !是我方或队友(玩家索引)
-  })
+  let { 我方行, 敌方行 } = 取得回放玩家行(玩家行列表, 表头行)
+  我方行 ??= 取得本地玩家行(玩家行列表)
+  我方行 ??= 取得玩家行(状态.我方索引, 玩家行列表)
+  敌方行 ??= 取得敌方玩家行(玩家行列表)
   我方行 ??= 数据行列表.find((行) => 是我方玩家格(取得单元格列表(行)[玩家列]))
   敌方行 ??= 数据行列表.find((行) => 是敌方玩家格(取得单元格列表(行)[玩家列]))
-  if (!我方行 || !敌方行) {
-    我方行 ??= 玩家行列表[0] ?? null
-    敌方行 ??= 玩家行列表.find((行) => 行 !== 我方行) ?? null
-  }
+  敌方行 ??= 玩家行列表.find((行) => 行 !== 我方行) ?? null
   if (!我方行 || !敌方行) return
 
   const 我方格列表 = 取得单元格列表(我方行)
   const 敌方格列表 = 取得单元格列表(敌方行)
-  应用战场数据冻结({
-    玩家行列表,
-    玩家列,
-    兵力列,
-    陆地列,
-    取得单元格列表,
-  })
+  if (!是网页回放中()) {
+    应用战场数据冻结({
+      玩家行列表,
+      玩家列,
+      兵力列,
+      陆地列,
+      取得单元格列表,
+    })
+  }
   更新差值格(
     表头格列表[兵力列],
     读取数字(我方格列表[兵力列]) - 读取数字(敌方格列表[兵力列]),
@@ -162,6 +174,50 @@ export function 更新战场数据差() {
     })
   }
 
+  function 取得回放玩家行(玩家行列表, 表头行) {
+    const 表头格列表 = 取得单元格列表(表头行)
+    const 视角列 = 表头格列表.findIndex((单元格) => {
+      if (单元格.dataset.gioReplayTurnCell === 'true') return true
+      return (单元格.textContent ?? '').trim() === 'POV'
+    })
+    if (视角列 < 0) return { 我方行: null, 敌方行: null }
+
+    for (const 行 of 玩家行列表) {
+      const 视角格 = 取得单元格列表(行)[视角列]
+      const 勾选框 = 读取POV勾选框(视角格)
+      if (勾选框?.checked !== true) continue
+
+      const 玩家索引 = Number.parseInt(勾选框.id, 10)
+      if (Number.isInteger(玩家索引)) 状态.我方索引 = 玩家索引
+      return {
+        我方行: 行,
+        敌方行: 玩家行列表.find((玩家行) => 玩家行 !== 行) ?? null,
+      }
+    }
+    return { 我方行: null, 敌方行: null }
+  }
+
+  function 读取POV勾选框(单元格) {
+    const 勾选框列表 = Array.from(
+      单元格?.querySelectorAll('input[type="checkbox"]') ?? [],
+    )
+    return (
+      勾选框列表.find((勾选框) => {
+        return !勾选框.closest('.perspective-select')
+      }) ?? null
+    )
+  }
+
+  function 取得本地玩家行(玩家行列表) {
+    const 本地玩家名 = 读取本地玩家名()
+    if (!本地玩家名) return null
+    return (
+      玩家行列表.find((行) => {
+        return 取得玩家名(行) === 本地玩家名
+      }) ?? null
+    )
+  }
+
   function 取得玩家行(玩家索引, 玩家行列表) {
     const 玩家名 = 状态.玩家名列表?.[玩家索引]
     if (!玩家名) return null
@@ -177,6 +233,15 @@ export function 更新战场数据差() {
     if (!玩家名 || !Array.isArray(状态.玩家名列表)) return null
     const 玩家索引 = 状态.玩家名列表.indexOf(玩家名)
     return 玩家索引 >= 0 ? 玩家索引 : null
+  }
+
+  function 取得敌方玩家行(玩家行列表) {
+    return (
+      玩家行列表.find((行) => {
+        const 玩家索引 = 取得行玩家索引(行)
+        return Number.isInteger(玩家索引) && !是我方或队友(玩家索引)
+      }) ?? null
+    )
   }
 
   function 取得玩家名(行) {
@@ -252,6 +317,13 @@ export function 恢复战场数据差() {
     单元格.style.fontWeight = ''
     单元格.style.textShadow = ''
   })
+}
+
+function 是网页回放中() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
 }
 
 import { 注册功能 } from '../注册中心.js'

@@ -5,7 +5,12 @@
 // 只处理带 playerColors 的入站数据包，并用 WeakSet 避免同一对象重复处理。
 // 颜色统一后，排行榜识别、地图显示和战场数据差功能都能用稳定的敌我颜色规则。
 import { 敌方红色, 敌方红色索引, 我方蓝色, 我方蓝色索引 } from '../配置.js'
-import { 读取玩家信息, 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
+import {
+  读取玩家信息,
+  读取本地玩家名,
+  同步我方玩家索引,
+  是我方或队友,
+} from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 取得表头行, 取得单元格列表, 取得玩家列索引 } from '../战场DOM工具.js'
@@ -78,7 +83,19 @@ export const socket功能 = {
 
 function 启动玩家颜色统一() {
   安装地图画布颜色替换()
+  安装网页回放颜色同步()
   同步页面颜色()
+}
+
+function 安装网页回放颜色同步() {
+  if (回放颜色动画帧编号 !== null) return
+  function 同步网页回放颜色() {
+    if (功能已启用('玩家颜色统一') && 是网页回放中()) {
+      同步页面颜色()
+    }
+    回放颜色动画帧编号 = window.requestAnimationFrame(同步网页回放颜色)
+  }
+  回放颜色动画帧编号 = window.requestAnimationFrame(同步网页回放颜色)
 }
 
 export function 重构玩家颜色(数据包) {
@@ -129,6 +146,7 @@ function 同步地图颜色变量() {
 }
 
 let 已请求同步页面颜色 = false
+let 回放颜色动画帧编号 = null
 
 function 请求同步页面颜色() {
   if (已请求同步页面颜色) return
@@ -171,6 +189,19 @@ function 同步战场面板颜色() {
     return
   }
 
+  const 本地玩家名 = 读取本地玩家名()
+  if (本地玩家名) {
+    const 我方行 = 取得指定玩家行(数据行列表, 本地玩家名)
+    if (我方行) {
+      固定指定数据第一行(数据行列表, 我方行)
+      数据行列表.forEach((行) => {
+        const 玩家格 = 取得单元格列表(行)[玩家列]
+        if (玩家格) 应用玩家格颜色(玩家格, 行 === 我方行)
+      })
+      return
+    }
+  }
+
   if (!Array.isArray(状态.玩家名列表)) return
   固定我方数据第一行(数据行列表)
 
@@ -193,18 +224,14 @@ function 同步战场面板颜色() {
     })
     if (视角列 < 0) return null
 
-    const 勾选结果 = 读取回放玩家行(数据行列表, 视角列, true)
-    if (勾选结果) return 勾选结果
-
-    return 读取回放玩家行(数据行列表, 视角列, false)
+    return 读取回放玩家行(数据行列表, 视角列)
   }
 
-  function 读取回放玩家行(数据行列表, 视角列, 只取勾选) {
+  function 读取回放玩家行(数据行列表, 视角列) {
     for (const 行 of 数据行列表) {
       const 视角格 = 取得单元格列表(行)[视角列]
       const 勾选框 = 读取POV勾选框(视角格)
-      if (只取勾选 && 勾选框?.checked !== true) continue
-      if (!只取勾选 && !勾选框) continue
+      if (勾选框?.checked !== true) continue
 
       const 玩家索引 = Number.parseInt(勾选框.id, 10)
       if (!Number.isInteger(玩家索引)) continue
@@ -237,16 +264,24 @@ function 同步战场面板颜色() {
   }
 
   function 固定我方数据第一行(数据行列表) {
-    const 我方玩家名 = 状态.玩家名列表[状态.我方索引]
+    const 我方玩家名 = 取得我方玩家名()
     if (!我方玩家名) return
 
-    const 我方行 = 数据行列表.find((行) => {
-      const 玩家格 = 取得单元格列表(行)[玩家列]
-      return (玩家格?.textContent ?? '').trim() === 我方玩家名
-    })
+    const 我方行 = 取得指定玩家行(数据行列表, 我方玩家名)
     if (!我方行) return
 
     固定指定数据第一行(数据行列表, 我方行)
+  }
+
+  function 取得指定玩家行(数据行列表, 玩家名) {
+    return 数据行列表.find((行) => {
+      const 玩家格 = 取得单元格列表(行)[玩家列]
+      return (玩家格?.textContent ?? '').trim() === 玩家名
+    })
+  }
+
+  function 取得我方玩家名() {
+    return 状态.玩家名列表[状态.我方索引] ?? 读取本地玩家名()
   }
 }
 
