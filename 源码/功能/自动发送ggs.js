@@ -1,5 +1,5 @@
 // 功能目的:
-// 对手在 1v1 对局聊天里发送 last 或 lst 时，自动回一条 ggs。
+// 对手在 1v1 对局聊天里发送 last、last one 或 lst 时，自动回一条 ggs。
 import { 状态 } from '../状态.js'
 import { 注册功能 } from '../注册中心.js'
 
@@ -52,7 +52,9 @@ function 是对手消息(消息) {
 }
 
 function 是last消息(文本) {
-  return /^\s*l(?:ast|st)\s*$/i.test(typeof 文本 === 'string' ? 文本 : '')
+  return /^\s*(?:last(?:\s+one)?|lst)\s*$/i.test(
+    typeof 文本 === 'string' ? 文本 : '',
+  )
 }
 
 function 规范化玩家名(玩家名) {
