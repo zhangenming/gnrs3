@@ -23,7 +23,9 @@ export const socket功能 = {
     if (!是last消息(消息?.text)) return
 
     本局已自动发送ggs = true
-    socket.emit('chat_message', 房间, 'ggs')
+    setTimeout(function () {
+      socket.emit('chat_message', 房间, 'ggs')
+    }, 2000)
   },
 }
 
