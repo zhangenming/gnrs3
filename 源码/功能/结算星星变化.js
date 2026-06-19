@@ -367,15 +367,11 @@ function 渲染面板(面板, 变化数据) {
   const 签名 = JSON.stringify(变化数据)
   if (面板.dataset.签名 === 签名) return
 
-  const 标题 = document.createElement('div')
-  标题.className = 'gio-settlement-star-change-title'
-  标题.textContent = '本局星星变化'
-
   const 列表 = document.createElement('div')
   列表.className = 'gio-settlement-star-change-list'
   列表.replaceChildren(创建玩家行(变化数据.我方), 创建玩家行(变化数据.敌方))
 
-  面板.replaceChildren(标题, 列表)
+  面板.replaceChildren(列表)
   面板.dataset.签名 = 签名
 }
 
@@ -386,7 +382,7 @@ function 创建玩家行(玩家) {
 
   const 名称 = document.createElement('span')
   名称.className = 'gio-settlement-star-change-name'
-  名称.textContent = `${玩家.标签} ${玩家.玩家名}`
+  名称.textContent = 玩家.玩家名
 
   const 变化 = document.createElement('span')
   变化.className = 'gio-settlement-star-change-diff'
@@ -418,12 +414,6 @@ function 安装样式() {
   color: #fff;
   font-size: 13px;
   line-height: 1.35;
-}
-
-.gio-settlement-star-change-title {
-  margin-bottom: 6px;
-  color: #ffd84d;
-  font-weight: 700;
 }
 
 .gio-settlement-star-change-list {
