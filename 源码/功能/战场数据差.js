@@ -75,22 +75,33 @@ table[data-gio-battle-compact="true"],
     padding-right: 4px !important;
     white-space: nowrap !important;
 }
+[data-gio-battle-compact="true"] tr {
+    display: flex !important;
+}
 [data-gio-battle-compact="true"] th:nth-child(1),
 [data-gio-battle-compact="true"] td:nth-child(1) {
+    order: 1 !important;
     width: 64px !important;
 }
 [data-gio-battle-compact="true"] th:nth-child(2),
 [data-gio-battle-compact="true"] td:nth-child(2) {
+    order: 2 !important;
     width: 128px !important;
 }
 [data-gio-battle-compact="true"] th:nth-child(3),
 [data-gio-battle-compact="true"] td:nth-child(3) {
+    order: 4 !important;
     width: 144px !important;
 }
 [data-gio-battle-compact="true"] th:nth-child(4),
-[data-gio-battle-compact="true"] td:nth-child(4),
+[data-gio-battle-compact="true"] td:nth-child(4) {
+    order: 3 !important;
+    width: 90px !important;
+    font-variant-numeric: tabular-nums !important;
+}
 [data-gio-battle-compact="true"] th:nth-child(5),
 [data-gio-battle-compact="true"] td:nth-child(5) {
+    order: 5 !important;
     width: 90px !important;
     font-variant-numeric: tabular-nums !important;
 }
