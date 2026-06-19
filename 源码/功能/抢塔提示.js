@@ -137,11 +137,11 @@ export function 清除抢塔提示() {
   状态.抢塔提示列表 = []
 }
 
-function 画抢塔提示({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
+function 画抢塔提示({ ctx, 格宽, 格高, 大小 }) {
   if (!状态.抢塔提示列表.length) return
 
   const 格子数 = 状态.宽度 * 状态.高度
-  const 当前时间 = 状态.回放正在显示 ? 当前动画时间 : performance.now()
+  const 当前时间 = performance.now()
   const 可绘制提示列表 = 状态.抢塔提示列表.filter((提示) => {
     return (
       Number.isInteger(提示.索引) &&

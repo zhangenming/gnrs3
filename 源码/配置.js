@@ -18,7 +18,6 @@ export const 玩家最小距离 = 14
 export const 未到达视野背景色 = 'rgba(255, 0, 0, 0.28)'
 export const 覆盖层层级 = 2147483002
 export const 地图标签层级 = 2147483001
-export const 回放底图层级 = 2147482999
 export const 提示层级 = 2147483200
 export const 回合结束提示层级 = 2147483201
 export const 控制面板层级 = 2147483202

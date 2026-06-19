@@ -26,9 +26,7 @@ export function 渲染(动画时间 = performance.now()) {
   状态.已请求渲染 = false
   安装样式()
 
-  if (!状态.回放正在显示) {
-    执行覆盖层渲染前Hook()
-  }
+  执行覆盖层渲染前Hook()
 
   const 可绘制功能列表 = 取得可绘制功能列表()
   if (!可绘制功能列表.length) {
@@ -61,14 +59,13 @@ export function 渲染(动画时间 = performance.now()) {
   const 格宽 = 尺寸.css宽 / 状态.宽度
   const 格高 = 尺寸.css高 / 状态.高度
   const 大小 = Math.min(格宽, 格高)
-  const 当前动画时间 = 状态.回放正在显示 ? (状态.回放动画时间 ?? 0) : 动画时间
   const 上下文 = {
     ctx,
     格宽,
     格高,
     大小,
     格子数: 状态.宽度 * 状态.高度,
-    当前动画时间,
+    当前动画时间: 动画时间,
     尺寸,
     部件,
   }
@@ -124,7 +121,6 @@ function 取得可绘制功能列表() {
 }
 
 function 需要连续动画() {
-  if (状态.回放正在显示) return false
   return 覆盖层功能列表.some((功能) => {
     return 功能已启用(功能.id) && 功能.需要连续动画?.()
   })
