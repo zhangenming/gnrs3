@@ -10,6 +10,7 @@ import { 取得战场数据表格 } from './战场表格.js'
 
 const 面板编号 = 'gio-settlement-star-change'
 const 样式编号 = `${面板编号}-style`
+const 隐藏结算弹窗类名 = 'gio-settlement-popup-hidden'
 const 一对一星星键 = 'duel'
 const 赛前星星读取延迟列表 = [80, 400, 1000]
 const 赛后星星读取延迟列表 = [800, 2500, 6000]
@@ -24,6 +25,8 @@ const 星星来源优先级 = {
 
 let 本局星星数据 = null
 let 本局读取序号 = 0
+let 鼠标按住中 = false
+let 已安装鼠标按住隐藏 = false
 
 export const 功能定义 = {
   id: '结算星星变化',
@@ -86,8 +89,10 @@ export const socket功能 = {
 }
 
 export function 更新结算星星变化() {
+  安装鼠标按住隐藏()
   if (!功能已启用(功能定义.id)) {
     移除结算星星变化()
+    更新结算弹窗隐藏()
     return
   }
   if (!本局星星数据?.已结束) {
@@ -104,6 +109,7 @@ export function 更新结算星星变化() {
 
   安装样式()
   const 宿主 = 取得结算星星宿主()
+  更新结算弹窗隐藏()
   if (!宿主) return
 
   const 面板 = 确保面板(宿主)
@@ -351,6 +357,53 @@ function 取得结算弹窗() {
   return null
 }
 
+function 安装鼠标按住隐藏() {
+  if (已安装鼠标按住隐藏) return
+  已安装鼠标按住隐藏 = true
+  安装样式()
+  document.addEventListener(
+    'pointerdown',
+    () => {
+      鼠标按住中 = true
+      更新结算弹窗隐藏()
+    },
+    { passive: true },
+  )
+  window.addEventListener(
+    'pointerup',
+    () => {
+      鼠标按住中 = false
+      更新结算弹窗隐藏()
+    },
+    { passive: true },
+  )
+  window.addEventListener(
+    'pointercancel',
+    () => {
+      鼠标按住中 = false
+      更新结算弹窗隐藏()
+    },
+    { passive: true },
+  )
+  window.addEventListener(
+    'blur',
+    () => {
+      鼠标按住中 = false
+      更新结算弹窗隐藏()
+    },
+    { passive: true },
+  )
+}
+
+function 更新结算弹窗隐藏() {
+  const 结算弹窗 = 取得结算弹窗()
+  if (!结算弹窗) return
+  结算弹窗.classList.toggle(
+    隐藏结算弹窗类名,
+    鼠标按住中 && 功能已启用(功能定义.id),
+  )
+}
+
 function 确保面板(宿主) {
   let 面板 = document.getElementById(面板编号)
   if (面板 && 面板.parentElement !== 宿主) 面板.remove()
@@ -454,6 +507,11 @@ function 安装样式() {
 
 .gio-settlement-star-change-diff[data-state='pending'] {
   color: #ffd84d;
+}
+
+.${隐藏结算弹窗类名} {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 `.trim()
   document.documentElement.appendChild(样式)
