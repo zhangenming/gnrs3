@@ -324,16 +324,11 @@ export function 记录已知障碍物(数据包) {
   if (!地图可读(地图数组)) return
 
   const 格子数 = 取得地图格子数(地图数组)
-  const 塔索引集合 = new Set(状态.已知塔集合)
   const 当前塔信息 = 取得本次塔列表(数据包)
-  if (Array.isArray(当前塔信息?.塔列表)) {
-    当前塔信息.塔列表.forEach((塔索引) => {
-      if (Number.isInteger(塔索引) && 塔索引 >= 0) 塔索引集合.add(塔索引)
-    })
-  }
+  const 已占领塔集合 = 取得已占领塔集合()
   for (let idx = 0; idx < 格子数; idx += 1) {
     const 地形 = 地图数组[2 + 格子数 + idx]
-    if (塔索引集合.has(idx)) {
+    if (已占领塔集合.has(idx)) {
       状态.已知障碍物集合.delete(idx)
     } else if (是阻挡地形(地形)) {
       状态.已知障碍物集合.add(idx)
@@ -432,10 +427,30 @@ export function 记录已知障碍物(数据包) {
 
   function 是关键格(索引) {
     return (
-      塔索引集合.has(索引) ||
+      已占领塔集合.has(索引) ||
       状态.已知基地集合.has(索引) ||
       状态.已知敌方基地集合.has(索引)
     )
+  }
+
+  function 取得已占领塔集合() {
+    const 塔集合 = new Set()
+    状态.已知塔类型.forEach((类型, 塔索引) => {
+      if (
+        Number.isInteger(塔索引) &&
+        (类型 === '我方塔' || 类型 === '敌方塔')
+      ) {
+        塔集合.add(塔索引)
+      }
+    })
+
+    if (!Array.isArray(当前塔信息?.塔列表)) return 塔集合
+    当前塔信息.塔列表.forEach((塔索引) => {
+      if (!Number.isInteger(塔索引) || 塔索引 < 0) return
+      const 类型 = 状态.已知塔类型.get(塔索引)
+      if (类型 === '我方塔' || 类型 === '敌方塔') 塔集合.add(塔索引)
+    })
+    return 塔集合
   }
 
   function 取得可达集合(围墙集合) {
