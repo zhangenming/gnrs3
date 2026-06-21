@@ -3,7 +3,7 @@
 //
 // 作用范围:
 // 只读取地图、基地和塔信息，维护一个棋盘外的顶部提示；不修改真实移动队列。
-import { 大回合turn数, 提示层级, 我方蓝色, 中立黄色 } from '../配置.js'
+import { 大回合turn数, 提示层级, 中立黄色 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import {
   地图可读,
@@ -17,7 +17,6 @@ import { 状态 } from '../状态.js'
 
 const 提示元素编号 = 'gio-opening-route'
 const 目标陆地数 = 25
-const 满兵数 = 51
 const 普通开局记法 = '13-7(2)-5-3'
 const 搜索时间上限毫秒 = 12
 const 新地路径候选上限 = 18
@@ -124,9 +123,6 @@ export const 功能样式 = `
     color: #ffffff;
     font-size: 15px;
     line-height: 1.1;
-}
-#${提示元素编号} .gio-opening-route-land {
-    color: ${我方蓝色};
 }
 #${提示元素编号} .gio-opening-route-detail {
     flex-basis: 100%;
@@ -263,7 +259,6 @@ function 计算最佳开局路线(数据包) {
     return {
       ...普通开局,
       标题: '普通开局',
-      兵力数: 满兵数,
     }
   }
 
@@ -281,7 +276,6 @@ function 计算最佳开局路线(数据包) {
     return {
       ...计划列表[0],
       标题: '最佳开局',
-      兵力数: 计算第一大回合兵力数(计划列表[0].陆地数),
     }
   }
 
@@ -297,7 +291,6 @@ function 计算最佳开局路线(数据包) {
     return {
       ...最优不足计划列表[0],
       标题: '最佳开局',
-      兵力数: 计算第一大回合兵力数(最优不足计划列表[0].陆地数),
     }
   }
 
@@ -312,7 +305,6 @@ function 计算最佳开局路线(数据包) {
       评分: 1,
       模板顺序: 开局模板列表.length,
       标题: '最佳开局',
-      兵力数: 计算第一大回合兵力数(1),
     }
   }
   return {
@@ -868,11 +860,6 @@ function 取得塔集合(数据包) {
   return 塔集合
 }
 
-function 计算第一大回合兵力数(陆地数) {
-  if (!Number.isInteger(陆地数)) return null
-  return 满兵数 - 目标陆地数 + 陆地数
-}
-
 function 取得我方基地索引(数据包) {
   const 玩家索引 = Number.isInteger(状态.我方索引)
     ? 状态.我方索引
@@ -897,13 +884,9 @@ function 取得提示签名(推荐) {
 
 function 生成路线HTML(推荐) {
   const 标题 = 推荐.标题 ?? '最佳开局'
-  const 结果文本 = Number.isInteger(推荐.兵力数)
-    ? `${推荐.兵力数}兵 ${推荐.陆地数}陆地`
-    : `${推荐.陆地数}陆地`
   return (
     `<span class="gio-opening-route-label">${标题}</span>` +
     `<span class="gio-opening-route-main">${推荐.记法}</span>` +
-    `<span class="gio-opening-route-land">${结果文本}</span>` +
     `<span class="gio-opening-route-label">${推荐.描述}</span>` +
     `<span class="gio-opening-route-detail">${生成路线细节(推荐)}</span>`
   )
