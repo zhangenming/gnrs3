@@ -69,10 +69,16 @@ table[data-gio-battle-compact="true"],
 }
 [data-gio-battle-compact="true"] th,
 [data-gio-battle-compact="true"] td {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    justify-content: center !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
+    min-height: 32px !important;
     padding-left: 4px !important;
     padding-right: 4px !important;
+    line-height: 1.2 !important;
     white-space: nowrap !important;
 }
 [data-gio-battle-compact="true"] tr {

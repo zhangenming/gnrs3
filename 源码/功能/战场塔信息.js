@@ -98,6 +98,16 @@ export const 功能样式 = `
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.15px;
 }
+[data-gio-battle-compact="true"] .${战场塔信息类名} {
+    padding: 0 !important;
+}
+[data-gio-battle-compact="true"] .${战场塔信息类名} .gio-battle-tower-pill {
+    width: 100%;
+    height: 100%;
+    min-height: 32px;
+    padding: 0 4px;
+    border-radius: 0;
+}
 `
 
 let 回放塔信息动画帧编号 = null
