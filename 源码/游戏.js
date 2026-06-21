@@ -270,6 +270,8 @@ export function 取得完整地图数组(数据包) {
   let 地图数组 = null
   if (Array.isArray(数据包?.map)) {
     地图数组 = 数据包.map
+  } else if (是回放地图对象(数据包?.map)) {
+    地图数组 = 取得回放地图数组(数据包.map)
   } else if (
     Array.isArray(数据包?.map_diff) &&
     数据包.map_diff[0] === 0 &&
@@ -279,6 +281,28 @@ export function 取得完整地图数组(数据包) {
   }
 
   return 地图可读(地图数组) ? 地图数组 : null
+}
+
+function 是回放地图对象(地图) {
+  return Boolean(
+    地图 &&
+    Number.isInteger(地图.width) &&
+    Number.isInteger(地图.height) &&
+    Array.isArray(地图._map) &&
+    Array.isArray(地图._armies),
+  )
+}
+
+function 取得回放地图数组(地图) {
+  const 格子数 = 地图.width * 地图.height
+  if (格子数 <= 0) return null
+  if (地图._map.length < 格子数 || 地图._armies.length < 格子数) return null
+  return [
+    地图.width,
+    地图.height,
+    ...地图._armies.slice(0, 格子数),
+    ...地图._map.slice(0, 格子数),
+  ]
 }
 
 export function 应用增量(旧数组, 增量) {

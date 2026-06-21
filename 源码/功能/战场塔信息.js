@@ -11,6 +11,7 @@
 import { 战场塔信息类名 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 同步我方玩家索引 } from '../游戏.js'
+import { 状态 } from '../状态.js'
 import {
   记录原始战场节点,
   恢复原始战场节点,
@@ -20,6 +21,7 @@ import {
 } from '../战场DOM工具.js'
 import { 读取冻结战场塔信息, 记录战场塔信息快照 } from './战场数据冻结.js'
 import { 取得战场数据表格 } from './战场表格.js'
+import { 处理塔位置 } from './塔记忆.js'
 import { 统计塔数 } from './塔数统计.js'
 
 export const 功能定义 = {
@@ -31,6 +33,7 @@ export const 功能定义 = {
 
 export const 主程序功能 = {
   id: 功能定义.id,
+  启动: 安装网页回放塔信息同步,
   页面同步: 更新战场塔信息,
 }
 
@@ -97,6 +100,19 @@ export const 功能样式 = `
 }
 `
 
+let 回放塔信息动画帧编号 = null
+
+function 安装网页回放塔信息同步() {
+  if (回放塔信息动画帧编号 !== null) return
+  function 同步网页回放塔信息() {
+    if (功能已启用('战场塔信息') && 是网页回放中()) {
+      更新战场塔信息()
+    }
+    回放塔信息动画帧编号 = window.requestAnimationFrame(同步网页回放塔信息)
+  }
+  回放塔信息动画帧编号 = window.requestAnimationFrame(同步网页回放塔信息)
+}
+
 export function 更新战场塔信息() {
   if (!功能已启用('战场塔信息')) {
     恢复战场塔信息()
@@ -104,6 +120,7 @@ export function 更新战场塔信息() {
   }
   if (!document.body) return
   同步我方玩家索引()
+  同步网页回放塔数据()
 
   const 表格 = 取得战场数据表格()
   if (!表格) return
@@ -166,4 +183,102 @@ import { 注册功能 } from '../注册中心.js'
 
 function 取得差值文本(差值) {
   return 差值 >= 0 ? `+${差值}` : String(差值)
+}
+
+function 同步网页回放塔数据() {
+  if (!是网页回放中()) return
+
+  const 回放数据包 = 读取网页回放数据包()
+  if (!回放数据包) return
+
+  const 签名 = [
+    globalThis.location?.href,
+    回放数据包.replay_id,
+    回放数据包.turn,
+    回放数据包.replayWatcherIndex,
+    回放数据包.cities?.length,
+    回放数据包.map?._map?.length,
+  ].join(':')
+  if (状态.战场塔信息回放签名 === 签名) return
+  状态.战场塔信息回放签名 = 签名
+
+  if (Number.isInteger(回放数据包.replayWatcherIndex)) {
+    状态.我方索引 = 回放数据包.replayWatcherIndex
+  }
+  if (Number.isInteger(回放数据包.turn)) 状态.当前回合 = 回放数据包.turn
+  清空回放塔数据()
+  处理塔位置(回放数据包, function 空渲染请求() {})
+
+  function 读取网页回放数据包() {
+    const 地图元素 = document.getElementById('gameMap')
+    const 起点列表 = [地图元素, document.getElementById('react-container')]
+    for (const 起点 of 起点列表) {
+      const 数据包 = 读取节点回放数据包(起点)
+      if (数据包) return 数据包
+    }
+    return null
+  }
+
+  function 读取节点回放数据包(节点) {
+    const fiber = 读取ReactFiber(节点)
+    const 已访问 = new Set()
+    for (let 当前 = fiber; 当前 && !已访问.has(当前); 当前 = 当前.return) {
+      已访问.add(当前)
+      const props = 当前.memoizedProps
+      if (是回放数据Props(props)) {
+        return {
+          map: props.map,
+          cities: props.cities,
+          turn: props.turn,
+          usernames: props.usernames,
+          teams: props.teams,
+          replay_id: props.replay_id,
+          replayWatcherIndex: props.replayWatcherIndex,
+        }
+      }
+    }
+    return null
+  }
+
+  function 读取ReactFiber(节点) {
+    if (!节点) return null
+    const fiber键 = Object.keys(节点).find((键) => {
+      return (
+        键.startsWith('__reactFiber$') ||
+        键.startsWith('__reactInternalInstance$')
+      )
+    })
+    return fiber键 ? 节点[fiber键] : null
+  }
+
+  function 是回放数据Props(props) {
+    return Boolean(
+      props?.isReplay === true &&
+      props.map &&
+      Array.isArray(props.cities) &&
+      Number.isInteger(props.turn),
+    )
+  }
+
+  function 清空回放塔数据() {
+    状态.塔列表 = null
+    状态.已知塔集合.clear()
+    状态.已知塔类型.clear()
+    状态.中立塔兵力表.clear()
+    状态.中立塔开塔成本表.clear()
+    状态.我方开塔增长表.clear()
+    状态.我方开塔集合.clear()
+    状态.我方开塔数 = 0
+    状态.敌方开塔数 = 0
+    状态.敌方开塔推断数 = 0
+    状态.抢塔数 = 0
+    状态.敌方开塔确认集合.clear()
+  }
+}
+
+function 是网页回放中() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
 }
