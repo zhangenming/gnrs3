@@ -59,7 +59,7 @@ export const socket功能 = {
 }
 
 export function 更新帧数分布() {
-  if (!功能已启用('帧数分布')) {
+  if (!功能已启用('帧数分布') || 正在回放中()) {
     状态.帧数分布数据.正在记录 = false
     移除帧数分布面板()
     停止帧数采样()
@@ -146,6 +146,7 @@ function 启动帧数采样() {
     if (
       状态.帧数分布数据.正在记录 &&
       功能已启用('帧数分布') &&
+      !正在回放中() &&
       document.querySelector('#game-page #gameMap')
     ) {
       采样动画帧编号 = requestAnimationFrame(统计帧数分布)
@@ -316,6 +317,13 @@ function 渲染图表(echarts, 面板) {
 
 function 图表元素可用(图表元素) {
   return Boolean(图表元素?.isConnected && 图表元素.offsetParent)
+}
+
+function 正在回放中() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
 }
 
 function 取得图表配置(分布列表) {
