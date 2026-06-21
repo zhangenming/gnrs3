@@ -11,6 +11,7 @@ import { 取得战场数据表格 } from './战场表格.js'
 const 面板编号 = 'gio-settlement-star-change'
 const 样式编号 = `${面板编号}-style`
 const 隐藏结算弹窗类名 = 'gio-settlement-popup-hidden'
+const 可拖动结算弹窗类名 = 'gio-settlement-popup-draggable'
 const 鼠标按住隐藏延迟 = 500
 const 一对一星星键 = 'duel'
 const 赛前星星读取延迟列表 = [80, 400, 1000]
@@ -29,6 +30,7 @@ let 本局读取序号 = 0
 let 鼠标按住中 = false
 let 鼠标按住隐藏计时器 = null
 let 已安装鼠标按住隐藏 = false
+const 已安装拖动弹窗 = new WeakSet()
 
 export const 功能定义 = {
   id: '结算星星变化',
@@ -97,6 +99,7 @@ export function 更新结算星星变化() {
     更新结算弹窗隐藏()
     return
   }
+  确保结算弹窗可拖动(取得结算弹窗())
   if (!本局星星数据?.已结束) {
     记录排行榜赛前星星()
     移除结算星星变化()
@@ -414,6 +417,74 @@ function 更新结算弹窗隐藏() {
   )
 }
 
+function 确保结算弹窗可拖动(结算弹窗) {
+  if (!结算弹窗 || 已安装拖动弹窗.has(结算弹窗)) return
+  已安装拖动弹窗.add(结算弹窗)
+  结算弹窗.classList.add(可拖动结算弹窗类名)
+  结算弹窗.addEventListener('pointerdown', 开始拖动结算弹窗)
+}
+
+function 开始拖动结算弹窗(事件) {
+  if (事件.button !== 0) return
+  const 结算弹窗 = 事件.currentTarget
+  if (是弹窗交互元素(事件.target, 结算弹窗)) return
+
+  事件.preventDefault()
+  事件.stopPropagation()
+
+  const 起始矩形 = 结算弹窗.getBoundingClientRect()
+  const 起始X = 事件.clientX
+  const 起始Y = 事件.clientY
+  结算弹窗.style.position = 'fixed'
+  结算弹窗.style.left = `${起始矩形.left}px`
+  结算弹窗.style.top = `${起始矩形.top}px`
+  结算弹窗.style.right = 'auto'
+  结算弹窗.style.bottom = 'auto'
+  结算弹窗.style.margin = '0'
+  结算弹窗.style.transform = 'none'
+  结算弹窗.setPointerCapture?.(事件.pointerId)
+
+  结算弹窗.addEventListener('pointermove', 拖动结算弹窗)
+  结算弹窗.addEventListener('pointerup', 结束拖动结算弹窗)
+  结算弹窗.addEventListener('pointercancel', 结束拖动结算弹窗)
+
+  function 拖动结算弹窗(移动事件) {
+    const 左边 = 限制弹窗坐标(
+      起始矩形.left + 移动事件.clientX - 起始X,
+      起始矩形.width,
+      window.innerWidth,
+    )
+    const 顶部 = 限制弹窗坐标(
+      起始矩形.top + 移动事件.clientY - 起始Y,
+      起始矩形.height,
+      window.innerHeight,
+    )
+    结算弹窗.style.left = `${左边}px`
+    结算弹窗.style.top = `${顶部}px`
+  }
+
+  function 结束拖动结算弹窗(结束事件) {
+    if (结算弹窗.hasPointerCapture?.(结束事件.pointerId)) {
+      结算弹窗.releasePointerCapture(结束事件.pointerId)
+    }
+    结算弹窗.removeEventListener('pointermove', 拖动结算弹窗)
+    结算弹窗.removeEventListener('pointerup', 结束拖动结算弹窗)
+    结算弹窗.removeEventListener('pointercancel', 结束拖动结算弹窗)
+  }
+
+  function 是弹窗交互元素(元素, 结算弹窗) {
+    return Boolean(
+      元素?.closest?.(
+        'button, input, textarea, select, a, label, [role="button"], .button',
+      ) && 结算弹窗.contains(元素),
+    )
+  }
+
+  function 限制弹窗坐标(坐标, 尺寸, 视口尺寸) {
+    return Math.min(Math.max(坐标, 0), Math.max(视口尺寸 - 尺寸, 0))
+  }
+}
+
 function 确保面板(宿主) {
   let 面板 = document.getElementById(面板编号)
   if (面板 && 面板.parentElement !== 宿主) 面板.remove()
@@ -522,6 +593,22 @@ function 安装样式() {
 .${隐藏结算弹窗类名} {
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+.${可拖动结算弹窗类名} {
+  cursor: move;
+  touch-action: none;
+}
+
+.${可拖动结算弹窗类名} button,
+.${可拖动结算弹窗类名} input,
+.${可拖动结算弹窗类名} textarea,
+.${可拖动结算弹窗类名} select,
+.${可拖动结算弹窗类名} a,
+.${可拖动结算弹窗类名} label,
+.${可拖动结算弹窗类名} [role='button'],
+.${可拖动结算弹窗类名} .button {
+  cursor: pointer;
 }
 `.trim()
   document.documentElement.appendChild(样式)
