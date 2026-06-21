@@ -86,77 +86,86 @@ function 更新地图大小标签(标签, 地图元素) {
 
   const 长 = 状态.宽度
   const 宽 = 状态.高度
+  const 是回放模式 = 正在回放中()
+  const 地图文本 = `地图:${长}*${宽}=${长 * 宽}`
   const 最长长任务时间 = 读取最长长任务时间()
   更新游戏节奏统计()
-  const 文本 =
-    `游戏时间: ${格式化秒数(游戏时间)} 回合数: ${游戏回合数}` +
-    ` 平均每回合: ${格式化秒数(平均每回合时间)}` +
-    ` | ` +
-    `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率}` +
-    ` | 地图大小: ${长} * ${宽} = ${长 * 宽}` +
-    ` | 长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms` +
-    ` | API最大间隔: ${最大长任务API耗时}ms API实时值: ${当前长任务API耗时}ms` +
-    ` API最小值: ${最小长任务API耗时}ms API平均值: ${平均长任务API耗时}ms API个数: ${长任务API样本数}`
+  const 文本 = 是回放模式
+    ? 地图文本
+    : `游戏时间: ${格式化秒数(游戏时间)} 回合数: ${游戏回合数}` +
+      ` 平均每回合: ${格式化秒数(平均每回合时间)}` +
+      ` | ` +
+      `最低: ${最低帧率} FPS: ${当前帧率} 平均: ${平均帧率} 最大: ${最高帧率}` +
+      ` | 地图大小: ${长} * ${宽} = ${长 * 宽}` +
+      ` | 长任务: ${最长长任务时间}ms 主线程: ${当前主线程执行时间}ms` +
+      ` | API最大间隔: ${最大长任务API耗时}ms API实时值: ${当前长任务API耗时}ms` +
+      ` API最小值: ${最小长任务API耗时}ms API平均值: ${平均长任务API耗时}ms API个数: ${长任务API样本数}`
   if (标签.dataset.文本 !== 文本) {
     const 第一排 = document.createElement('span')
     第一排.className = 'gio-map-size-row gio-map-size-summary-row'
-    const 第二排 = document.createElement('span')
-    第二排.className = 'gio-map-size-row gio-map-size-diagnostics-row'
-    const 第三排 = document.createElement('span')
-    第三排.className =
-      'gio-map-size-row gio-map-size-long-task-api-row gio-map-size-wrap-row'
-    const 长任务元素 = document.createElement('span')
-    长任务元素.className = 'gio-map-size-long-task'
-    长任务元素.textContent = `长任务:${最长长任务时间}ms`
-    const 主线程元素 = document.createElement('span')
-    主线程元素.className = 'gio-map-size-main-thread'
-    主线程元素.textContent = `主线程:${当前主线程执行时间}ms`
-    const API最大间隔元素 = document.createElement('span')
-    API最大间隔元素.className = 'gio-map-size-long-task-api'
-    API最大间隔元素.textContent = `最大:${最大长任务API耗时}ms`
-    const API实时值元素 = document.createElement('span')
-    API实时值元素.className = 'gio-map-size-long-task-api'
-    API实时值元素.textContent = `实时:${当前长任务API耗时}ms`
-    const API最小值元素 = document.createElement('span')
-    API最小值元素.className = 'gio-map-size-long-task-api'
-    API最小值元素.textContent = `最小:${最小长任务API耗时}ms`
-    const API平均值元素 = document.createElement('span')
-    API平均值元素.className = 'gio-map-size-long-task-api'
-    API平均值元素.textContent = `平均:${平均长任务API耗时}ms`
-    const API统计个数元素 = document.createElement('span')
-    API统计个数元素.className = 'gio-map-size-long-task-api'
-    API统计个数元素.textContent = `个数:${长任务API样本数}`
-    const 游戏时间元素 = document.createElement('span')
-    游戏时间元素.className = 'gio-map-size-game-time'
-    游戏时间元素.textContent = `游戏:${格式化秒数(游戏时间)}`
-    const 游戏回合数元素 = document.createElement('span')
-    游戏回合数元素.className = 'gio-map-size-game-time'
-    游戏回合数元素.textContent = `回合:${游戏回合数}`
-    const 平均每回合元素 = document.createElement('span')
-    平均每回合元素.className = 'gio-map-size-game-time'
-    平均每回合元素.textContent = `均:${格式化秒数(平均每回合时间)}`
-    const 最低帧率元素 = document.createElement('span')
-    最低帧率元素.className = 'gio-map-size-min-fps'
-    最低帧率元素.textContent = `低:${最低帧率}`
-    第一排.replaceChildren(
-      游戏时间元素,
-      游戏回合数元素,
-      平均每回合元素,
-      最低帧率元素,
-      document.createTextNode(
-        `FPS:${当前帧率} 均:${平均帧率} 高:${最高帧率} | 地图:${长}*${宽}=${长 * 宽}`,
-      ),
-    )
-    第二排.replaceChildren(长任务元素, 主线程元素)
-    第三排.replaceChildren(
-      API最大间隔元素,
-      API实时值元素,
-      API最小值元素,
-      API平均值元素,
-      API统计个数元素,
-    )
-    标签.replaceChildren(第一排, 第二排, 第三排)
-    标签.dataset.文本 = 文本
+    if (是回放模式) {
+      第一排.textContent = 地图文本
+      标签.replaceChildren(第一排)
+      标签.dataset.文本 = 文本
+    } else {
+      const 第二排 = document.createElement('span')
+      第二排.className = 'gio-map-size-row gio-map-size-diagnostics-row'
+      const 第三排 = document.createElement('span')
+      第三排.className =
+        'gio-map-size-row gio-map-size-long-task-api-row gio-map-size-wrap-row'
+      const 长任务元素 = document.createElement('span')
+      长任务元素.className = 'gio-map-size-long-task'
+      长任务元素.textContent = `长任务:${最长长任务时间}ms`
+      const 主线程元素 = document.createElement('span')
+      主线程元素.className = 'gio-map-size-main-thread'
+      主线程元素.textContent = `主线程:${当前主线程执行时间}ms`
+      const API最大间隔元素 = document.createElement('span')
+      API最大间隔元素.className = 'gio-map-size-long-task-api'
+      API最大间隔元素.textContent = `最大:${最大长任务API耗时}ms`
+      const API实时值元素 = document.createElement('span')
+      API实时值元素.className = 'gio-map-size-long-task-api'
+      API实时值元素.textContent = `实时:${当前长任务API耗时}ms`
+      const API最小值元素 = document.createElement('span')
+      API最小值元素.className = 'gio-map-size-long-task-api'
+      API最小值元素.textContent = `最小:${最小长任务API耗时}ms`
+      const API平均值元素 = document.createElement('span')
+      API平均值元素.className = 'gio-map-size-long-task-api'
+      API平均值元素.textContent = `平均:${平均长任务API耗时}ms`
+      const API统计个数元素 = document.createElement('span')
+      API统计个数元素.className = 'gio-map-size-long-task-api'
+      API统计个数元素.textContent = `个数:${长任务API样本数}`
+      const 游戏时间元素 = document.createElement('span')
+      游戏时间元素.className = 'gio-map-size-game-time'
+      游戏时间元素.textContent = `游戏:${格式化秒数(游戏时间)}`
+      const 游戏回合数元素 = document.createElement('span')
+      游戏回合数元素.className = 'gio-map-size-game-time'
+      游戏回合数元素.textContent = `回合:${游戏回合数}`
+      const 平均每回合元素 = document.createElement('span')
+      平均每回合元素.className = 'gio-map-size-game-time'
+      平均每回合元素.textContent = `均:${格式化秒数(平均每回合时间)}`
+      const 最低帧率元素 = document.createElement('span')
+      最低帧率元素.className = 'gio-map-size-min-fps'
+      最低帧率元素.textContent = `低:${最低帧率}`
+      第一排.replaceChildren(
+        游戏时间元素,
+        游戏回合数元素,
+        平均每回合元素,
+        最低帧率元素,
+        document.createTextNode(
+          `FPS:${当前帧率} 均:${平均帧率} 高:${最高帧率} | ${地图文本}`,
+        ),
+      )
+      第二排.replaceChildren(长任务元素, 主线程元素)
+      第三排.replaceChildren(
+        API最大间隔元素,
+        API实时值元素,
+        API最小值元素,
+        API平均值元素,
+        API统计个数元素,
+      )
+      标签.replaceChildren(第一排, 第二排, 第三排)
+      标签.dataset.文本 = 文本
+    }
   }
   if (标签.style.display !== 'block') 标签.style.display = 'block'
 
@@ -172,6 +181,13 @@ function 更新地图大小标签(标签, 地图元素) {
   const top = `${Math.max(间距, y)}px`
   if (标签.style.left !== left) 标签.style.left = left
   if (标签.style.top !== top) 标签.style.top = top
+
+  function 正在回放中() {
+    return Boolean(
+      globalThis.location?.pathname?.startsWith('/replays/') ||
+      document.getElementById('replay-turn-jump-input'),
+    )
+  }
 }
 
 function 启动帧率统计() {
