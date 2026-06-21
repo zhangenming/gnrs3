@@ -884,6 +884,9 @@ function 取得提示签名(推荐) {
 
 function 生成路线HTML(推荐) {
   const 标题 = 推荐.标题 ?? '最佳开局'
+  if (标题 === '普通开局' && 推荐.记法 === 普通开局记法) {
+    return '<span class="gio-opening-route-main">普通开局</span>'
+  }
   return (
     `<span class="gio-opening-route-label">${标题}</span>` +
     `<span class="gio-opening-route-main">${推荐.记法}</span>` +
