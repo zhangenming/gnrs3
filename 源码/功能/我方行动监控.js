@@ -6,7 +6,14 @@
 // 只维护本地行动记录与页面面板，真实游戏操作队列由原 socket 流程处理。
 import { 大回合turn数, 监控起始回合, 基地自然增长turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 地图可读, 是我方或队友, 读取地图地块, 读取地图归属 } from '../游戏.js'
+import {
+  地图可读,
+  是我方或队友,
+  读取地图地块,
+  读取地图归属,
+  读取玩家信息,
+  取得完整地图数组,
+} from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 是敌方格, 是阻挡地形, 取得周期增长次数 } from '../游戏工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
@@ -23,6 +30,10 @@ const 行动优先级表 = new Map(
 let 我方行动监控数据版本 = 0
 let 已请求更新我方行动监控UI = false
 let 悬停我方行动监控回合 = null
+let 回放行动监控动画帧编号 = null
+let 回放行动监控缓存 = null
+let 回放行动监控最小已确认回合 = null
+let 回放行动监控最大已确认回合 = null
 
 export const 功能定义 = {
   id: '我方行动监控',
@@ -33,6 +44,7 @@ export const 功能定义 = {
 
 export const 主程序功能 = {
   id: 功能定义.id,
+  启动: 安装网页回放行动监控同步,
   页面同步: 更新我方行动监控UI,
 }
 
@@ -65,7 +77,7 @@ export function 更新我方行动地图判断(
 ) {
   if (!功能已启用('我方行动监控')) return
   const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn - 1 : 状态.当前回合
-  if (!Number.isInteger(回合) || 回合 < 监控起始回合) return
+  if (!Number.isInteger(回合) || 回合 < 取得行动监控起始回合()) return
   if (!地图可读(旧地图数组) || !地图可读(新地图数组)) return
 
   const 格子数 = 状态.宽度 * 状态.高度
@@ -185,7 +197,7 @@ export function 更新我方行动地图判断(
 
 export function 结算我方行动回合(回合) {
   if (!功能已启用('我方行动监控')) return
-  if (!Number.isInteger(回合) || 回合 < 监控起始回合) return
+  if (!Number.isInteger(回合) || 回合 < 取得行动监控起始回合()) return
 
   if (!状态.我方行动类型表.has(回合)) {
     状态.我方行动类型表.set(回合, '空闲')
@@ -201,8 +213,146 @@ export function 结算当前我方行动回合() {
 
 export function 重置我方行动监控() {
   状态.我方行动类型表.clear()
+  回放行动监控缓存 = null
+  回放行动监控最小已确认回合 = null
+  回放行动监控最大已确认回合 = null
   我方行动监控数据版本 += 1
   更新我方行动监控UI()
+}
+
+function 安装网页回放行动监控同步() {
+  if (回放行动监控动画帧编号 !== null) return
+  function 同步网页回放行动监控() {
+    if (功能已启用('我方行动监控') && 是网页回放中()) {
+      同步网页回放行动数据()
+    } else {
+      回放行动监控缓存 = null
+    }
+    回放行动监控动画帧编号 = window.requestAnimationFrame(同步网页回放行动监控)
+  }
+  回放行动监控动画帧编号 = window.requestAnimationFrame(同步网页回放行动监控)
+
+  function 同步网页回放行动数据() {
+    const 数据包 = 读取网页回放行动数据包()
+    const 新地图数组 = 取得完整地图数组(数据包)
+    const 新回合 = 数据包?.turn
+    if (!新地图数组 || !Number.isInteger(新回合)) return
+
+    读取玩家信息(数据包)
+    if (Number.isInteger(数据包.replayWatcherIndex)) {
+      状态.我方索引 = 数据包.replayWatcherIndex
+    }
+    状态.宽度 = 新地图数组[0]
+    状态.高度 = 新地图数组[1]
+
+    const 回放键 = [
+      globalThis.location?.pathname,
+      数据包.replay_id,
+      数据包.replayWatcherIndex,
+    ].join(':')
+    const 旧缓存 = 回放行动监控缓存
+    const 是连续回合 = 旧缓存?.回放键 === 回放键 && 旧缓存.回合 + 1 === 新回合
+
+    if (!是连续回合) {
+      if (旧缓存?.回放键 !== 回放键 || 旧缓存?.回合 !== 新回合) {
+        清空回放行动记录()
+        更新我方行动监控UI()
+      }
+      状态.当前回合 = 新回合
+      状态.地图数组 = 新地图数组.slice()
+      回放行动监控缓存 = {
+        回放键,
+        回合: 新回合,
+        地图数组: 新地图数组.slice(),
+      }
+      return
+    }
+
+    状态.当前回合 = 新回合
+    更新我方行动地图判断(旧缓存.地图数组, 新地图数组, 数据包)
+    结算我方行动回合(新回合 - 1)
+    记录回放已确认回合(新回合 - 1)
+    状态.地图数组 = 新地图数组.slice()
+    回放行动监控缓存 = {
+      回放键,
+      回合: 新回合,
+      地图数组: 新地图数组.slice(),
+    }
+
+    function 清空回放行动记录() {
+      状态.我方行动类型表.clear()
+      回放行动监控最小已确认回合 = null
+      回放行动监控最大已确认回合 = null
+      我方行动监控数据版本 += 1
+    }
+
+    function 记录回放已确认回合(回合) {
+      if (!Number.isInteger(回合) || 回合 < 取得行动监控起始回合()) return
+      if (
+        !Number.isInteger(回放行动监控最小已确认回合) ||
+        回合 < 回放行动监控最小已确认回合
+      ) {
+        回放行动监控最小已确认回合 = 回合
+      }
+      if (
+        !Number.isInteger(回放行动监控最大已确认回合) ||
+        回合 > 回放行动监控最大已确认回合
+      ) {
+        回放行动监控最大已确认回合 = 回合
+      }
+    }
+
+    function 读取网页回放行动数据包() {
+      const 地图元素 = document.getElementById('gameMap')
+      const 起点列表 = [地图元素, document.getElementById('react-container')]
+      for (const 起点 of 起点列表) {
+        const 数据包 = 读取节点回放数据包(起点)
+        if (数据包) return 数据包
+      }
+      return null
+
+      function 读取节点回放数据包(节点) {
+        const fiber = 读取ReactFiber(节点)
+        const 已访问 = new Set()
+        for (let 当前 = fiber; 当前 && !已访问.has(当前); 当前 = 当前.return) {
+          已访问.add(当前)
+          const props = 当前.memoizedProps
+          if (是回放数据Props(props)) {
+            return {
+              map: props.map,
+              cities: props.cities,
+              turn: props.turn,
+              usernames: props.usernames,
+              teams: props.teams,
+              replay_id: props.replay_id,
+              replayWatcherIndex: props.replayWatcherIndex,
+            }
+          }
+        }
+        return null
+      }
+
+      function 读取ReactFiber(节点) {
+        if (!节点) return null
+        const fiber键 = Object.keys(节点).find((键) => {
+          return (
+            键.startsWith('__reactFiber$') ||
+            键.startsWith('__reactInternalInstance$')
+          )
+        })
+        return fiber键 ? 节点[fiber键] : null
+      }
+
+      function 是回放数据Props(props) {
+        return Boolean(
+          props?.isReplay === true &&
+          props.map &&
+          Array.isArray(props.cities) &&
+          Number.isInteger(props.turn),
+        )
+      }
+    }
+  }
 }
 
 export function 更新我方行动监控UI() {
@@ -244,8 +394,9 @@ function 同步我方行动监控UI() {
 
   const { 画布, 空状态 } = 确保画布列表(列表元素)
   const 画布宽 = 取得画布CSS宽(列表元素)
+  const 起始回合 = 取得行动监控起始回合()
   const 最大已确认回合 =
-    回合状态列表[回合状态列表.length - 1]?.回合 ?? 监控起始回合 - 1
+    回合状态列表[回合状态列表.length - 1]?.回合 ?? 起始回合 - 1
   const 绘制签名 = `${画布宽}:${最大已确认回合}:${我方行动监控数据版本}`
   const 悬停回合 = 悬停我方行动监控回合
 
@@ -266,11 +417,14 @@ function 同步我方行动监控UI() {
   面板.title = `空闲 ${空闲数量} / 已记录 ${回合状态列表.length}`
 
   function 取得回合状态列表() {
+    const 最小回合 = 取得行动监控起始回合()
     const 最大回合 = 取得最大已确认回合()
-    if (!Number.isInteger(最大回合) || 最大回合 < 监控起始回合) return []
+    if (!Number.isInteger(最大回合) || 最大回合 < 最小回合) return []
+    const 起始回合 = 取得起始已确认回合(最大回合)
+    if (!Number.isInteger(起始回合) || 起始回合 > 最大回合) return []
 
     const 列表 = []
-    for (let 回合 = 监控起始回合; 回合 <= 最大回合; 回合 += 1) {
+    for (let 回合 = 起始回合; 回合 <= 最大回合; 回合 += 1) {
       列表.push({
         回合,
         大回合内回合: 取得大回合内回合(回合),
@@ -281,16 +435,25 @@ function 同步我方行动监控UI() {
   }
 
   function 取得最大已确认回合() {
+    if (是网页回放中()) return 回放行动监控最大已确认回合
+
     const 当前已确认回合 = Number.isInteger(状态.当前回合)
       ? 状态.当前回合 - 1
       : null
     let 最大回合 = 当前已确认回合
 
     状态.我方行动类型表.forEach((_行动类型, 回合) => {
-      if (!Number.isInteger(回合) || 回合 < 监控起始回合) return
+      if (!Number.isInteger(回合) || 回合 < 取得行动监控起始回合()) return
       if (!Number.isInteger(最大回合) || 回合 > 最大回合) 最大回合 = 回合
     })
     return 最大回合
+  }
+
+  function 取得起始已确认回合(最大回合) {
+    const 最小回合 = 取得行动监控起始回合()
+    if (!是网页回放中()) return 最小回合
+    if (!Number.isInteger(回放行动监控最小已确认回合)) return null
+    return Math.max(最小回合, 回放行动监控最小已确认回合)
   }
 
   function 取得大回合分组(回合列表) {
@@ -579,6 +742,17 @@ function 同步我方行动监控UI() {
       }
     }
   }
+}
+
+function 是网页回放中() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
+}
+
+function 取得行动监控起始回合() {
+  return 是网页回放中() ? 0 : 监控起始回合
 }
 
 function 设置我方行动类型(回合, 行动类型) {
