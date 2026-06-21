@@ -64,6 +64,7 @@ export const 状态 = {
     正在记录: false,
   },
   当前回合: null,
+  游戏进行中: false,
   大回合倒计时元素: null,
   上次大回合倒计时文本: '',
   战场数据已冻结: false,

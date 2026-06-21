@@ -7,6 +7,7 @@ import { 读取玩家信息, 尝试从地图读取尺寸 } from './游戏.js'
 import { socket功能列表 } from './功能注册.js'
 import { 状态 } from './状态.js'
 import { 安全执行 } from './工具.js'
+import { 是游戏结束事件, 设置游戏进行中 } from './游戏工具.js'
 import { 更新地图缓存和兵力分布 } from './地图状态.js'
 import { 清空覆盖层 } from './覆盖层.js'
 
@@ -86,11 +87,22 @@ export function 挂钩socket(socket, 请求渲染) {
   })
 
   function 预处理入站事件(事件名, ...参数) {
+    if (是游戏结束数据(事件名, 参数[0])) 设置游戏进行中(false)
     执行socketHook('入站预处理', 取得事件上下文(事件名, 参数[0], 参数))
+
+    function 是游戏结束数据(事件名, 数据包) {
+      return 是游戏结束事件(事件名) || 包含死亡分数(数据包)
+    }
+
+    function 包含死亡分数(数据包) {
+      if (!Array.isArray(数据包?.scores)) return false
+      return 数据包.scores.some((分数) => 分数?.dead === true)
+    }
   }
 
   function 重置本局(上下文) {
     const 数据包 = 上下文.数据包
+    设置游戏进行中(true)
     状态.宽度 = 0
     状态.高度 = 0
     状态.地图数组 = null

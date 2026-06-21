@@ -30,6 +30,14 @@ export function 是游戏结束事件(事件名) {
   return 游戏结束事件集合.has(事件名)
 }
 
+export function 设置游戏进行中(游戏进行中) {
+  状态.游戏进行中 = 游戏进行中
+  document.body?.classList.toggle('gio-游戏进行中', 游戏进行中)
+  window.dispatchEvent(
+    new CustomEvent('gio-游戏进行中变化', { detail: { 游戏进行中 } }),
+  )
+}
+
 export function 是阻挡地形(地形) {
   return 阻挡地形集合.has(地形)
 }

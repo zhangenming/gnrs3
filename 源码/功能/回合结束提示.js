@@ -5,6 +5,7 @@
 // 只读取当前大回合倒计时并维护一个页面提示，不影响游戏数据和操作队列。
 import { 样式编号, 回合结束提示层级 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
+import { 状态 } from '../状态.js'
 import { 安装样式 as 注入样式 } from '../工具.js'
 
 const 回合结束提示元素编号 = 'gio-turn-end-alert'
@@ -38,6 +39,7 @@ export function 更新回合结束提示(倒计时) {
   if (!document.body) return
 
   if (
+    !状态.游戏进行中 ||
     !Number.isInteger(倒计时) ||
     !document.querySelector('#game-page #gameMap')
   ) {
@@ -152,6 +154,13 @@ export function 清除回合结束提示() {
     window.removeEventListener('pointermove', 鼠标移动处理函数)
     鼠标移动处理函数 = null
   }
+}
+
+window.addEventListener('gio-游戏进行中变化', 处理游戏进行中变化)
+
+function 处理游戏进行中变化(事件) {
+  if (事件.detail?.游戏进行中) return
+  清除回合结束提示()
 }
 
 import { 注册功能 } from '../注册中心.js'

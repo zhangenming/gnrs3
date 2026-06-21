@@ -8,6 +8,7 @@ import { 安装功能控制UI } from './功能控制面板.js'
 import { 安装功能恢复 } from './功能恢复.js'
 import { 初始化功能开关 } from './功能开关.js'
 import { 主程序功能列表, 功能样式列表 } from './功能注册.js'
+import { 设置游戏进行中 } from './游戏工具.js'
 
 let 已请求页面同步 = false
 
@@ -75,6 +76,7 @@ function 启动() {
           if (在主页面 !== 状态.在主页面) {
             状态.在主页面 = 在主页面
             if (在主页面) {
+              设置游戏进行中(false)
               document.body.classList.add('gio-离开游戏')
               清理游戏页面状态()
               清空覆盖层()

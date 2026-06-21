@@ -29,6 +29,7 @@ export function 渲染(动画时间 = performance.now()) {
   执行覆盖层渲染前Hook()
 
   const 可绘制功能列表 = 取得可绘制功能列表()
+  document.body?.classList.toggle('gio-游戏进行中', 状态.游戏进行中)
   if (!可绘制功能列表.length) {
     清空覆盖层()
     记录渲染耗时(开始时间, 可绘制功能列表, [])
@@ -264,8 +265,8 @@ function 安装样式() {
 .gio-tower-memory-host {
     position: relative !important;
 }
-body:has(#game-page #gameMap) #game-page,
-body:has(#game-page #gameMap) #game-page * {
+body.gio-游戏进行中:has(#game-page #gameMap) #game-page,
+body.gio-游戏进行中:has(#game-page #gameMap) #game-page * {
     cursor: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"%3E%3Cpath d="M16 2v28M2 16h28" stroke="%23f00" stroke-width="3" stroke-linecap="square"/%3E%3Cpath d="M16 11v10M11 16h10" stroke="%23fff" stroke-width="1" stroke-linecap="square"/%3E%3C/svg%3E') 16 16, crosshair !important;
 }
 `,
