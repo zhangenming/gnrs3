@@ -3,7 +3,7 @@
 //
 // 作用范围:
 // 只读取地图、基地和塔信息，维护一个棋盘外的顶部提示；不修改真实移动队列。
-import { 提示层级, 我方蓝色, 中立黄色 } from '../配置.js'
+import { 大回合turn数, 提示层级, 我方蓝色, 中立黄色 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import {
   地图可读,
@@ -81,6 +81,9 @@ export const socket功能 = {
   game_start({ 数据包 }) {
     更新最佳开局路线(数据包 ?? {})
   },
+  game_update({ 数据包 }) {
+    第一大回合后清除提示(数据包 ?? {})
+  },
 }
 
 export const 功能样式 = `
@@ -146,6 +149,12 @@ export function 更新最佳开局路线(数据包) {
   const 推荐 = 计算最佳开局路线(数据包)
   状态.最佳开局路线 = 推荐
   同步最佳开局路线提示()
+}
+
+function 第一大回合后清除提示(数据包) {
+  if (!Number.isInteger(数据包?.turn)) return
+  if (数据包.turn < 大回合turn数) return
+  清除最佳开局路线()
 }
 
 export function 同步最佳开局路线提示() {
