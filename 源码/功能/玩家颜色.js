@@ -233,8 +233,9 @@ function 同步战场面板颜色() {
       const 勾选框 = 读取POV勾选框(视角格)
       if (勾选框?.checked !== true) continue
 
-      const 玩家索引 = Number.parseInt(勾选框.id, 10)
-      if (!Number.isInteger(玩家索引)) continue
+      const 玩家名 = (取得单元格列表(行)[玩家列]?.textContent ?? '').trim()
+      const 玩家索引 = 状态.玩家名列表?.indexOf(玩家名) ?? -1
+      if (玩家索引 < 0) continue
       return { 行, 玩家索引 }
     }
     return null

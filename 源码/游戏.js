@@ -113,6 +113,30 @@ export function 同步我方玩家索引() {
   }
 }
 
+export function 同步回放玩家索引(数据包) {
+  读取玩家信息(数据包)
+
+  const 页面玩家索引 = 同步我方玩家索引()
+  if (是有效玩家索引(页面玩家索引)) return 页面玩家索引
+
+  const 回放玩家索引 = 数据包?.replayWatcherIndex
+  if (是有效玩家索引(回放玩家索引)) {
+    状态.我方索引 = 回放玩家索引
+    return 回放玩家索引
+  }
+
+  return null
+
+  function 是有效玩家索引(玩家索引, 玩家名列表 = 状态.玩家名列表) {
+    return (
+      Number.isInteger(玩家索引) &&
+      玩家索引 >= 0 &&
+      Array.isArray(玩家名列表) &&
+      typeof 玩家名列表[玩家索引] === 'string'
+    )
+  }
+}
+
 function 取得本地玩家索引(玩家名列表 = 状态.玩家名列表) {
   const 本地玩家名 = 读取本地玩家名()
   if (!本地玩家名 || !Array.isArray(玩家名列表)) return null

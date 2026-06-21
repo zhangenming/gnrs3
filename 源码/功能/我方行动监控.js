@@ -11,7 +11,7 @@ import {
   是我方或队友,
   读取地图地块,
   读取地图归属,
-  读取玩家信息,
+  同步回放玩家索引,
   取得完整地图数组,
 } from '../游戏.js'
 import { 状态 } from '../状态.js'
@@ -238,10 +238,7 @@ function 安装网页回放行动监控同步() {
     const 新回合 = 数据包?.turn
     if (!新地图数组 || !Number.isInteger(新回合)) return
 
-    读取玩家信息(数据包)
-    if (Number.isInteger(数据包.replayWatcherIndex)) {
-      状态.我方索引 = 数据包.replayWatcherIndex
-    }
+    同步回放玩家索引(数据包)
     状态.宽度 = 新地图数组[0]
     状态.高度 = 新地图数组[1]
 

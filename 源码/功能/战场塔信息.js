@@ -10,7 +10,7 @@
 // 只改写排行榜/战场数据表的 Player 左侧相邻表头格内容和样式，不参与地图状态计算。
 import { 战场塔信息类名 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 同步我方玩家索引 } from '../游戏.js'
+import { 同步回放玩家索引, 同步我方玩家索引 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import {
   记录原始战场节点,
@@ -212,9 +212,7 @@ function 同步网页回放塔数据() {
   if (状态.战场塔信息回放签名 === 签名) return
   状态.战场塔信息回放签名 = 签名
 
-  if (Number.isInteger(回放数据包.replayWatcherIndex)) {
-    状态.我方索引 = 回放数据包.replayWatcherIndex
-  }
+  同步回放玩家索引(回放数据包)
   if (Number.isInteger(回放数据包.turn)) 状态.当前回合 = 回放数据包.turn
   清空回放塔数据()
   处理塔位置(回放数据包, function 空渲染请求() {})

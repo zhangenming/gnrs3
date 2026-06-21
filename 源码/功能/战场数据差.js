@@ -204,8 +204,9 @@ export function 更新战场数据差() {
       const 勾选框 = 读取POV勾选框(视角格)
       if (勾选框?.checked !== true) continue
 
-      const 玩家索引 = Number.parseInt(勾选框.id, 10)
-      if (Number.isInteger(玩家索引)) 状态.我方索引 = 玩家索引
+      const 玩家名 = 取得玩家名(行)
+      const 玩家索引 = 状态.玩家名列表?.indexOf(玩家名) ?? -1
+      if (玩家索引 >= 0) 状态.我方索引 = 玩家索引
       return {
         我方行: 行,
         敌方行: 玩家行列表.find((玩家行) => 玩家行 !== 行) ?? null,
