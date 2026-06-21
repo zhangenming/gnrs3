@@ -5,7 +5,12 @@
 // 根据我方/队友地块和基地安全范围推导已到达视野集合。
 // 覆盖层会把未到达视野的区域铺上背景色，帮助 1v1 中判断哪些方向仍缺少侦察信息。
 import { 玩家最小距离 } from '../配置.js'
-import { 取得地图格子数, 地图可读, 是我方或队友 } from '../游戏.js'
+import {
+  取得地图格子数,
+  地图可读,
+  是我方或队友,
+  同步我方玩家索引,
+} from '../游戏.js'
 import { 是迷雾地形 } from '../游戏工具.js'
 import { 任一功能已启用 } from '../功能状态.js'
 import { 未到达视野背景色 } from '../配置.js'
@@ -48,6 +53,7 @@ export function 有未到达视野标记() {
   if (!任一功能已启用('未到达视野', '敌方基地推测')) return false
   if (!状态.宽度 || !状态.高度) return false
   if (状态.已知敌方基地集合.size) return false
+  if (是网页回放中() && 状态.已到达视野集合.size === 0) return false
   return 状态.已到达视野集合.size < 状态.宽度 * 状态.高度
 }
 
@@ -78,6 +84,8 @@ export function 记录已到达视野(数据包) {
     记录全图已确认(格子数)
     return
   }
+
+  同步我方玩家索引()
 
   if (Array.isArray(数据包?.generals)) {
     for (let 玩家索引 = 0; 玩家索引 < 数据包.generals.length; 玩家索引 += 1) {
@@ -141,6 +149,13 @@ export function 记录已到达视野(数据包) {
       状态.已确认视野集合.add(idx)
     }
   }
+}
+
+function 是网页回放中() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
 }
 
 import { 注册功能 } from '../注册中心.js'
