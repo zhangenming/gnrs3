@@ -5,7 +5,7 @@ export const 功能定义 = {
   id: '自动隐藏回放控制',
   名称: '自动隐藏回放控制',
   分类: '系统',
-  描述: '进入回放时自动点击左下角 Hide',
+  描述: '进入回放时自动隐藏控制和广告',
 }
 
 export const 主程序功能 = {
@@ -14,7 +14,7 @@ export const 主程序功能 = {
 }
 
 let 回放隐藏观察器 = null
-let 已隐藏回放键 = ''
+let 已隐藏控制回放键 = ''
 let 已请求隐藏检查 = false
 
 function 安装自动隐藏回放控制() {
@@ -45,22 +45,35 @@ function 安装自动隐藏回放控制() {
   function 尝试隐藏回放控制() {
     if (!功能已启用(功能定义.id)) return
     if (!是网页回放中()) {
-      已隐藏回放键 = ''
+      已隐藏控制回放键 = ''
       return
     }
 
-    const 回放键 = 读取回放键()
-    if (已隐藏回放键 === 回放键) return
+    自动隐藏控制按钮()
+    自动隐藏广告按钮()
 
-    const 按钮 = document.getElementById('hide-controls-button')
-    if (!(按钮 instanceof HTMLButtonElement)) return
-    if (按钮.textContent?.trim() !== 'Hide') {
-      已隐藏回放键 = 回放键
-      return
+    function 自动隐藏控制按钮() {
+      const 回放键 = 读取回放键()
+      if (已隐藏控制回放键 === 回放键) return
+
+      const 按钮 = document.getElementById('hide-controls-button')
+      if (!(按钮 instanceof HTMLButtonElement)) return
+      if (按钮.textContent?.trim() !== 'Hide') {
+        已隐藏控制回放键 = 回放键
+        return
+      }
+
+      已隐藏控制回放键 = 回放键
+      按钮.click()
     }
 
-    已隐藏回放键 = 回放键
-    按钮.click()
+    function 自动隐藏广告按钮() {
+      for (const 按钮 of document.querySelectorAll('button')) {
+        if (!(按钮 instanceof HTMLButtonElement)) continue
+        if (按钮.textContent?.trim() !== 'Hide ad') continue
+        按钮.click()
+      }
+    }
 
     function 读取回放键() {
       return `${globalThis.location?.pathname ?? ''}${globalThis.location?.search ?? ''}`
