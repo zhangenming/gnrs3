@@ -15,7 +15,7 @@ import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 画兵力文本 } from '../覆盖层工具.js'
 
-const 基地边框动画毫秒 = 1400
+const 基地边框动画毫秒 = 900
 
 export const 功能定义 = {
   id: '基地记忆标记',
@@ -129,7 +129,7 @@ function 画基地记忆({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
 function 画基地(ctx, x, y, 大小, 当前动画时间, 阵营) {
   const 是敌方 = 阵营 === '敌方'
   const 背景色 = '#2ecc71'
-  const 脉冲边框颜色 = '#000000'
+  const 脉冲边框颜色 = '#ffffff'
   const 外边线颜色 = 是敌方 ? '#7f0000' : '#9a7720'
   const 高光颜色 = 是敌方
     ? 'rgba(255, 224, 214, 0.98)'
