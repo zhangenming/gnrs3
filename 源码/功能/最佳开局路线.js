@@ -22,6 +22,7 @@ const 普通开局记法 = '13-7(2)-5-3'
 const 搜索时间上限毫秒 = 12
 const 新地路径候选上限 = 18
 const 自有路径候选上限 = 12
+let 本局已计算开局路线 = false
 const 开局模板列表 = [
   {
     记法: 普通开局记法,
@@ -79,10 +80,10 @@ export const socket功能 = {
   id: 功能定义.id,
   新局重置: 清除最佳开局路线,
   game_start({ 数据包 }) {
-    更新最佳开局路线(数据包 ?? {})
+    尝试首次更新最佳开局路线(数据包 ?? {})
   },
   game_update({ 数据包 }) {
-    第一大回合后清除提示(数据包 ?? {})
+    处理开局路线更新(数据包 ?? {})
   },
 }
 
@@ -140,21 +141,34 @@ export const 功能样式 = `
 }
 `
 
-export function 更新最佳开局路线(数据包) {
+export function 尝试首次更新最佳开局路线(数据包) {
   if (!功能已启用(功能定义.id)) {
     清除最佳开局路线()
     return
   }
+  if (本局已计算开局路线) {
+    同步最佳开局路线提示()
+    return
+  }
 
   const 推荐 = 计算最佳开局路线(数据包)
+  if (!推荐) return
+
+  本局已计算开局路线 = true
   状态.最佳开局路线 = 推荐
   同步最佳开局路线提示()
 }
 
+function 处理开局路线更新(数据包) {
+  if (第一大回合后清除提示(数据包)) return
+  尝试首次更新最佳开局路线(数据包)
+}
+
 function 第一大回合后清除提示(数据包) {
-  if (!Number.isInteger(数据包?.turn)) return
-  if (数据包.turn < 大回合turn数) return
+  if (!Number.isInteger(数据包?.turn)) return false
+  if (数据包.turn < 大回合turn数) return false
   清除最佳开局路线()
+  return true
 }
 
 export function 同步最佳开局路线提示() {
@@ -221,6 +235,7 @@ export function 定位最佳开局路线提示() {
 
 export function 清除最佳开局路线() {
   状态.最佳开局路线 = null
+  本局已计算开局路线 = false
   移除最佳开局路线提示()
 }
 
