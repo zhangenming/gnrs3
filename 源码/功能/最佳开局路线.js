@@ -12,7 +12,7 @@ import {
   读取地图兵力,
   读取地图归属,
 } from '../游戏.js'
-import { 取得相邻索引列表, 是阻挡地形, 取游戏画布 } from '../游戏工具.js'
+import { 取得相邻索引列表, 是阻挡地形 } from '../游戏工具.js'
 import { 状态 } from '../状态.js'
 
 const 提示元素编号 = 'gio-opening-route'
@@ -212,25 +212,8 @@ export function 定位最佳开局路线提示() {
   const 元素 = document.getElementById(提示元素编号)
   if (!元素) return
 
-  const 画布 = 取游戏画布()
-  const 矩形 = 画布?.getBoundingClientRect()
-  if (!矩形 || 矩形.width <= 0 || 矩形.height <= 0) {
-    元素.style.left = '50%'
-    元素.style.top = '8px'
-    元素.style.transform = 'translateX(-50%)'
-    return
-  }
-
-  const 高 = 元素.offsetHeight || 34
-  const 上方top = 矩形.top - 高 - 8
-  const 下方top = 矩形.bottom + 8
-  const 可用top =
-    上方top >= 6
-      ? 上方top
-      : Math.min(window.innerHeight - 高 - 6, Math.max(6, 下方top))
-
-  元素.style.left = `${Math.round(矩形.left + 矩形.width / 2)}px`
-  元素.style.top = `${Math.round(可用top)}px`
+  元素.style.left = '50%'
+  元素.style.top = '8px'
   元素.style.transform = 'translateX(-50%)'
 }
 
