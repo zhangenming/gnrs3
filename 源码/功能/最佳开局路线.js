@@ -17,12 +17,14 @@ import { 状态 } from '../状态.js'
 
 const 提示元素编号 = 'gio-opening-route'
 const 目标陆地数 = 25
+const 满兵数 = 51
+const 普通开局记法 = '13-7(2)-5-3'
 const 搜索时间上限毫秒 = 12
 const 新地路径候选上限 = 18
 const 自有路径候选上限 = 12
 const 开局模板列表 = [
   {
-    记法: '13-7(2)-5-3',
+    记法: 普通开局记法,
     描述: '3面',
     段列表: [
       { 兵力: 13, 新地数: 12, 自有步数: 0 },
@@ -225,15 +227,18 @@ function 计算最佳开局路线(数据包) {
   const 基地索引 = 取得我方基地索引(数据包)
   if (!Number.isInteger(格子数) || !是有效索引(基地索引, 格子数)) return null
 
-  const 上下文 = {
-    地图数组,
-    格子数,
-    基地索引,
-    塔集合: 取得塔集合(数据包),
-    搜索开始时间: performance.now(),
-    已超时: false,
+  const 普通开局 = 搜索模板路线(开局模板列表[0], 取得搜索上下文())
+  if (普通开局) {
+    return {
+      ...普通开局,
+      标题: '普通开局',
+      兵力数: 满兵数,
+    }
   }
-  const 计划列表 = 开局模板列表
+
+  const 上下文 = 取得搜索上下文()
+  const 备用模板列表 = 开局模板列表.slice(1)
+  const 计划列表 = 备用模板列表
     .map((模板) => 搜索模板路线(模板, 上下文))
     .filter(Boolean)
 
@@ -242,7 +247,10 @@ function 计算最佳开局路线(数据包) {
       if (右.评分 !== 左.评分) return 右.评分 - 左.评分
       return 左.模板顺序 - 右.模板顺序
     })
-    return 计划列表[0]
+    return {
+      ...计划列表[0],
+      标题: '最佳开局',
+    }
   }
 
   const 可达陆地数 = 取得可达陆地数(上下文)
@@ -250,6 +258,17 @@ function 计算最佳开局路线(数据包) {
     已找到: false,
     已超时: 上下文.已超时,
     可达陆地数,
+  }
+
+  function 取得搜索上下文() {
+    return {
+      地图数组,
+      格子数,
+      基地索引,
+      塔集合: 取得塔集合(数据包),
+      搜索开始时间: performance.now(),
+      已超时: false,
+    }
   }
 }
 
@@ -532,10 +551,14 @@ function 取得提示签名(推荐) {
 }
 
 function 生成路线HTML(推荐) {
+  const 标题 = 推荐.标题 ?? '最佳开局'
+  const 结果文本 = Number.isInteger(推荐.兵力数)
+    ? `${推荐.兵力数}兵 ${推荐.陆地数}陆地`
+    : `${推荐.陆地数}陆地`
   return (
-    `<span class="gio-opening-route-label">最佳开局</span>` +
+    `<span class="gio-opening-route-label">${标题}</span>` +
     `<span class="gio-opening-route-main">${推荐.记法}</span>` +
-    `<span class="gio-opening-route-land">${推荐.陆地数}陆地</span>` +
+    `<span class="gio-opening-route-land">${结果文本}</span>` +
     `<span class="gio-opening-route-label">${推荐.描述}</span>` +
     `<span class="gio-opening-route-detail">${生成路线细节(推荐)}</span>`
   )
