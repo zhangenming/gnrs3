@@ -13,6 +13,7 @@ const 样式编号 = `${面板编号}-style`
 const 隐藏结算弹窗类名 = 'gio-settlement-popup-hidden'
 const 可拖动结算弹窗类名 = 'gio-settlement-popup-draggable'
 const 鼠标按住隐藏延迟 = 500
+const 结算弹窗地图间距 = 16
 const 一对一星星键 = 'duel'
 const 赛前星星读取延迟列表 = [80, 400, 1000]
 const 赛后星星读取延迟列表 = [800, 2500, 6000]
@@ -31,6 +32,7 @@ let 鼠标按住中 = false
 let 鼠标按住隐藏计时器 = null
 let 已安装鼠标按住隐藏 = false
 const 已安装拖动弹窗 = new WeakSet()
+const 已手动拖动弹窗 = new WeakSet()
 
 export const 功能定义 = {
   id: '结算星星变化',
@@ -99,7 +101,9 @@ export function 更新结算星星变化() {
     更新结算弹窗隐藏()
     return
   }
-  确保结算弹窗可拖动(取得结算弹窗())
+  const 结算弹窗 = 取得结算弹窗()
+  确保结算弹窗可拖动(结算弹窗)
+  自动放置结算弹窗(结算弹窗)
   if (!本局星星数据?.已结束) {
     记录排行榜赛前星星()
     移除结算星星变化()
@@ -120,6 +124,7 @@ export function 更新结算星星变化() {
   const 面板 = 确保面板(宿主)
   if (!面板) return
   渲染面板(面板, 变化数据)
+  自动放置结算弹窗(结算弹窗)
 }
 
 function 记录赛前星星(数据包) {
@@ -424,6 +429,35 @@ function 确保结算弹窗可拖动(结算弹窗) {
   结算弹窗.addEventListener('pointerdown', 开始拖动结算弹窗)
 }
 
+function 自动放置结算弹窗(结算弹窗) {
+  if (!结算弹窗 || 已手动拖动弹窗.has(结算弹窗)) {
+    return
+  }
+
+  const 地图元素 = document.querySelector('#game-page #gameMap')
+  if (!地图元素) return
+
+  const 地图矩形 = 地图元素.getBoundingClientRect()
+  const 弹窗矩形 = 结算弹窗.getBoundingClientRect()
+  if (!地图矩形.width || !地图矩形.height || !弹窗矩形.width) return
+
+  结算弹窗.style.position = 'fixed'
+  结算弹窗.style.left = `${限制弹窗坐标(
+    地图矩形.right + 结算弹窗地图间距,
+    弹窗矩形.width,
+    window.innerWidth,
+  )}px`
+  结算弹窗.style.top = `${限制弹窗坐标(
+    地图矩形.bottom - 弹窗矩形.height,
+    弹窗矩形.height,
+    window.innerHeight,
+  )}px`
+  结算弹窗.style.right = 'auto'
+  结算弹窗.style.bottom = 'auto'
+  结算弹窗.style.margin = '0'
+  结算弹窗.style.transform = 'none'
+}
+
 function 开始拖动结算弹窗(事件) {
   if (事件.button !== 0) return
   const 结算弹窗 = 事件.currentTarget
@@ -443,6 +477,7 @@ function 开始拖动结算弹窗(事件) {
   结算弹窗.style.margin = '0'
   结算弹窗.style.transform = 'none'
   结算弹窗.setPointerCapture?.(事件.pointerId)
+  已手动拖动弹窗.add(结算弹窗)
 
   结算弹窗.addEventListener('pointermove', 拖动结算弹窗)
   结算弹窗.addEventListener('pointerup', 结束拖动结算弹窗)
@@ -479,10 +514,10 @@ function 开始拖动结算弹窗(事件) {
       ) && 结算弹窗.contains(元素),
     )
   }
+}
 
-  function 限制弹窗坐标(坐标, 尺寸, 视口尺寸) {
-    return Math.min(Math.max(坐标, 0), Math.max(视口尺寸 - 尺寸, 0))
-  }
+function 限制弹窗坐标(坐标, 尺寸, 视口尺寸) {
+  return Math.min(Math.max(坐标, 0), Math.max(视口尺寸 - 尺寸, 0))
 }
 
 function 确保面板(宿主) {
