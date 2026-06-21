@@ -17,8 +17,7 @@ import { 状态 } from '../状态.js'
 
 const 提示元素编号 = 'gio-opening-route'
 const 目标陆地数 = 25
-const 第一大回合结束turn = 50
-const 搜索时间上限毫秒 = 6
+const 搜索时间上限毫秒 = 12
 const 新地路径候选上限 = 18
 const 自有路径候选上限 = 12
 const 开局模板列表 = [
@@ -78,9 +77,6 @@ export const socket功能 = {
   id: 功能定义.id,
   新局重置: 清除最佳开局路线,
   game_start({ 数据包 }) {
-    更新最佳开局路线(数据包 ?? {})
-  },
-  game_update({ 数据包 }) {
     更新最佳开局路线(数据包 ?? {})
   },
 }
@@ -144,26 +140,8 @@ export function 更新最佳开局路线(数据包) {
     清除最佳开局路线()
     return
   }
-  if (!document.body) return
 
-  const 当前turn = 读取当前turn(数据包)
-  if (Number.isInteger(当前turn) && 当前turn > 第一大回合结束turn) {
-    清除最佳开局路线()
-    return
-  }
-  if (!document.querySelector('#game-page #gameMap')) {
-    清除最佳开局路线()
-    return
-  }
-
-  const 搜索签名 = 取得路线搜索签名(数据包)
-  if (!搜索签名) return
-  if (状态.最佳开局路线?.搜索签名 === 搜索签名) {
-    同步最佳开局路线提示()
-    return
-  }
-
-  const 推荐 = 计算最佳开局路线(数据包, 搜索签名)
+  const 推荐 = 计算最佳开局路线(数据包)
   状态.最佳开局路线 = 推荐
   同步最佳开局路线提示()
 }
@@ -175,7 +153,7 @@ export function 同步最佳开局路线提示() {
   }
   if (!document.body) return
   if (!document.querySelector('#game-page #gameMap')) {
-    清除最佳开局路线()
+    移除最佳开局路线提示()
     return
   }
 
@@ -232,10 +210,14 @@ export function 定位最佳开局路线提示() {
 
 export function 清除最佳开局路线() {
   状态.最佳开局路线 = null
+  移除最佳开局路线提示()
+}
+
+function 移除最佳开局路线提示() {
   document.getElementById(提示元素编号)?.remove()
 }
 
-function 计算最佳开局路线(数据包, 搜索签名) {
+function 计算最佳开局路线(数据包) {
   const 地图数组 = 状态.地图数组
   if (!地图可读(地图数组)) return null
 
@@ -260,17 +242,13 @@ function 计算最佳开局路线(数据包, 搜索签名) {
       if (右.评分 !== 左.评分) return 右.评分 - 左.评分
       return 左.模板顺序 - 右.模板顺序
     })
-    return {
-      ...计划列表[0],
-      搜索签名,
-    }
+    return 计划列表[0]
   }
 
   const 可达陆地数 = 取得可达陆地数(上下文)
   return {
     已找到: false,
     已超时: 上下文.已超时,
-    搜索签名,
     可达陆地数,
   }
 }
@@ -531,32 +509,6 @@ function 取得塔集合(数据包) {
   return 塔集合
 }
 
-function 取得路线搜索签名(数据包) {
-  const 地图数组 = 状态.地图数组
-  if (!地图可读(地图数组)) return null
-
-  const 格子数 = 取得地图格子数(地图数组)
-  const 基地索引 = 取得我方基地索引(数据包)
-  if (!Number.isInteger(格子数) || !是有效索引(基地索引, 格子数)) return null
-
-  const 阻挡列表 = []
-  for (let idx = 0; idx < 格子数; idx += 1) {
-    if (是阻挡地形(读取地图归属(地图数组, idx))) 阻挡列表.push(idx)
-  }
-
-  const 塔列表 = Array.from(取得塔集合(数据包))
-    .filter((塔索引) => 是有效索引(塔索引, 格子数))
-    .sort((左, 右) => 左 - 右)
-
-  return [
-    状态.宽度,
-    状态.高度,
-    基地索引,
-    塔列表.join('.'),
-    阻挡列表.join('.'),
-  ].join('|')
-}
-
 function 取得我方基地索引(数据包) {
   const 玩家索引 = Number.isInteger(状态.我方索引)
     ? 状态.我方索引
@@ -570,11 +522,6 @@ function 取得我方基地索引(数据包) {
     return 数据包基地索引
   }
   return 状态.我方基地索引
-}
-
-function 读取当前turn(数据包) {
-  if (Number.isInteger(数据包?.turn)) return 数据包.turn
-  return 状态.当前回合
 }
 
 function 取得提示签名(推荐) {
