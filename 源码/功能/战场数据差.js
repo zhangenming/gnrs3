@@ -111,6 +111,18 @@ table[data-gio-battle-compact="true"],
     width: 90px !important;
     font-variant-numeric: tabular-nums !important;
 }
+[data-gio-battle-compact="true"][data-gio-battle-replay="true"] th:nth-child(3),
+[data-gio-battle-compact="true"][data-gio-battle-replay="true"] td:nth-child(3) {
+    order: 3 !important;
+}
+[data-gio-battle-compact="true"][data-gio-battle-replay="true"] th:nth-child(4),
+[data-gio-battle-compact="true"][data-gio-battle-replay="true"] td:nth-child(4) {
+    order: 5 !important;
+}
+[data-gio-battle-compact="true"][data-gio-battle-replay="true"] th:nth-child(5),
+[data-gio-battle-compact="true"][data-gio-battle-replay="true"] td:nth-child(5) {
+    order: 4 !important;
+}
 `
 
 let 回放数据差动画帧编号 = null
@@ -137,6 +149,11 @@ export function 更新战场数据差() {
   const 表格 = 取得战场数据表格()
   if (!表格) return
   表格.dataset.gioBattleCompact = 'true'
+  if (是网页回放中()) {
+    表格.dataset.gioBattleReplay = 'true'
+  } else {
+    delete 表格.dataset.gioBattleReplay
+  }
 
   const 表头行 = 取得表头行(表格)
   if (!表头行) return
@@ -324,6 +341,7 @@ export function 恢复战场数据差() {
     .querySelectorAll('[data-gio-battle-compact="true"]')
     .forEach((表格) => {
       delete 表格.dataset.gioBattleCompact
+      delete 表格.dataset.gioBattleReplay
     })
   document.querySelectorAll(`.${战场数据差类名}`).forEach((单元格) => {
     恢复原始战场节点(单元格)
