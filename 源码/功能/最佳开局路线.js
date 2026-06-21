@@ -18,8 +18,9 @@ import { 状态 } from '../状态.js'
 const 提示元素编号 = 'gio-opening-route'
 const 目标陆地数 = 25
 const 第一大回合结束turn = 50
-const 新地路径候选上限 = 96
-const 自有路径候选上限 = 80
+const 搜索时间上限毫秒 = 6
+const 新地路径候选上限 = 18
+const 自有路径候选上限 = 12
 const 开局模板列表 = [
   {
     记法: '13-7(2)-5-3',
@@ -154,12 +155,15 @@ export function 更新最佳开局路线(数据包) {
     清除最佳开局路线()
     return
   }
-  if (状态.最佳开局路线?.已找到) {
+
+  const 搜索签名 = 取得路线搜索签名(数据包)
+  if (!搜索签名) return
+  if (状态.最佳开局路线?.搜索签名 === 搜索签名) {
     同步最佳开局路线提示()
     return
   }
 
-  const 推荐 = 计算最佳开局路线(数据包)
+  const 推荐 = 计算最佳开局路线(数据包, 搜索签名)
   状态.最佳开局路线 = 推荐
   同步最佳开局路线提示()
 }
@@ -231,7 +235,7 @@ export function 清除最佳开局路线() {
   document.getElementById(提示元素编号)?.remove()
 }
 
-function 计算最佳开局路线(数据包) {
+function 计算最佳开局路线(数据包, 搜索签名) {
   const 地图数组 = 状态.地图数组
   if (!地图可读(地图数组)) return null
 
@@ -244,6 +248,8 @@ function 计算最佳开局路线(数据包) {
     格子数,
     基地索引,
     塔集合: 取得塔集合(数据包),
+    搜索开始时间: performance.now(),
+    已超时: false,
   }
   const 计划列表 = 开局模板列表
     .map((模板) => 搜索模板路线(模板, 上下文))
@@ -254,12 +260,17 @@ function 计算最佳开局路线(数据包) {
       if (右.评分 !== 左.评分) return 右.评分 - 左.评分
       return 左.模板顺序 - 右.模板顺序
     })
-    return 计划列表[0]
+    return {
+      ...计划列表[0],
+      搜索签名,
+    }
   }
 
   const 可达陆地数 = 取得可达陆地数(上下文)
   return {
     已找到: false,
+    已超时: 上下文.已超时,
+    搜索签名,
     可达陆地数,
   }
 }
@@ -290,6 +301,7 @@ function 搜索模板路线(模板, 上下文) {
   }
 
   function 搜索段(段idx, 当前已占集合, 当前段列表) {
+    if (搜索已超时(上下文)) return null
     if (段idx >= 模板.段列表.length) {
       if (当前已占集合.size < 目标陆地数) return null
       return {
@@ -306,6 +318,7 @@ function 搜索模板路线(模板, 上下文) {
       上下文,
     )
     for (const 自有路径 of 自有路径列表) {
+      if (搜索已超时(上下文)) return null
       const 起点 = 自有路径.at(-1)
       const 新地路径列表 = 取得新地路径候选(
         起点,
@@ -314,6 +327,7 @@ function 搜索模板路线(模板, 上下文) {
         上下文,
       )
       for (const 新地路径 of 新地路径列表) {
+        if (搜索已超时(上下文)) return null
         const 下个已占集合 = new Set(当前已占集合)
         新地路径.forEach((索引) => 下个已占集合.add(索引))
 
@@ -348,6 +362,7 @@ function 取得自有路径候选(起点, 已占集合, 步数, 上下文) {
   return 候选列表
 
   function 搜索(当前位置, 剩余步数) {
+    if (搜索已超时(上下文)) return
     if (候选列表.length >= 自有路径候选上限) return
     if (剩余步数 === 0) {
       候选列表.push(路径.slice())
@@ -388,6 +403,7 @@ function 取得新地路径候选(起点, 已占集合, 新地数, 上下文) {
   return 候选列表
 
   function 搜索(当前位置, 剩余新地数) {
+    if (搜索已超时(上下文)) return
     if (候选列表.length >= 新地路径候选上限) return
     if (剩余新地数 === 0) {
       候选列表.push(路径.slice())
@@ -515,6 +531,32 @@ function 取得塔集合(数据包) {
   return 塔集合
 }
 
+function 取得路线搜索签名(数据包) {
+  const 地图数组 = 状态.地图数组
+  if (!地图可读(地图数组)) return null
+
+  const 格子数 = 取得地图格子数(地图数组)
+  const 基地索引 = 取得我方基地索引(数据包)
+  if (!Number.isInteger(格子数) || !是有效索引(基地索引, 格子数)) return null
+
+  const 阻挡列表 = []
+  for (let idx = 0; idx < 格子数; idx += 1) {
+    if (是阻挡地形(读取地图归属(地图数组, idx))) 阻挡列表.push(idx)
+  }
+
+  const 塔列表 = Array.from(取得塔集合(数据包))
+    .filter((塔索引) => 是有效索引(塔索引, 格子数))
+    .sort((左, 右) => 左 - 右)
+
+  return [
+    状态.宽度,
+    状态.高度,
+    基地索引,
+    塔列表.join('.'),
+    阻挡列表.join('.'),
+  ].join('|')
+}
+
 function 取得我方基地索引(数据包) {
   const 玩家索引 = Number.isInteger(状态.我方索引)
     ? 状态.我方索引
@@ -536,7 +578,7 @@ function 读取当前turn(数据包) {
 }
 
 function 取得提示签名(推荐) {
-  if (!推荐.已找到) return `missing:${推荐.可达陆地数}`
+  if (!推荐.已找到) return `missing:${推荐.可达陆地数}:${推荐.已超时}`
   return `${推荐.记法}:${推荐.陆地数}:${推荐.段列表
     .map((段) => `${段.兵力}/${段.自有路径.join('.')}/${段.新地路径.join('.')}`)
     .join('|')}`
@@ -553,9 +595,11 @@ function 生成路线HTML(推荐) {
 }
 
 function 生成失败HTML(推荐) {
-  const 可达文本 = Number.isInteger(推荐.可达陆地数)
-    ? `可达 ${推荐.可达陆地数} 陆地`
-    : '地图未就绪'
+  const 可达文本 = 推荐.已超时
+    ? '搜索超时'
+    : Number.isInteger(推荐.可达陆地数)
+      ? `可达 ${推荐.可达陆地数} 陆地`
+      : '地图未就绪'
   return (
     `<span class="gio-opening-route-label">最佳开局</span>` +
     `<span class="gio-opening-route-main">未找到25地路线</span>` +
@@ -620,6 +664,15 @@ function 取得曼哈顿距离(左索引, 右索引) {
   const 右行 = Math.floor(右索引 / 状态.宽度)
   const 右列 = 右索引 % 状态.宽度
   return Math.abs(左行 - 右行) + Math.abs(左列 - 右列)
+}
+
+function 搜索已超时(上下文) {
+  if (上下文.已超时) return true
+  if (performance.now() - 上下文.搜索开始时间 <= 搜索时间上限毫秒) {
+    return false
+  }
+  上下文.已超时 = true
+  return true
 }
 
 import { 注册功能 } from '../注册中心.js'
