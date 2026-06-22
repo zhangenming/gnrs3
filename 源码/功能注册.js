@@ -4,6 +4,7 @@
 
 import './功能/禁止滚轮缩放.js'
 import './功能/自动隐藏回放控制.js'
+import './功能/回放大回合逐帧跳转.js'
 import './功能/自适应棋盘.js'
 import './功能/地图大小标签.js'
 import './功能/长任务诊断.js'
