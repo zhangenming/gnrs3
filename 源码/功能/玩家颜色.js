@@ -306,14 +306,16 @@ function 取得我方用户名索引(玩家名列表 = 状态.玩家名列表) {
 }
 
 function 读取我方用户名() {
+  if (是网页回放中()) {
+    const 回放玩家名 = new URLSearchParams(globalThis.location?.search ?? '')
+      .get('p')
+      ?.trim()
+    if (回放玩家名) return 回放玩家名
+  }
+
   const 本地玩家名 = 读取本地玩家名()
   if (本地玩家名) return 本地玩家名
-  if (!是网页回放中()) return ''
-
-  return (
-    new URLSearchParams(globalThis.location?.search ?? '').get('p')?.trim() ??
-    ''
-  )
+  return ''
 }
 
 function 是网页回放中() {

@@ -38,6 +38,12 @@ export function 同步我方玩家索引() {
     return 状态.我方索引
   }
 
+  const 回放查询玩家索引 = 读取回放查询玩家索引()
+  if (Number.isInteger(回放查询玩家索引)) {
+    状态.我方索引 = 回放查询玩家索引
+    return 状态.我方索引
+  }
+
   const 本地玩家索引 = 取得本地玩家索引()
   if (Number.isInteger(本地玩家索引)) {
     状态.我方索引 = 本地玩家索引
@@ -45,49 +51,45 @@ export function 同步我方玩家索引() {
   }
 
   return 状态.我方索引
+}
 
-  function 读取回放POV玩家索引() {
-    if (!document.body || !Array.isArray(状态.玩家名列表)) return null
+function 读取回放POV玩家索引() {
+  if (!document.body || !Array.isArray(状态.玩家名列表)) return null
 
-    const 表格列表 = document.body.querySelectorAll(
-      'table, .leaderboard, #leaderboard',
-    )
-    for (const 表格 of 表格列表) {
-      const 表头行 = 取得表头行(表格)
-      if (!表头行) continue
+  const 表格列表 = document.body.querySelectorAll(
+    'table, .leaderboard, #leaderboard',
+  )
+  for (const 表格 of 表格列表) {
+    const 表头行 = 取得表头行(表格)
+    if (!表头行) continue
 
-      const 表头格列表 = 取得单元格列表(表头行)
-      const 视角列 = 表头格列表.findIndex((单元格) => {
-        if (单元格.dataset.gioReplayTurnCell === 'true') return true
-        return (单元格.textContent ?? '').trim() === 'POV'
-      })
-      const 玩家列 = 表头格列表.findIndex((单元格) => {
-        if (单元格.dataset.gioBattlePlayerColumn === 'true') return true
-        return (单元格.textContent ?? '').trim() === 'Player'
-      })
-      if (视角列 < 0 || 玩家列 < 0) continue
+    const 表头格列表 = 取得单元格列表(表头行)
+    const 视角列 = 表头格列表.findIndex((单元格) => {
+      if (单元格.dataset.gioReplayTurnCell === 'true') return true
+      return (单元格.textContent ?? '').trim() === 'POV'
+    })
+    const 玩家列 = 表头格列表.findIndex((单元格) => {
+      if (单元格.dataset.gioBattlePlayerColumn === 'true') return true
+      return (单元格.textContent ?? '').trim() === 'Player'
+    })
+    if (视角列 < 0 || 玩家列 < 0) continue
 
-      const 数据行列表 = Array.from(表格.querySelectorAll('tr')).filter(
-        (行) => {
-          return 行 !== 表头行
-        },
-      )
-      for (const 行 of 数据行列表) {
-        const 单元格列表 = 取得单元格列表(行)
-        const 视角格 = 单元格列表[视角列]
-        const 勾选框 = 读取POV勾选框(视角格)
-        if (!勾选框?.checked) continue
+    const 数据行列表 = Array.from(表格.querySelectorAll('tr')).filter((行) => {
+      return 行 !== 表头行
+    })
+    for (const 行 of 数据行列表) {
+      const 单元格列表 = 取得单元格列表(行)
+      const 视角格 = 单元格列表[视角列]
+      const 勾选框 = 读取POV勾选框(视角格)
+      if (!勾选框?.checked) continue
 
-        const 玩家名 = (单元格列表[玩家列]?.textContent ?? '').trim()
-        if (!玩家名) continue
-
-        const 玩家索引 = 状态.玩家名列表.indexOf(玩家名)
-        if (玩家索引 >= 0) return 玩家索引
-      }
+      const 玩家名 = (单元格列表[玩家列]?.textContent ?? '').trim()
+      const 玩家索引 = 取得玩家名索引(玩家名)
+      if (玩家索引 >= 0) return 玩家索引
     }
-
-    return null
   }
+
+  return null
 
   function 读取POV勾选框(单元格) {
     const 勾选框列表 = Array.from(
@@ -113,16 +115,46 @@ export function 同步我方玩家索引() {
   }
 }
 
+function 读取回放查询玩家索引() {
+  if (!是网页回放中()) return null
+  const 玩家名 = new URLSearchParams(globalThis.location?.search ?? '')
+    .get('p')
+    ?.trim()
+  return 取得玩家名索引(玩家名)
+
+  function 是网页回放中() {
+    return Boolean(
+      globalThis.location?.pathname?.startsWith('/replays/') ||
+      document.getElementById('replay-turn-jump-input'),
+    )
+  }
+}
+
 export function 同步回放玩家索引(数据包) {
   读取玩家信息(数据包)
 
-  const 页面玩家索引 = 同步我方玩家索引()
-  if (是有效玩家索引(页面玩家索引)) return 页面玩家索引
+  const 回放POV玩家索引 = 读取回放POV玩家索引()
+  if (是有效玩家索引(回放POV玩家索引)) {
+    状态.我方索引 = 回放POV玩家索引
+    return 回放POV玩家索引
+  }
+
+  const 回放查询玩家索引 = 读取回放查询玩家索引()
+  if (是有效玩家索引(回放查询玩家索引)) {
+    状态.我方索引 = 回放查询玩家索引
+    return 回放查询玩家索引
+  }
 
   const 回放玩家索引 = 数据包?.replayWatcherIndex
   if (是有效玩家索引(回放玩家索引)) {
     状态.我方索引 = 回放玩家索引
     return 回放玩家索引
+  }
+
+  const 本地玩家索引 = 取得本地玩家索引()
+  if (是有效玩家索引(本地玩家索引)) {
+    状态.我方索引 = 本地玩家索引
+    return 本地玩家索引
   }
 
   return null
@@ -139,16 +171,19 @@ export function 同步回放玩家索引(数据包) {
 
 function 取得本地玩家索引(玩家名列表 = 状态.玩家名列表) {
   const 本地玩家名 = 读取本地玩家名()
-  if (!本地玩家名 || !Array.isArray(玩家名列表)) return null
+  return 取得玩家名索引(本地玩家名, 玩家名列表)
+}
 
-  const 精确索引 = 玩家名列表.indexOf(本地玩家名)
+function 取得玩家名索引(玩家名, 玩家名列表 = 状态.玩家名列表) {
+  if (!玩家名 || !Array.isArray(玩家名列表)) return null
+
+  const 精确索引 = 玩家名列表.indexOf(玩家名)
   if (精确索引 >= 0) return 精确索引
 
-  const 本地玩家名小写 = 本地玩家名.toLowerCase()
+  const 玩家名小写 = 玩家名.toLowerCase()
   const 忽略大小写索引 = 玩家名列表.findIndex((玩家名) => {
     return (
-      typeof 玩家名 === 'string' &&
-      玩家名.trim().toLowerCase() === 本地玩家名小写
+      typeof 玩家名 === 'string' && 玩家名.trim().toLowerCase() === 玩家名小写
     )
   })
   return 忽略大小写索引 >= 0 ? 忽略大小写索引 : null
