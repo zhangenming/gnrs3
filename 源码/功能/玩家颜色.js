@@ -41,6 +41,11 @@ const 原始地图颜色列表 = [
   '#b47fca',
   '#b49971',
 ]
+const 原始地图颜色索引表 = new Map(
+  原始地图颜色列表.map((颜色, idx) => {
+    return [标准化颜色(颜色), idx]
+  }),
+)
 let 已安装地图画布颜色替换 = false
 let 玩家原始颜色索引列表 = null
 
@@ -265,10 +270,10 @@ function 安装地图画布颜色替换() {
 }
 
 function 转换地图画布颜色(ctx, 颜色) {
-  if (!功能已启用('玩家颜色统一')) return 颜色
+  if (!玩家颜色统一已启用()) return 颜色
   if (!是网页回放中()) return 颜色
   if (!ctx?.canvas?.classList?.contains('game-map-canvas')) return 颜色
-  if (!同步玩家颜色我方索引()) return 颜色
+  if (!是有效颜色玩家索引(状态.我方索引)) return 颜色
 
   const 颜色索引 = 取得原始地图颜色索引(颜色)
   if (颜色索引 < 0) return 颜色
@@ -318,6 +323,10 @@ function 是有效颜色玩家索引(玩家索引, 数据包 = null) {
   )
 }
 
+function 玩家颜色统一已启用() {
+  return 状态.功能总开关 !== false && 状态.功能开关['玩家颜色统一'] !== false
+}
+
 function 是网页回放中() {
   return Boolean(
     globalThis.location?.pathname?.startsWith('/replays/') ||
@@ -329,9 +338,7 @@ function 取得原始地图颜色索引(颜色) {
   const 标准颜色 = 标准化颜色(颜色)
   if (!标准颜色) return -1
 
-  return 原始地图颜色列表.findIndex((原始颜色) => {
-    return 标准化颜色(原始颜色) === 标准颜色
-  })
+  return 原始地图颜色索引表.get(标准颜色) ?? -1
 }
 
 function 标准化颜色(颜色) {
