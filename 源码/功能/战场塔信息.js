@@ -7,10 +7,14 @@
 // 迷雾中的敌方塔继续复用已维护的塔归属记忆；差值段通过数据属性标记优劣，样式层据此给塔差着蓝色或红色。
 //
 // 作用范围:
-// 只改写排行榜/战场数据表的 Player 左侧相邻表头格内容和样式，不参与地图状态计算。
+// 只改写排行榜/战场数据表的 Player 左侧相邻表头格内容和样式；回放页会同步当前地图缓存，供覆盖层读取同一帧塔兵力。
 import { 战场塔信息类名 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 同步回放玩家索引, 同步我方玩家索引 } from '../游戏.js'
+import {
+  取得完整地图数组,
+  同步回放玩家索引,
+  同步我方玩家索引,
+} from '../游戏.js'
 import { 状态 } from '../状态.js'
 import {
   记录原始战场节点,
@@ -111,8 +115,10 @@ export const 功能样式 = `
 `
 
 let 回放塔信息动画帧编号 = null
+let 请求回放塔信息渲染 = null
 
-function 安装网页回放塔信息同步() {
+function 安装网页回放塔信息同步({ 请求渲染 } = {}) {
+  if (typeof 请求渲染 === 'function') 请求回放塔信息渲染 = 请求渲染
   if (回放塔信息动画帧编号 !== null) return
   function 同步网页回放塔信息() {
     if (功能已启用('战场塔信息') && 是网页回放中()) {
@@ -201,21 +207,26 @@ function 同步网页回放塔数据() {
   const 回放数据包 = 读取网页回放数据包()
   if (!回放数据包) return
 
+  const 回放地图数组 = 取得完整地图数组(回放数据包)
+  if (!回放地图数组) return
+
   const 签名 = [
     globalThis.location?.href,
     回放数据包.replay_id,
     回放数据包.turn,
     回放数据包.replayWatcherIndex,
-    回放数据包.cities?.length,
-    回放数据包.map?._map?.length,
+    取得回放塔地图签名(回放地图数组, 回放数据包.cities),
   ].join(':')
   if (状态.战场塔信息回放签名 === 签名) return
   状态.战场塔信息回放签名 = 签名
 
   同步回放玩家索引(回放数据包)
   if (Number.isInteger(回放数据包.turn)) 状态.当前回合 = 回放数据包.turn
+  状态.宽度 = 回放地图数组[0]
+  状态.高度 = 回放地图数组[1]
+  状态.地图数组 = 回放地图数组.slice()
   清空回放塔数据()
-  处理塔位置(回放数据包, function 空渲染请求() {})
+  处理塔位置(回放数据包, 请求回放塔重绘)
 
   function 读取网页回放数据包() {
     const 地图元素 = document.getElementById('gameMap')
@@ -281,6 +292,28 @@ function 同步网页回放塔数据() {
     状态.敌方开塔推断数 = 0
     状态.抢塔数 = 0
     状态.敌方开塔确认集合.clear()
+  }
+
+  function 取得回放塔地图签名(地图数组, 塔列表) {
+    if (!Array.isArray(塔列表)) return ''
+
+    const 宽度 = 地图数组[0]
+    const 高度 = 地图数组[1]
+    const 格子数 = 宽度 * 高度
+    return 塔列表
+      .map((塔索引) => {
+        if (!Number.isInteger(塔索引) || 塔索引 < 0 || 塔索引 >= 格子数) {
+          return ''
+        }
+        const 兵力 = 地图数组[2 + 塔索引]
+        const 归属 = 地图数组[2 + 格子数 + 塔索引]
+        return `${塔索引},${兵力},${归属}`
+      })
+      .join('|')
+  }
+
+  function 请求回放塔重绘() {
+    if (typeof 请求回放塔信息渲染 === 'function') 请求回放塔信息渲染()
   }
 }
 
