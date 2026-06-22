@@ -55,7 +55,7 @@ function 安装回放大回合逐帧跳转() {
     const 按键 =
       方向 > 0 ? 取得按键('d', 'KeyD', 68) : 取得按键('a', 'KeyA', 65)
     发送按键('keyup', 取得按键('Shift', 'ShiftLeft', 16))
-    requestAnimationFrame(逐帧单步)
+    等待回放单步模式后开始(0)
 
     function 逐帧单步() {
       if (当前令牌 !== 逐帧跳转令牌) return
@@ -68,6 +68,23 @@ function 安装回放大回合逐帧跳转() {
       已单步次数 += 1
       发送按键('keydown', 按键)
       requestAnimationFrame(逐帧单步)
+    }
+
+    function 等待回放单步模式后开始(已等待帧数) {
+      requestAnimationFrame(() => {
+        if (当前令牌 !== 逐帧跳转令牌) return
+        if (已是回放单步模式() || 已等待帧数 >= 6) {
+          逐帧单步()
+          return
+        }
+        等待回放单步模式后开始(已等待帧数 + 1)
+      })
+    }
+
+    function 已是回放单步模式() {
+      const 按钮 = document.querySelector('#replay-top-left button.small')
+      if (!(按钮 instanceof HTMLButtonElement)) return false
+      return !按钮.classList.contains('inverted')
     }
   }
 
