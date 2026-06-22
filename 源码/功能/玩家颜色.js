@@ -283,9 +283,21 @@ function 取得颜色玩家索引(颜色索引) {
 
 function 同步我方用户名索引() {
   const 玩家索引 = 取得我方用户名索引()
-  if (!Number.isInteger(玩家索引)) return false
-  状态.我方索引 = 玩家索引
-  return true
+  if (Number.isInteger(玩家索引)) {
+    状态.我方索引 = 玩家索引
+    return true
+  }
+
+  return 是有效玩家索引(状态.我方索引)
+
+  function 是有效玩家索引(玩家索引) {
+    return (
+      Number.isInteger(玩家索引) &&
+      玩家索引 >= 0 &&
+      Array.isArray(状态.玩家名列表) &&
+      typeof 状态.玩家名列表[玩家索引] === 'string'
+    )
+  }
 }
 
 function 取得我方用户名索引(玩家名列表 = 状态.玩家名列表) {

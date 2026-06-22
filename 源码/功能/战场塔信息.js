@@ -25,6 +25,7 @@ import {
 } from '../战场DOM工具.js'
 import { 读取冻结战场塔信息, 记录战场塔信息快照 } from './战场数据冻结.js'
 import { 取得战场数据表格 } from './战场表格.js'
+import { 重构玩家颜色 } from './玩家颜色.js'
 import { 处理塔位置 } from './塔记忆.js'
 import { 统计塔数 } from './塔数统计.js'
 
@@ -215,12 +216,16 @@ function 同步网页回放塔数据() {
     回放数据包.replay_id,
     回放数据包.turn,
     回放数据包.replayWatcherIndex,
+    Array.isArray(回放数据包.playerColors)
+      ? 回放数据包.playerColors.join(',')
+      : '',
     取得回放塔地图签名(回放地图数组, 回放数据包.cities),
   ].join(':')
   if (状态.战场塔信息回放签名 === 签名) return
   状态.战场塔信息回放签名 = 签名
 
   同步回放玩家索引(回放数据包)
+  重构玩家颜色(回放数据包)
   if (Number.isInteger(回放数据包.turn)) 状态.当前回合 = 回放数据包.turn
   状态.宽度 = 回放地图数组[0]
   状态.高度 = 回放地图数组[1]
@@ -241,22 +246,31 @@ function 同步网页回放塔数据() {
   function 读取节点回放数据包(节点) {
     const fiber = 读取ReactFiber(节点)
     const 已访问 = new Set()
+    let 候选数据包 = null
     for (let 当前 = fiber; 当前 && !已访问.has(当前); 当前 = 当前.return) {
       已访问.add(当前)
       const props = 当前.memoizedProps
       if (是回放数据Props(props)) {
-        return {
+        const 数据包 = {
           map: props.map,
           cities: props.cities,
           turn: props.turn,
           usernames: props.usernames,
           teams: props.teams,
+          playerColors: props.playerColors,
           replay_id: props.replay_id,
           replayWatcherIndex: props.replayWatcherIndex,
         }
+        if (
+          Array.isArray(props.usernames) &&
+          Array.isArray(props.playerColors)
+        ) {
+          return 数据包
+        }
+        候选数据包 ??= 数据包
       }
     }
-    return null
+    return 候选数据包
   }
 
   function 读取ReactFiber(节点) {
