@@ -64,6 +64,7 @@ function 画未到达视野背景({ ctx, 格宽, 格高, 格子数 }) {
   ctx.fillStyle = 未到达视野背景色
   for (let idx = 0; idx < 格子数; idx += 1) {
     if (状态.已到达视野集合.has(idx)) continue
+    if (状态.敌方基地排除集合.has(idx)) continue
     const 行 = Math.floor(idx / 状态.宽度)
     const 列 = idx % 状态.宽度
     ctx.fillRect(列 * 格宽, 行 * 格高, 格宽, 格高)
