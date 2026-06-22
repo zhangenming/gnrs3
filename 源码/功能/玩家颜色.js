@@ -5,7 +5,12 @@
 // 只处理带 playerColors 的入站数据包，并用 WeakSet 避免同一对象重复处理。
 // 颜色统一后，排行榜识别、地图显示和战场数据差功能都能用稳定的敌我颜色规则。
 import { 敌方红色, 敌方红色索引, 我方蓝色, 我方蓝色索引 } from '../配置.js'
-import { 读取玩家信息, 读取本地玩家名, 是我方或队友 } from '../游戏.js'
+import {
+  读取玩家信息,
+  同步回放玩家索引,
+  同步我方玩家索引,
+  是我方或队友,
+} from '../游戏.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 取得表头行, 取得单元格列表, 取得玩家列索引 } from '../战场DOM工具.js'
@@ -107,7 +112,7 @@ export function 重构玩家颜色(数据包) {
   记录玩家原始颜色索引(数据包)
   请求同步页面颜色()
 
-  if (!同步我方用户名索引()) return
+  if (!同步玩家颜色我方索引(数据包)) return
 
   if (!Array.isArray(数据包.playerColors)) {
     return
@@ -168,7 +173,7 @@ function 同步页面颜色() {
 
 function 同步战场面板颜色() {
   if (!功能已启用('玩家颜色统一')) return
-  if (!同步我方用户名索引()) return
+  if (!同步玩家颜色我方索引()) return
 
   const 表格 = 取得战场数据表格()
   if (!表格) return
@@ -263,7 +268,7 @@ function 转换地图画布颜色(ctx, 颜色) {
   if (!功能已启用('玩家颜色统一')) return 颜色
   if (!是网页回放中()) return 颜色
   if (!ctx?.canvas?.classList?.contains('game-map-canvas')) return 颜色
-  if (!同步我方用户名索引()) return 颜色
+  if (!同步玩家颜色我方索引()) return 颜色
 
   const 颜色索引 = 取得原始地图颜色索引(颜色)
   if (颜色索引 < 0) return 颜色
@@ -281,53 +286,24 @@ function 取得颜色玩家索引(颜色索引) {
   return null
 }
 
-function 同步我方用户名索引() {
-  const 玩家索引 = 取得我方用户名索引()
-  if (Number.isInteger(玩家索引)) {
-    状态.我方索引 = 玩家索引
-    return true
-  }
-
-  return 是有效玩家索引(状态.我方索引)
-
-  function 是有效玩家索引(玩家索引) {
-    return (
-      Number.isInteger(玩家索引) &&
-      玩家索引 >= 0 &&
-      Array.isArray(状态.玩家名列表) &&
-      typeof 状态.玩家名列表[玩家索引] === 'string'
-    )
-  }
+function 同步玩家颜色我方索引(数据包 = null) {
+  const 玩家索引 =
+    是网页回放中() && 数据包 ? 同步回放玩家索引(数据包) : 同步我方玩家索引()
+  return 是有效颜色玩家索引(玩家索引, 数据包)
 }
 
-function 取得我方用户名索引(玩家名列表 = 状态.玩家名列表) {
-  const 我方用户名 = 读取我方用户名()
-  if (!我方用户名 || !Array.isArray(玩家名列表)) return null
-
-  const 精确索引 = 玩家名列表.indexOf(我方用户名)
-  if (精确索引 >= 0) return 精确索引
-
-  const 我方用户名小写 = 我方用户名.toLowerCase()
-  const 忽略大小写索引 = 玩家名列表.findIndex((玩家名) => {
-    return (
-      typeof 玩家名 === 'string' &&
-      玩家名.trim().toLowerCase() === 我方用户名小写
-    )
-  })
-  return 忽略大小写索引 >= 0 ? 忽略大小写索引 : null
-}
-
-function 读取我方用户名() {
-  if (是网页回放中()) {
-    const 回放玩家名 = new URLSearchParams(globalThis.location?.search ?? '')
-      .get('p')
-      ?.trim()
-    if (回放玩家名) return 回放玩家名
+function 是有效颜色玩家索引(玩家索引, 数据包 = null) {
+  if (!Number.isInteger(玩家索引) || 玩家索引 < 0) return false
+  if (
+    Array.isArray(数据包?.playerColors) &&
+    玩家索引 >= 数据包.playerColors.length
+  ) {
+    return false
   }
-
-  const 本地玩家名 = 读取本地玩家名()
-  if (本地玩家名) return 本地玩家名
-  return ''
+  return (
+    Array.isArray(状态.玩家名列表) &&
+    typeof 状态.玩家名列表[玩家索引] === 'string'
+  )
 }
 
 function 是网页回放中() {
