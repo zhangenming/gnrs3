@@ -14,6 +14,7 @@ import { 取得周期增长次数, 读取当前回合 } from '../游戏工具.js
 import { 功能已启用 } from '../功能状态.js'
 import { 状态 } from '../状态.js'
 import { 画兵力文本 } from '../覆盖层工具.js'
+import { 自动选中我方基地 } from './选中棋子提示.js'
 
 const 基地边框动画毫秒 = 900
 
@@ -39,6 +40,7 @@ export const socket功能 = {
   },
   game_start({ 数据包, 请求渲染 }) {
     处理基地位置(数据包 ?? {}, 请求渲染)
+    自动选中我方基地(请求渲染)
   },
   game_update({ 数据包, 请求渲染 }) {
     处理基地位置(数据包 ?? {}, 请求渲染)

@@ -1,4 +1,5 @@
 import { 状态 } from '../状态.js'
+import { 取游戏画布 } from '../游戏工具.js'
 import { 取得大回合倒计时 } from '../工具.js'
 import { 读取显示回合 } from './大回合倒计时.js'
 
@@ -18,6 +19,7 @@ let 选中格子索引 = null
 let 已同步移动队列长度 = 0
 let 已同步移动队列最后移动 = null
 let 已安装选中监听 = false
+let 自动选中基地任务 = null
 
 export const 覆盖层功能 = {
   id: 功能定义.id,
@@ -83,11 +85,88 @@ export function 安装选中棋子监听(请求重绘) {
 
   function 记录快捷键选中格子(事件) {
     if (事件.key !== 'Shift') return
-    if (!Number.isInteger(状态.我方基地索引) || 状态.我方基地索引 < 0) return
 
-    选中格子索引 = 状态.我方基地索引
-    同步移动队列标记()
-    请求重绘()
+    选中我方基地(请求重绘)
+  }
+}
+
+export function 自动选中我方基地(请求重绘) {
+  const 基地索引 = 选中我方基地(请求重绘)
+  if (!Number.isInteger(基地索引)) return
+
+  const 当前任务 = {}
+  自动选中基地任务 = 当前任务
+  尝试点击基地(0)
+
+  function 尝试点击基地(尝试次数) {
+    if (自动选中基地任务 !== 当前任务) return
+    if (选中格子索引 !== 基地索引) return
+
+    if (点击基地()) {
+      自动选中基地任务 = null
+      return
+    }
+
+    if (尝试次数 >= 10) {
+      自动选中基地任务 = null
+      return
+    }
+
+    setTimeout(() => 尝试点击基地(尝试次数 + 1), 80)
+  }
+
+  function 点击基地() {
+    const 画布 = 取游戏画布()
+    if (!画布) return false
+    if (!状态.宽度 || !状态.高度) return false
+
+    const 矩形 = 画布.getBoundingClientRect()
+    if (矩形.width <= 0 || 矩形.height <= 0) return false
+
+    const 列 = 基地索引 % 状态.宽度
+    const 行 = Math.floor(基地索引 / 状态.宽度)
+    const x = 矩形.left + ((列 + 0.5) / 状态.宽度) * 矩形.width
+    const y = 矩形.top + ((行 + 0.5) / 状态.高度) * 矩形.height
+
+    派发点击事件(画布, x, y)
+    return true
+  }
+
+  function 派发点击事件(画布, x, y) {
+    const 公共选项 = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      clientX: x,
+      clientY: y,
+      screenX: window.screenX + x,
+      screenY: window.screenY + y,
+      button: 0,
+    }
+
+    画布.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        ...公共选项,
+        buttons: 1,
+        pointerId: 1,
+        pointerType: 'mouse',
+        isPrimary: true,
+      }),
+    )
+    画布.dispatchEvent(new MouseEvent('mousedown', { ...公共选项, buttons: 1 }))
+    画布.dispatchEvent(
+      new PointerEvent('pointerup', {
+        ...公共选项,
+        buttons: 0,
+        pointerId: 1,
+        pointerType: 'mouse',
+        isPrimary: true,
+      }),
+    )
+    画布.dispatchEvent(new MouseEvent('mouseup', { ...公共选项, buttons: 0 }))
+    画布.dispatchEvent(
+      new MouseEvent('click', { ...公共选项, buttons: 0, detail: 1 }),
+    )
   }
 }
 
@@ -125,7 +204,17 @@ function 同步移动队列标记() {
   已同步移动队列最后移动 = 取得移动队列最后移动()
 }
 
+function 选中我方基地(请求重绘) {
+  if (!Number.isInteger(状态.我方基地索引) || 状态.我方基地索引 < 0) return null
+
+  选中格子索引 = 状态.我方基地索引
+  同步移动队列标记()
+  if (typeof 请求重绘 === 'function') 请求重绘()
+  return 选中格子索引
+}
+
 function 清空选中状态() {
+  自动选中基地任务 = null
   选中格子索引 = null
   已同步移动队列长度 = 0
   已同步移动队列最后移动 = null
