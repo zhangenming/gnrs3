@@ -70,7 +70,7 @@ function 安装回放大回合逐帧跳转() {
       if (已单步次数 >= 大回合turn数) return
 
       已单步次数 += 1
-      发送按键('keydown', 按键)
+      发送单步按键(按键)
       requestAnimationFrame(逐帧单步)
     }
   }
@@ -94,18 +94,23 @@ function 安装回放大回合逐帧跳转() {
     return 事件.key === 'Shift' || 事件.code === 'ShiftLeft'
   }
 
-  function 发送按键(类型, 按键) {
-    const 事件 = new KeyboardEvent(类型, {
-      bubbles: true,
-      cancelable: true,
-      key: 按键.key,
-      code: 按键.code,
-    })
-    Object.defineProperties(事件, {
-      keyCode: { get: () => 按键.keyCode },
-      which: { get: () => 按键.keyCode },
-    })
-    window.dispatchEvent(事件)
+  function 发送单步按键(按键) {
+    发送按键('keydown', 按键)
+    发送按键('keyup', 按键)
+
+    function 发送按键(类型, 按键) {
+      const 事件 = new KeyboardEvent(类型, {
+        bubbles: true,
+        cancelable: true,
+        key: 按键.key,
+        code: 按键.code,
+      })
+      Object.defineProperties(事件, {
+        keyCode: { get: () => 按键.keyCode },
+        which: { get: () => 按键.keyCode },
+      })
+      window.dispatchEvent(事件)
+    }
   }
 
   function 取得按键(key, code, keyCode) {
