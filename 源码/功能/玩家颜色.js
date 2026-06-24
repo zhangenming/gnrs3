@@ -48,6 +48,8 @@ const 原始地图颜色索引表 = new Map(
 )
 let 已安装地图画布颜色替换 = false
 let 玩家原始颜色索引列表 = null
+let 回放地图已重绘签名 = ''
+let 回放地图重绘请求签名 = ''
 
 export const 功能样式 = `
 :root {
@@ -85,6 +87,8 @@ export const socket功能 = {
   新局重置() {
     状态.已处理颜色数据包 = new WeakSet()
     玩家原始颜色索引列表 = null
+    回放地图已重绘签名 = ''
+    回放地图重绘请求签名 = ''
   },
 }
 
@@ -124,6 +128,7 @@ export function 重构玩家颜色(数据包) {
   }
 
   if (是网页回放中()) {
+    请求回放地图颜色重绘()
     return
   }
 
@@ -174,6 +179,7 @@ function 请求同步页面颜色() {
 function 同步页面颜色() {
   同步战场面板颜色()
   同步地图颜色变量()
+  请求回放地图颜色重绘()
 }
 
 function 同步战场面板颜色() {
@@ -289,6 +295,110 @@ function 取得颜色玩家索引(颜色索引) {
     if (玩家索引 >= 0) return 玩家索引
   }
   return null
+}
+
+function 请求回放地图颜色重绘() {
+  const 签名 = 取得回放地图颜色重绘签名()
+  if (!签名) return
+  if (回放地图已重绘签名 === 签名) return
+  if (回放地图重绘请求签名 === 签名) return
+
+  回放地图重绘请求签名 = 签名
+  let 剩余尝试次数 = 8
+  安排重绘()
+
+  function 安排重绘() {
+    requestAnimationFrame(尝试重绘)
+  }
+
+  function 尝试重绘() {
+    if (回放地图重绘请求签名 !== 签名) return
+    if (!是网页回放中() || !需要转换回放地图颜色()) {
+      回放地图重绘请求签名 = ''
+      return
+    }
+    if (重绘回放游戏画布()) {
+      回放地图已重绘签名 = 签名
+      回放地图重绘请求签名 = ''
+      return
+    }
+
+    剩余尝试次数 -= 1
+    if (剩余尝试次数 > 0) {
+      安排重绘()
+    } else {
+      回放地图重绘请求签名 = ''
+    }
+  }
+
+  function 取得回放地图颜色重绘签名() {
+    if (!是网页回放中()) return ''
+    if (!document.querySelector('#gameMap .game-map-canvas')) return ''
+    if (!是有效颜色玩家索引(状态.我方索引)) return ''
+    if (!Array.isArray(玩家原始颜色索引列表)) return ''
+    if (!需要转换回放地图颜色()) return ''
+
+    return [
+      globalThis.location?.pathname ?? '',
+      globalThis.location?.search ?? '',
+      状态.我方索引,
+      玩家原始颜色索引列表.join(','),
+    ].join(':')
+  }
+
+  function 需要转换回放地图颜色() {
+    if (!Array.isArray(玩家原始颜色索引列表)) return false
+
+    for (
+      let 玩家索引 = 0;
+      玩家索引 < 玩家原始颜色索引列表.length;
+      玩家索引 += 1
+    ) {
+      const 原始颜色索引 = 玩家原始颜色索引列表[玩家索引]
+      const 原始颜色 = 原始地图颜色列表[原始颜色索引]
+      if (!原始颜色) continue
+
+      const 目标颜色 = 是我方或队友(玩家索引) ? 我方蓝色 : 敌方红色
+      if (标准化颜色(原始颜色) !== 标准化颜色(目标颜色)) return true
+    }
+    return false
+  }
+
+  function 重绘回放游戏画布() {
+    const 地图实例 = 取得地图绘制实例()
+    if (!地图实例) return false
+
+    地图实例.drawCanvas()
+    return true
+  }
+
+  function 取得地图绘制实例() {
+    const 地图元素 =
+      document.getElementById('gameMap') ??
+      document.querySelector('.game-map-canvas')?.closest('#gameMap')
+    const 已访问 = new Set()
+    for (
+      let fiber = 读取ReactFiber(地图元素);
+      fiber && !已访问.has(fiber);
+      fiber = fiber.return
+    ) {
+      已访问.add(fiber)
+      if (typeof fiber.stateNode?.drawCanvas === 'function')
+        return fiber.stateNode
+    }
+    return null
+
+    function 读取ReactFiber(节点) {
+      if (!节点) return null
+      const fiber键 = Object.keys(节点).find((键) => {
+        return (
+          键.startsWith('__reactFiber$') ||
+          键.startsWith('__reactInternalInstance$')
+        )
+      })
+      return fiber键 ? 节点[fiber键] : null
+    }
+  }
 }
 
 function 同步玩家颜色我方索引(数据包 = null) {
