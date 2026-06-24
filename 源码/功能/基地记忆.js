@@ -50,9 +50,11 @@ export const socket功能 = {
 export const 覆盖层功能 = {
   id: 功能定义.id,
   需要绘制() {
+    if (是网页回放中()) return false
     return 状态.已知敌方基地集合.size > 0 || Number.isInteger(状态.我方基地索引)
   },
   需要连续动画() {
+    if (是网页回放中()) return false
     return (
       状态.已知敌方基地集合.size > 0 ||
       (Number.isInteger(状态.我方基地索引) && 状态.我方基地索引 >= 0)
@@ -227,6 +229,13 @@ function 取得模拟基地兵力(基地索引) {
   const 大回合额外增长 = 取得周期增长次数(记录回合, 当前回合, 50)
 
   return 记忆.兵力 + 基地自然增长 + 大回合额外增长
+}
+
+function 是网页回放中() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
 }
 
 import { 注册功能 } from '../注册中心.js'
