@@ -22,6 +22,7 @@ let 已安装选中监听 = false
 let 已安装页面激活监听 = false
 let 自动选中基地任务 = null
 let 自动选中请求重绘 = null
+let 自动选中基地定时器 = null
 let 已走出第一步 = false
 
 export const 覆盖层功能 = {
@@ -102,7 +103,7 @@ export function 自动选中我方基地(请求重绘) {
   const 基地索引 = 选中我方基地(请求重绘)
   if (!Number.isInteger(基地索引)) return
 
-  const 当前任务 = {}
+  const 当前任务 = 自动选中基地任务 ?? {}
   自动选中基地任务 = 当前任务
   尝试点击基地(0)
 
@@ -110,17 +111,13 @@ export function 自动选中我方基地(请求重绘) {
     if (自动选中基地任务 !== 当前任务) return
     if (选中格子索引 !== 基地索引) return
 
-    if (点击基地()) {
-      自动选中基地任务 = null
-      return
-    }
+    点击基地()
 
-    if (尝试次数 >= 10) {
-      自动选中基地任务 = null
-      return
-    }
-
-    setTimeout(() => 尝试点击基地(尝试次数 + 1), 80)
+    const 间隔 = 尝试次数 < 12 ? 80 : 300
+    clearTimeout(自动选中基地定时器)
+    自动选中基地定时器 = setTimeout(() => {
+      尝试点击基地(尝试次数 + 1)
+    }, 间隔)
   }
 
   function 点击基地() {
@@ -250,6 +247,8 @@ function 选中我方基地(请求重绘) {
 
 function 清空选中状态() {
   自动选中基地任务 = null
+  clearTimeout(自动选中基地定时器)
+  自动选中基地定时器 = null
   自动选中请求重绘 = null
   已走出第一步 = false
   选中格子索引 = null
@@ -259,6 +258,8 @@ function 清空选中状态() {
 
 function 停止开局自动选中() {
   自动选中基地任务 = null
+  clearTimeout(自动选中基地定时器)
+  自动选中基地定时器 = null
   自动选中请求重绘 = null
   已走出第一步 = true
 }
