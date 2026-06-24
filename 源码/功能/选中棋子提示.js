@@ -19,7 +19,10 @@ let 选中格子索引 = null
 let 已同步移动队列长度 = 0
 let 已同步移动队列最后移动 = null
 let 已安装选中监听 = false
+let 已安装页面激活监听 = false
 let 自动选中基地任务 = null
+let 自动选中请求重绘 = null
+let 已走出第一步 = false
 
 export const 覆盖层功能 = {
   id: 功能定义.id,
@@ -37,6 +40,7 @@ export const socket功能 = {
   id: 功能定义.id,
   出站({ 事件名, 参数, 请求渲染 }) {
     if (事件名 === 'attack') {
+      停止开局自动选中()
       同步攻击终点选中(参数?.[1])
       请求渲染()
     } else if (事件名 === 'undo_move') {
@@ -91,6 +95,10 @@ export function 安装选中棋子监听(请求重绘) {
 }
 
 export function 自动选中我方基地(请求重绘) {
+  if (已走出第一步) return
+  自动选中请求重绘 = 请求重绘
+  安装页面激活监听()
+
   const 基地索引 = 选中我方基地(请求重绘)
   if (!Number.isInteger(基地索引)) return
 
@@ -170,6 +178,33 @@ export function 自动选中我方基地(请求重绘) {
   }
 }
 
+function 安装页面激活监听() {
+  if (已安装页面激活监听) return
+  已安装页面激活监听 = true
+
+  window.addEventListener('focus', 页面激活后选中基地, {
+    capture: true,
+    passive: true,
+  })
+  window.addEventListener('pageshow', 页面激活后选中基地, {
+    capture: true,
+    passive: true,
+  })
+  document.addEventListener('visibilitychange', 页面可见后选中基地, {
+    capture: true,
+    passive: true,
+  })
+}
+
+function 页面可见后选中基地() {
+  if (document.visibilityState !== 'visible') return
+  页面激活后选中基地()
+}
+
+function 页面激活后选中基地() {
+  自动选中我方基地(自动选中请求重绘)
+}
+
 export function 取得选中棋子索引() {
   const 当前移动队列长度 = 状态.移动队列.length
   if (当前移动队列长度 > 已同步移动队列长度) 同步移动队列最新终点选中()
@@ -215,9 +250,17 @@ function 选中我方基地(请求重绘) {
 
 function 清空选中状态() {
   自动选中基地任务 = null
+  自动选中请求重绘 = null
+  已走出第一步 = false
   选中格子索引 = null
   已同步移动队列长度 = 0
   已同步移动队列最后移动 = null
+}
+
+function 停止开局自动选中() {
+  自动选中基地任务 = null
+  自动选中请求重绘 = null
+  已走出第一步 = true
 }
 
 function 取得移动队列最后移动() {
