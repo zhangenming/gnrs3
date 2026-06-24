@@ -4,6 +4,7 @@
 // 作用范围:
 // 只在队列为空时插入 1 步；用户随后操作时，若自动步仍是队列最后一步，则先撤回自动步。
 import { 功能已启用 } from '../功能状态.js'
+import { 大回合turn数 } from '../配置.js'
 import {
   取得地图格子数,
   地图可读,
@@ -55,6 +56,9 @@ export function 尝试自动扩展(socket, 请求渲染) {
   if (!socket || typeof socket.emit !== 'function') return false
   if (globalThis.location?.pathname?.startsWith('/replays/')) return false
   if (!状态.游戏进行中) return false
+  if (!Number.isInteger(状态.当前回合) || 状态.当前回合 < 大回合turn数) {
+    return false
+  }
   if (!地图可读(状态.地图数组)) return false
   if (状态.移动队列.length) return false
   if (状态.自动扩展记录) return false
