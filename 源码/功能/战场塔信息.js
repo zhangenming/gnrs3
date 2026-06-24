@@ -117,6 +117,7 @@ export const 功能样式 = `
 
 let 回放塔信息动画帧编号 = null
 let 请求回放塔信息渲染 = null
+let 回放塔信息缓存 = null
 
 function 安装网页回放塔信息同步({ 请求渲染 } = {}) {
   if (typeof 请求渲染 === 'function') 请求回放塔信息渲染 = 请求渲染
@@ -211,10 +212,24 @@ function 同步网页回放塔数据() {
   const 回放地图数组 = 取得完整地图数组(回放数据包)
   if (!回放地图数组) return
 
+  const 回放玩家索引 = 同步回放玩家索引(回放数据包)
+  const 回放键 = [
+    globalThis.location?.pathname,
+    globalThis.location?.search,
+    回放数据包.replay_id,
+    Number.isInteger(回放玩家索引) ? 回放玩家索引 : '',
+  ].join(':')
+  const 旧缓存 = 回放塔信息缓存
+  const 是同场回放 = 旧缓存?.回放键 === 回放键
+  const 是同回合 = 是同场回放 && 旧缓存.回合 === 回放数据包.turn
+  const 是连续回合 = 是同场回放 && 旧缓存.回合 + 1 === 回放数据包.turn
+  const 需要重置塔数据 = !是同回合 && !是连续回合
+
   const 签名 = [
     globalThis.location?.href,
     回放数据包.replay_id,
     回放数据包.turn,
+    Number.isInteger(回放玩家索引) ? 回放玩家索引 : '',
     回放数据包.replayWatcherIndex,
     Array.isArray(回放数据包.playerColors)
       ? 回放数据包.playerColors.join(',')
@@ -224,14 +239,17 @@ function 同步网页回放塔数据() {
   if (状态.战场塔信息回放签名 === 签名) return
   状态.战场塔信息回放签名 = 签名
 
-  同步回放玩家索引(回放数据包)
   重构玩家颜色(回放数据包)
   if (Number.isInteger(回放数据包.turn)) 状态.当前回合 = 回放数据包.turn
   状态.宽度 = 回放地图数组[0]
   状态.高度 = 回放地图数组[1]
   状态.地图数组 = 回放地图数组.slice()
-  清空回放塔数据()
+  if (需要重置塔数据) 清空回放塔数据()
   处理塔位置(回放数据包, 请求回放塔重绘)
+  回放塔信息缓存 = {
+    回放键,
+    回合: 回放数据包.turn,
+  }
 
   function 读取网页回放数据包() {
     const 地图元素 = document.getElementById('gameMap')
@@ -306,6 +324,8 @@ function 同步网页回放塔数据() {
     状态.敌方开塔推断数 = 0
     状态.抢塔数 = 0
     状态.敌方开塔确认集合.clear()
+    状态.敌方开塔战场快照 = null
+    状态.敌方开塔候选 = null
   }
 
   function 取得回放塔地图签名(地图数组, 塔列表) {

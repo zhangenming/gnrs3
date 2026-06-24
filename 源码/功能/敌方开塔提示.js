@@ -12,7 +12,11 @@ import { 敌方红色, 样式编号 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 同步我方玩家索引 } from '../游戏.js'
 import { 状态 } from '../状态.js'
-import { 读取分数玩家数据, 读取快照玩家数据 } from '../战场工具.js'
+import {
+  读取分数玩家数据,
+  读取快照玩家数据,
+  读取页面玩家数据,
+} from '../战场工具.js'
 import { 取得周期增长次数, 读取当前回合 } from '../游戏工具.js'
 import { 统计塔数, 同步塔数统计 } from './塔数统计.js'
 
@@ -23,12 +27,18 @@ const 敌方开塔日志最大数量 = 80
 const 敌方偷塔候选最小耗兵 = 2
 const 敌方偷塔候选最大间隔 = 4
 const 敌方偷塔候选最大年龄 = 16
+let 回放敌方开塔动画帧编号 = null
 
 export const 功能定义 = {
   id: '敌方开塔提示',
   名称: '敌方开塔提示',
   分类: '战场面板',
   描述: '检测到敌方开塔时给出短提示',
+}
+
+export const 主程序功能 = {
+  id: 功能定义.id,
+  启动: 安装网页回放敌方开塔同步,
 }
 
 export const 功能恢复 = {
@@ -128,6 +138,17 @@ export function 同步敌方开塔提示元素() {
 
   状态.敌方开塔提示 = null
   document.getElementById(敌方开塔提示元素编号)?.remove()
+}
+
+function 安装网页回放敌方开塔同步() {
+  if (回放敌方开塔动画帧编号 !== null) return
+  function 同步网页回放敌方开塔() {
+    if (功能已启用('敌方开塔提示') && 是网页回放中()) {
+      更新敌方开塔提示({})
+    }
+    回放敌方开塔动画帧编号 = window.requestAnimationFrame(同步网页回放敌方开塔)
+  }
+  回放敌方开塔动画帧编号 = window.requestAnimationFrame(同步网页回放敌方开塔)
 }
 
 function 取得敌方开塔判断(上次快照, 当前快照) {
@@ -395,7 +416,9 @@ function 读取战场快照(数据包) {
   const 回合 = 读取当前回合(数据包)
   if (!Number.isInteger(回合)) return null
 
-  const 玩家数据 = 读取快照玩家数据() ?? 读取分数玩家数据(数据包)
+  const 玩家数据 = 是网页回放中()
+    ? (读取页面玩家数据() ?? 读取快照玩家数据() ?? 读取分数玩家数据(数据包))
+    : (读取快照玩家数据() ?? 读取分数玩家数据(数据包) ?? 读取页面玩家数据())
   if (!玩家数据) return null
 
   const 塔数 = 统计塔数()
@@ -514,5 +537,12 @@ function 安装敌方开塔提示样式() {
   document.documentElement.appendChild(样式)
 }
 
+function 是网页回放中() {
+  return Boolean(
+    globalThis.location?.pathname?.startsWith('/replays/') ||
+    document.getElementById('replay-turn-jump-input'),
+  )
+}
+
 import { 注册功能 } from '../注册中心.js'
-注册功能({ 功能定义, 功能恢复, socket功能 })
+注册功能({ 功能定义, 主程序功能, 功能恢复, socket功能 })
