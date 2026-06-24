@@ -315,6 +315,7 @@ function 安装网页回放行动监控同步() {
     同步回放玩家索引(数据包)
     状态.宽度 = 新地图数组[0]
     状态.高度 = 新地图数组[1]
+    同步回放自然增长地块(数据包, 新地图数组)
 
     const 回放键 = [
       globalThis.location?.pathname,
@@ -427,6 +428,7 @@ function 安装网页回放行动监控同步() {
             return {
               map: props.map,
               cities: props.cities,
+              generals: props.generals,
               turn: props.turn,
               usernames: props.usernames,
               teams: props.teams,
@@ -457,6 +459,45 @@ function 安装网页回放行动监控同步() {
           Number.isInteger(props.turn),
         )
       }
+    }
+
+    function 同步回放自然增长地块(数据包, 地图数组) {
+      同步回放基地位置(数据包)
+      同步回放塔位置(数据包, 地图数组)
+    }
+
+    function 同步回放基地位置(数据包) {
+      if (!Array.isArray(数据包?.generals)) return
+
+      状态.已知基地集合.clear()
+      for (const 基地索引 of 数据包.generals) {
+        if (!Number.isInteger(基地索引) || 基地索引 < 0) continue
+        状态.已知基地集合.add(基地索引)
+      }
+
+      const 我方基地索引 = 数据包.generals[状态.我方索引]
+      if (Number.isInteger(我方基地索引) && 我方基地索引 >= 0) {
+        状态.我方基地索引 = 我方基地索引
+      }
+    }
+
+    function 同步回放塔位置(数据包, 地图数组) {
+      if (!Array.isArray(数据包?.cities)) return
+
+      状态.已知塔集合.clear()
+      状态.已知塔类型.clear()
+      for (const 塔索引 of 数据包.cities) {
+        if (!Number.isInteger(塔索引) || 塔索引 < 0) continue
+
+        状态.已知塔集合.add(塔索引)
+        状态.已知塔类型.set(塔索引, 取得回放塔类型(塔索引, 地图数组))
+      }
+    }
+
+    function 取得回放塔类型(塔索引, 地图数组) {
+      const 归属 = 读取地图归属(地图数组, 塔索引)
+      if (!Number.isInteger(归属) || 归属 < 0) return '中立塔'
+      return 是我方或队友(归属) ? '我方塔' : '敌方塔'
     }
   }
 }
