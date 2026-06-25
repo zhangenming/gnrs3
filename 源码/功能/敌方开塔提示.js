@@ -104,6 +104,13 @@ export function 更新敌方开塔提示(数据包) {
   })
   if (!候选结果.是敌方成功开塔 && 新增开塔数 <= 0) return
 
+  播放敌方开塔语音({
+    敌方偷塔耗兵: 判断.敌方偷塔耗兵,
+    是敌方成功开塔: 候选结果.是敌方成功开塔,
+    敌方塔数: 当前快照.敌方.塔数,
+    我方塔数: 当前快照.我方.塔数,
+  })
+
   状态.敌方开塔提示 = {
     回合: 当前快照.回合,
     记录时间: performance.now(),
@@ -477,6 +484,27 @@ function 显示敌方开塔提示() {
   元素.classList.add('gio-enemy-open-tower-alert-show')
 
   window.setTimeout(同步敌方开塔提示元素, 敌方开塔提示持续毫秒 + 40)
+}
+
+function 播放敌方开塔语音({
+  敌方偷塔耗兵,
+  是敌方成功开塔,
+  敌方塔数,
+  我方塔数,
+}) {
+  if (!Number.isInteger(敌方偷塔耗兵) || 敌方偷塔耗兵 < 0) return
+
+  const 语音 = globalThis.speechSynthesis
+  const 语句类型 = globalThis.SpeechSynthesisUtterance
+  if (!语音 || typeof 语句类型 !== 'function') return
+
+  const 前缀 = 敌方塔数 > 我方塔数 ? '敌方偷塔' : '敌方跟塔'
+  const 文本 = `${前缀}${敌方偷塔耗兵}${是敌方成功开塔 ? '成功' : ''}`
+  const 语句 = new 语句类型(文本)
+  语句.lang = 'zh-CN'
+
+  语音.cancel()
+  语音.speak(语句)
 }
 
 function 取得提示位置() {
