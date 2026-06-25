@@ -43,7 +43,14 @@ export const socket功能 = {
     自动选中我方基地(请求渲染)
   },
   game_update({ 数据包, 请求渲染 }) {
+    const 原我方基地索引 = 状态.我方基地索引
     处理基地位置(数据包 ?? {}, 请求渲染)
+    if (
+      !Number.isInteger(原我方基地索引) &&
+      Number.isInteger(状态.我方基地索引)
+    ) {
+      自动选中我方基地(请求渲染)
+    }
   },
 }
 
