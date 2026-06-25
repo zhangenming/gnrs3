@@ -18,6 +18,7 @@ import {
   取得周期增长次数,
   取得回合间增长,
 } from '../游戏工具.js'
+import { 执行后恢复选中棋子 } from './选中棋子提示.js'
 
 export const 功能定义 = {
   id: '自动吃基地',
@@ -57,11 +58,13 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
     截止回合: (状态.当前回合 ?? 0) + 计划.攻击列表.length + 2,
   }
 
-  socket.emit('clear_moves')
-  for (const 攻击 of 计划.攻击列表) {
-    socket.emit('attack', 攻击.起点, 攻击.终点, false, 自动攻击序号)
-    自动攻击序号 += 1
-  }
+  执行后恢复选中棋子(() => {
+    socket.emit('clear_moves')
+    for (const 攻击 of 计划.攻击列表) {
+      socket.emit('attack', 攻击.起点, 攻击.终点, false, 自动攻击序号)
+      自动攻击序号 += 1
+    }
+  }, 请求渲染)
   状态.自动吃基地攻击序号 = 自动攻击序号
   请求渲染()
 

@@ -13,6 +13,7 @@ import {
 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 取得相邻索引列表, 是阻挡地形 } from '../游戏工具.js'
+import { 执行后恢复选中棋子 } from './选中棋子提示.js'
 
 export const 功能定义 = {
   id: '自动扩展',
@@ -75,7 +76,9 @@ export function 尝试自动扩展(socket, 请求渲染) {
 
   正在发送自动操作 = true
   try {
-    socket.emit('attack', 计划.起点, 计划.终点, false, 攻击序号)
+    执行后恢复选中棋子(() => {
+      socket.emit('attack', 计划.起点, 计划.终点, false, 攻击序号)
+    }, 请求渲染)
   } finally {
     正在发送自动操作 = false
   }

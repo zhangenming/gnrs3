@@ -209,6 +209,17 @@ export function 取得选中棋子索引() {
   return 选中格子索引
 }
 
+export function 执行后恢复选中棋子(函数体, 请求重绘) {
+  const 原选中格子索引 = 选中格子索引
+  try {
+    return 函数体()
+  } finally {
+    选中格子索引 = 原选中格子索引
+    同步移动队列标记()
+    if (typeof 请求重绘 === 'function') 请求重绘()
+  }
+}
+
 function 同步攻击终点选中(终点) {
   if (Number.isInteger(终点) && 终点 >= 0) {
     选中格子索引 = 终点
