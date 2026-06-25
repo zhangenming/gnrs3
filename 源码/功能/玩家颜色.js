@@ -48,6 +48,7 @@ const 原始地图颜色索引表 = new Map(
 )
 let 已安装地图画布颜色替换 = false
 let 玩家原始颜色索引列表 = null
+let 回放玩家颜色已重写签名 = ''
 let 回放地图已重绘签名 = ''
 let 回放地图重绘请求签名 = ''
 
@@ -87,6 +88,7 @@ export const socket功能 = {
   新局重置() {
     状态.已处理颜色数据包 = new WeakSet()
     玩家原始颜色索引列表 = null
+    回放玩家颜色已重写签名 = ''
     回放地图已重绘签名 = ''
     回放地图重绘请求签名 = ''
   },
@@ -128,14 +130,16 @@ export function 重构玩家颜色(数据包) {
   }
 
   if (是网页回放中()) {
+    统一数据包玩家颜色(数据包)
     请求回放地图颜色重绘()
     return
   }
 
-  if (!Number.isInteger(状态.我方索引)) {
-    return
-  }
+  统一数据包玩家颜色(数据包)
+}
 
+function 统一数据包玩家颜色(数据包) {
+  if (!Array.isArray(数据包.playerColors)) return
   for (let 玩家索引 = 0; 玩家索引 < 数据包.playerColors.length; 玩家索引 += 1) {
     if (是我方或队友(玩家索引)) {
       数据包.playerColors[玩家索引] = 我方蓝色索引
@@ -143,6 +147,8 @@ export function 重构玩家颜色(数据包) {
       数据包.playerColors[玩家索引] = 敌方红色索引
     }
   }
+  const 签名 = 取得回放玩家颜色签名()
+  if (签名) 回放玩家颜色已重写签名 = 签名
 }
 
 function 记录玩家原始颜色索引(数据包) {
@@ -261,23 +267,31 @@ function 清理颜色类名(节点) {
 function 安装地图画布颜色替换() {
   if (已安装地图画布颜色替换) return
   const 原型 = globalThis.CanvasRenderingContext2D?.prototype
-  const 描述 = 原型 && Object.getOwnPropertyDescriptor(原型, 'fillStyle')
-  if (!原型 || !描述?.get || !描述?.set) return
+  if (!原型) return
 
   已安装地图画布颜色替换 = true
-  Object.defineProperty(原型, 'fillStyle', {
-    configurable: 描述.configurable,
-    enumerable: 描述.enumerable,
-    get: 描述.get,
-    set(颜色) {
-      return 描述.set.call(this, 转换地图画布颜色(this, 颜色))
-    },
-  })
+  安装画布颜色属性替换('fillStyle')
+  安装画布颜色属性替换('strokeStyle')
+
+  function 安装画布颜色属性替换(属性名) {
+    const 描述 = Object.getOwnPropertyDescriptor(原型, 属性名)
+    if (!描述?.get || !描述?.set) return
+
+    Object.defineProperty(原型, 属性名, {
+      configurable: 描述.configurable,
+      enumerable: 描述.enumerable,
+      get: 描述.get,
+      set(颜色) {
+        return 描述.set.call(this, 转换地图画布颜色(this, 颜色))
+      },
+    })
+  }
 }
 
 function 转换地图画布颜色(ctx, 颜色) {
   if (!玩家颜色统一已启用()) return 颜色
   if (!是网页回放中()) return 颜色
+  if (回放玩家颜色已重写签名 === 取得回放玩家颜色签名()) return 颜色
   if (!ctx?.canvas?.classList?.contains('game-map-canvas')) return 颜色
   if (!是有效颜色玩家索引(状态.我方索引)) return 颜色
 
@@ -295,6 +309,19 @@ function 取得颜色玩家索引(颜色索引) {
     if (玩家索引 >= 0) return 玩家索引
   }
   return null
+}
+
+function 取得回放玩家颜色签名() {
+  if (!是网页回放中()) return ''
+  if (!是有效颜色玩家索引(状态.我方索引)) return ''
+  if (!Array.isArray(玩家原始颜色索引列表)) return ''
+
+  return [
+    globalThis.location?.pathname ?? '',
+    globalThis.location?.search ?? '',
+    状态.我方索引,
+    玩家原始颜色索引列表.join(','),
+  ].join(':')
 }
 
 function 请求回放地图颜色重绘() {
@@ -317,7 +344,7 @@ function 请求回放地图颜色重绘() {
       回放地图重绘请求签名 = ''
       return
     }
-    if (重绘回放游戏画布()) {
+    if (重绘回放游戏画布(签名)) {
       回放地图已重绘签名 = 签名
       回放地图重绘请求签名 = ''
       return
@@ -332,18 +359,12 @@ function 请求回放地图颜色重绘() {
   }
 
   function 取得回放地图颜色重绘签名() {
-    if (!是网页回放中()) return ''
+    const 签名 = 取得回放玩家颜色签名()
+    if (!签名) return ''
     if (!document.querySelector('#gameMap .game-map-canvas')) return ''
-    if (!是有效颜色玩家索引(状态.我方索引)) return ''
-    if (!Array.isArray(玩家原始颜色索引列表)) return ''
     if (!需要转换回放地图颜色()) return ''
 
-    return [
-      globalThis.location?.pathname ?? '',
-      globalThis.location?.search ?? '',
-      状态.我方索引,
-      玩家原始颜色索引列表.join(','),
-    ].join(':')
+    return 签名
   }
 
   function 需要转换回放地图颜色() {
@@ -364,12 +385,56 @@ function 请求回放地图颜色重绘() {
     return false
   }
 
-  function 重绘回放游戏画布() {
+  function 重绘回放游戏画布(签名) {
     const 地图实例 = 取得地图绘制实例()
     if (!地图实例) return false
 
+    if (地图实例.__gio回放颜色重绘签名 !== 签名) {
+      if (!统一地图实例玩家颜色(地图实例, 签名)) return false
+      清理地图实例颜色缓存(地图实例)
+      地图实例.__gio回放颜色重绘签名 = 签名
+      if (typeof 地图实例.forceUpdate === 'function') {
+        地图实例.forceUpdate()
+      }
+      return false
+    }
+
+    if (!地图实例._latestRenderState?.rows?.length) {
+      if (typeof 地图实例.forceUpdate === 'function') {
+        地图实例.forceUpdate()
+      }
+      return false
+    }
+
+    if (typeof 地图实例.drawCanvas !== 'function') return false
     地图实例.drawCanvas()
     return true
+  }
+
+  function 统一地图实例玩家颜色(地图实例, 签名) {
+    const 玩家颜色列表 = 地图实例.props?.props?.playerColors
+    if (!Array.isArray(玩家颜色列表)) return false
+
+    for (let 玩家索引 = 0; 玩家索引 < 玩家颜色列表.length; 玩家索引 += 1) {
+      玩家颜色列表[玩家索引] = 是我方或队友(玩家索引)
+        ? 我方蓝色索引
+        : 敌方红色索引
+    }
+    回放玩家颜色已重写签名 = 签名
+    return true
+  }
+
+  function 清理地图实例颜色缓存(地图实例) {
+    地图实例._resolvedPlayerColorHexes = null
+    地图实例._resolvedPlayerColorHexCount = -1
+    地图实例._resolvedPlayerPingColorHexes = null
+    地图实例._resolvedPlayerPingColorHexCount = -1
+    地图实例._resolvedPlayerPingColorSource = null
+    地图实例._latestRenderState = null
+    地图实例._lastRenderStateInputs = null
+    if (typeof 地图实例.releaseAllPrerenderCaches === 'function') {
+      地图实例.releaseAllPrerenderCaches()
+    }
   }
 
   function 取得地图绘制实例() {
