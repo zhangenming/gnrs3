@@ -18,7 +18,7 @@ export const 功能定义 = {
   id: '自动扩展',
   名称: '自动扩展',
   分类: '自动操作',
-  描述: '空队列时自动补 3 吃 1 或 2 扩地',
+  描述: '空队列时优先自动吃地，没有可吃目标再 2 扩地',
 }
 
 let 正在发送自动操作 = false
@@ -90,33 +90,69 @@ export function 尝试自动扩展(socket, 请求渲染) {
   return true
 
   function 取得自动扩展计划() {
-    return 取得指定兵力计划(3, 1, '3吃1') ?? 取得指定兵力计划(2, 0, '2扩地')
+    return 取得吃地计划() ?? 取得扩地计划()
   }
 
-  function 取得指定兵力计划(起点兵力, 终点兵力, 类型) {
+  function 取得吃地计划() {
     const 格子数 = 取得地图格子数(状态.地图数组)
     if (!Number.isInteger(格子数)) return null
 
     for (let 起点 = 0; 起点 < 格子数; 起点 += 1) {
       const 起点地块 = 读取地图地块(状态.地图数组, 起点)
-      if (!是可用起点(起点地块, 起点兵力)) continue
+      if (!是我方可移动起点(起点地块)) continue
 
       for (const 终点 of 取得相邻索引列表(起点)) {
         const 终点地块 = 读取地图地块(状态.地图数组, 终点)
-        if (!是可扩展目标(终点地块, 终点兵力)) continue
-        return { 起点, 终点, 类型 }
+        if (!是可吃目标(起点地块, 终点地块)) continue
+        return {
+          起点,
+          终点,
+          类型: `${起点地块.兵力}吃${终点地块.兵力}`,
+        }
       }
     }
     return null
   }
 
-  function 是可用起点(地块, 兵力) {
+  function 取得扩地计划() {
+    const 格子数 = 取得地图格子数(状态.地图数组)
+    if (!Number.isInteger(格子数)) return null
+
+    for (let 起点 = 0; 起点 < 格子数; 起点 += 1) {
+      const 起点地块 = 读取地图地块(状态.地图数组, 起点)
+      if (!是指定我方起点(起点地块, 2)) continue
+
+      for (const 终点 of 取得相邻索引列表(起点)) {
+        const 终点地块 = 读取地图地块(状态.地图数组, 终点)
+        if (!是可扩目标(终点地块)) continue
+        return { 起点, 终点, 类型: '2扩地' }
+      }
+    }
+    return null
+  }
+
+  function 是指定我方起点(地块, 兵力) {
     return 地块?.兵力 === 兵力 && 是我方或队友(地块.归属)
   }
 
-  function 是可扩展目标(地块, 兵力) {
-    if (地块?.兵力 !== 兵力) return false
-    if (!Number.isInteger(地块.归属)) return false
+  function 是我方可移动起点(地块) {
+    return (
+      Number.isInteger(地块?.兵力) && 地块.兵力 > 1 && 是我方或队友(地块.归属)
+    )
+  }
+
+  function 是可吃目标(起点地块, 终点地块) {
+    if (!是非我方可攻击目标(终点地块)) return false
+    if (!Number.isInteger(终点地块.兵力) || 终点地块.兵力 <= 0) return false
+    return 起点地块.兵力 - 1 > 终点地块.兵力
+  }
+
+  function 是可扩目标(地块) {
+    return 地块?.兵力 === 0 && 是非我方可攻击目标(地块)
+  }
+
+  function 是非我方可攻击目标(地块) {
+    if (!Number.isInteger(地块?.归属)) return false
     if (是我方或队友(地块.归属)) return false
     return !是阻挡地形(地块.归属)
   }
