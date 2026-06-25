@@ -1,4 +1,10 @@
 import { 状态 } from '../状态.js'
+import {
+  读取分数玩家数据,
+  读取快照玩家数据,
+  读取页面玩家数据,
+} from '../战场工具.js'
+import { 取得完整地图数组, 取得地图格子数, 是我方或队友 } from '../游戏.js'
 import { 取游戏画布 } from '../游戏工具.js'
 import { 取得大回合倒计时 } from '../工具.js'
 import { 读取显示回合 } from './大回合倒计时.js'
@@ -23,7 +29,6 @@ let 已安装页面激活监听 = false
 let 自动选中基地任务 = null
 let 自动选中请求重绘 = null
 let 自动选中基地定时器 = null
-let 已走出第一步 = false
 
 export const 覆盖层功能 = {
   id: 功能定义.id,
@@ -39,21 +44,43 @@ export const 覆盖层功能 = {
 
 export const socket功能 = {
   id: 功能定义.id,
+  阻止出站({ 事件名, 参数, 请求渲染 }) {
+    if (事件名 !== 'attack') return false
+    if (!是基地锁定中()) return false
+    if (参数?.[0] === 状态.我方基地索引) return false
+
+    选中我方基地(请求渲染)
+    return true
+  },
   出站({ 事件名, 参数, 请求渲染 }) {
     if (事件名 === 'attack') {
-      停止开局自动选中()
+      if (是基地锁定中()) {
+        选中我方基地(请求渲染)
+        return
+      }
+      停止自动选中基地()
       同步攻击终点选中(参数?.[1])
       请求渲染()
     } else if (事件名 === 'undo_move') {
       同步撤销移动选中()
+      if (是基地锁定中()) 选中我方基地(请求渲染)
       请求渲染()
     } else if (事件名 === 'clear_moves') {
       同步移动队列标记()
+      if (是基地锁定中()) 选中我方基地(请求渲染)
       请求渲染()
     }
   },
   game_update前() {
     同步移动队列标记()
+  },
+  game_update({ 数据包, 请求渲染 }) {
+    if (!是基地锁定中(数据包)) {
+      停止自动选中基地()
+      return
+    }
+
+    选中我方基地(请求渲染)
   },
   新局重置: 清空选中状态,
 }
@@ -82,6 +109,10 @@ export function 安装选中棋子监听(请求重绘) {
 
     const 格子索引 = 取得点击格子索引(事件, 画布)
     if (!Number.isInteger(格子索引)) return
+    if (是基地锁定中()) {
+      if (选中格子索引 !== 状态.我方基地索引) 选中我方基地(请求重绘)
+      return
+    }
 
     选中格子索引 = 格子索引
     同步移动队列标记()
@@ -96,9 +127,12 @@ export function 安装选中棋子监听(请求重绘) {
 }
 
 export function 自动选中我方基地(请求重绘) {
-  if (已走出第一步) return
   自动选中请求重绘 = 请求重绘
   安装页面激活监听()
+  if (!是基地锁定中()) {
+    停止自动选中基地()
+    return
+  }
 
   const 基地索引 = 选中我方基地(请求重绘)
   if (!Number.isInteger(基地索引)) return
@@ -261,18 +295,42 @@ function 清空选中状态() {
   clearTimeout(自动选中基地定时器)
   自动选中基地定时器 = null
   自动选中请求重绘 = null
-  已走出第一步 = false
   选中格子索引 = null
   已同步移动队列长度 = 0
   已同步移动队列最后移动 = null
 }
 
-function 停止开局自动选中() {
+function 停止自动选中基地() {
   自动选中基地任务 = null
   clearTimeout(自动选中基地定时器)
   自动选中基地定时器 = null
   自动选中请求重绘 = null
-  已走出第一步 = true
+}
+
+function 是基地锁定中(数据包) {
+  if (!Number.isInteger(状态.我方基地索引) || 状态.我方基地索引 < 0)
+    return false
+  return 读取我方陆地数(数据包) === 1
+}
+
+function 读取我方陆地数(数据包) {
+  const 玩家数据 =
+    读取分数玩家数据(数据包) ?? 读取快照玩家数据() ?? 读取页面玩家数据()
+  if (Number.isInteger(玩家数据?.我方?.陆地)) return 玩家数据.我方.陆地
+
+  return 读取地图我方陆地数(数据包)
+}
+
+function 读取地图我方陆地数(数据包) {
+  const 地图数组 = 取得完整地图数组(数据包) ?? 状态.地图数组
+  const 格子数 = 取得地图格子数(地图数组)
+  if (!Number.isInteger(格子数)) return null
+
+  let 陆地数 = 0
+  for (let idx = 0; idx < 格子数; idx += 1) {
+    if (是我方或队友(地图数组[2 + 格子数 + idx])) 陆地数 += 1
+  }
+  return 陆地数
 }
 
 function 取得移动队列最后移动() {
