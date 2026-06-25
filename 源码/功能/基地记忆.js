@@ -16,7 +16,7 @@ import { 状态 } from '../状态.js'
 import { 画兵力文本 } from '../覆盖层工具.js'
 import { 自动选中我方基地 } from './选中棋子提示.js'
 
-const 基地边框动画毫秒 = 900
+const 基地边框动画毫秒 = 600
 
 export const 功能定义 = {
   id: '基地记忆标记',
