@@ -13,7 +13,7 @@ import {
 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 取得相邻索引列表, 是阻挡地形 } from '../游戏工具.js'
-import { 执行后恢复选中棋子 } from './选中棋子提示.js'
+import { 取得选中棋子索引, 执行后恢复选中棋子 } from './选中棋子提示.js'
 
 export const 功能定义 = {
   id: '自动扩展',
@@ -65,6 +65,7 @@ export function 尝试自动扩展(socket, 请求渲染) {
   if (状态.移动队列.length) return false
   if (状态.自动扩展记录) return false
 
+  const 当前选中格子索引 = 取得选中棋子索引()
   const 计划 = 取得自动扩展计划()
   if (!计划) return false
 
@@ -111,6 +112,7 @@ export function 尝试自动扩展(socket, 请求渲染) {
     if (!Number.isInteger(格子数)) return null
 
     for (let 起点 = 0; 起点 < 格子数; 起点 += 1) {
+      if (是当前选中格子(起点)) continue
       const 起点地块 = 读取地图地块(状态.地图数组, 起点)
       if (!是我方可移动起点(起点地块)) continue
 
@@ -131,6 +133,7 @@ export function 尝试自动扩展(socket, 请求渲染) {
     if (!Number.isInteger(格子数)) return null
 
     for (let 起点 = 0; 起点 < 格子数; 起点 += 1) {
+      if (是当前选中格子(起点)) continue
       const 起点地块 = 读取地图地块(状态.地图数组, 起点)
       if (!是指定我方起点(起点地块, 2)) continue
 
@@ -204,6 +207,7 @@ export function 尝试自动扩展(socket, 请求渲染) {
   function 取得两步起点候选列表(终点) {
     const 候选列表 = []
     for (const 起点 of 取得相邻索引列表(终点)) {
+      if (是当前选中格子(起点)) continue
       const 起点地块 = 读取地图地块(状态.地图数组, 起点)
       if (!是我方可移动起点(起点地块)) continue
       候选列表.push({
@@ -213,6 +217,10 @@ export function 尝试自动扩展(socket, 请求渲染) {
       })
     }
     return 候选列表
+  }
+
+  function 是当前选中格子(格子索引) {
+    return Number.isInteger(当前选中格子索引) && 格子索引 === 当前选中格子索引
   }
 
   function 取得下个攻击序号() {
