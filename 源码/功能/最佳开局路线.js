@@ -103,7 +103,7 @@ export const 功能样式 = `
     justify-content: center;
     gap: 5px 8px;
     width: max-content;
-    max-width: min(780px, calc(100vw - 24px));
+    max-width: min(360px, calc(100vw - 16px));
     padding: 6px 10px;
     border: 1px solid rgba(255, 216, 77, 0.74);
     border-radius: 4px;
@@ -212,9 +212,22 @@ export function 定位最佳开局路线提示() {
   const 元素 = document.getElementById(提示元素编号)
   if (!元素) return
 
-  元素.style.left = '50%'
-  元素.style.top = '8px'
-  元素.style.transform = 'translateX(-50%)'
+  const 地图元素 = document.querySelector('#game-page #gameMap')
+  const 地图矩形 = 地图元素?.getBoundingClientRect()
+  if (!地图矩形) return
+
+  const 间距 = 8
+  const 最大左侧 = Math.max(间距, window.innerWidth - 元素.offsetWidth - 间距)
+  const 最大上侧 = Math.max(间距, window.innerHeight - 元素.offsetHeight - 间距)
+  const 左侧 = Math.min(Math.max(间距, 地图矩形.right + 间距), 最大左侧)
+  const 上侧 = Math.min(
+    Math.max(间距, 地图矩形.bottom - 元素.offsetHeight - 间距),
+    最大上侧,
+  )
+
+  元素.style.left = `${左侧}px`
+  元素.style.top = `${上侧}px`
+  元素.style.transform = ''
 }
 
 export function 清除最佳开局路线() {
