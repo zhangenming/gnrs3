@@ -49,13 +49,13 @@ export const socket功能 = {
     if (!是基地锁定中()) return false
     if (参数?.[0] === 状态.我方基地索引) return false
 
-    选中我方基地(请求渲染)
+    真实选中我方基地(请求渲染)
     return true
   },
   出站({ 事件名, 参数, 请求渲染 }) {
     if (事件名 === 'attack') {
       if (是基地锁定中()) {
-        选中我方基地(请求渲染)
+        真实选中我方基地(请求渲染)
         return
       }
       停止自动选中基地()
@@ -63,11 +63,11 @@ export const socket功能 = {
       请求渲染()
     } else if (事件名 === 'undo_move') {
       同步撤销移动选中()
-      if (是基地锁定中()) 选中我方基地(请求渲染)
+      if (是基地锁定中()) 真实选中我方基地(请求渲染)
       请求渲染()
     } else if (事件名 === 'clear_moves') {
       同步移动队列标记()
-      if (是基地锁定中()) 选中我方基地(请求渲染)
+      if (是基地锁定中()) 真实选中我方基地(请求渲染)
       请求渲染()
     }
   },
@@ -80,7 +80,7 @@ export const socket功能 = {
       return
     }
 
-    选中我方基地(请求渲染)
+    真实选中我方基地(请求渲染)
   },
   新局重置: 清空选中状态,
 }
@@ -91,7 +91,15 @@ export function 安装选中棋子监听(请求重绘) {
   已安装选中监听 = true
   document.addEventListener('pointerdown', 记录点击选中格子, {
     capture: true,
-    passive: true,
+    passive: false,
+  })
+  document.addEventListener('mousedown', 阻止基地锁定非基地点击, {
+    capture: true,
+    passive: false,
+  })
+  document.addEventListener('click', 阻止基地锁定非基地点击, {
+    capture: true,
+    passive: false,
   })
   document.addEventListener('keydown', 记录快捷键选中格子, {
     capture: true,
@@ -100,6 +108,8 @@ export function 安装选中棋子监听(请求重绘) {
 
   function 记录点击选中格子(事件) {
     if (Number.isInteger(事件.button) && 事件.button !== 0) return
+    if (处理基地锁定点击(事件, 请求重绘)) return
+
     const 目标 = 事件.target instanceof Element ? 事件.target : null
     const 地图元素 = 目标?.closest?.('#game-page #gameMap')
     if (!地图元素) return
@@ -109,14 +119,38 @@ export function 安装选中棋子监听(请求重绘) {
 
     const 格子索引 = 取得点击格子索引(事件, 画布)
     if (!Number.isInteger(格子索引)) return
-    if (是基地锁定中()) {
-      if (选中格子索引 !== 状态.我方基地索引) 选中我方基地(请求重绘)
-      return
-    }
 
     选中格子索引 = 格子索引
     同步移动队列标记()
     请求重绘()
+  }
+
+  function 阻止基地锁定非基地点击(事件) {
+    if (Number.isInteger(事件.button) && 事件.button !== 0) return
+    处理基地锁定点击(事件, 请求重绘)
+  }
+
+  function 处理基地锁定点击(事件, 请求重绘) {
+    if (!是基地锁定中()) return false
+
+    const 目标 = 事件.target instanceof Element ? 事件.target : null
+    const 地图元素 = 目标?.closest?.('#game-page #gameMap')
+    if (!地图元素) return false
+
+    const 画布 = 地图元素.querySelector('.game-map-canvas')
+    if (!画布) return false
+
+    const 格子索引 = 取得点击格子索引(事件, 画布)
+    if (!Number.isInteger(格子索引)) return false
+    if (格子索引 !== 状态.我方基地索引) {
+      事件.preventDefault()
+      事件.stopImmediatePropagation()
+      真实选中我方基地(请求重绘)
+      return true
+    }
+
+    选中我方基地(请求重绘)
+    return true
   }
 
   function 记录快捷键选中格子(事件) {
@@ -145,67 +179,13 @@ export function 自动选中我方基地(请求重绘) {
     if (自动选中基地任务 !== 当前任务) return
     if (选中格子索引 !== 基地索引) return
 
-    点击基地()
+    点击我方基地()
 
     const 间隔 = 尝试次数 < 12 ? 80 : 300
     clearTimeout(自动选中基地定时器)
     自动选中基地定时器 = setTimeout(() => {
       尝试点击基地(尝试次数 + 1)
     }, 间隔)
-  }
-
-  function 点击基地() {
-    const 画布 = 取游戏画布()
-    if (!画布) return false
-    if (!状态.宽度 || !状态.高度) return false
-
-    const 矩形 = 画布.getBoundingClientRect()
-    if (矩形.width <= 0 || 矩形.height <= 0) return false
-
-    const 列 = 基地索引 % 状态.宽度
-    const 行 = Math.floor(基地索引 / 状态.宽度)
-    const x = 矩形.left + ((列 + 0.5) / 状态.宽度) * 矩形.width
-    const y = 矩形.top + ((行 + 0.5) / 状态.高度) * 矩形.height
-
-    派发点击事件(画布, x, y)
-    return true
-  }
-
-  function 派发点击事件(画布, x, y) {
-    const 公共选项 = {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      clientX: x,
-      clientY: y,
-      screenX: window.screenX + x,
-      screenY: window.screenY + y,
-      button: 0,
-    }
-
-    画布.dispatchEvent(
-      new PointerEvent('pointerdown', {
-        ...公共选项,
-        buttons: 1,
-        pointerId: 1,
-        pointerType: 'mouse',
-        isPrimary: true,
-      }),
-    )
-    画布.dispatchEvent(new MouseEvent('mousedown', { ...公共选项, buttons: 1 }))
-    画布.dispatchEvent(
-      new PointerEvent('pointerup', {
-        ...公共选项,
-        buttons: 0,
-        pointerId: 1,
-        pointerType: 'mouse',
-        isPrimary: true,
-      }),
-    )
-    画布.dispatchEvent(new MouseEvent('mouseup', { ...公共选项, buttons: 0 }))
-    画布.dispatchEvent(
-      new MouseEvent('click', { ...公共选项, buttons: 0, detail: 1 }),
-    )
   }
 }
 
@@ -288,6 +268,73 @@ function 选中我方基地(请求重绘) {
   同步移动队列标记()
   if (typeof 请求重绘 === 'function') 请求重绘()
   return 选中格子索引
+}
+
+function 真实选中我方基地(请求重绘) {
+  const 基地索引 = 选中我方基地(请求重绘)
+  if (!Number.isInteger(基地索引)) return null
+
+  setTimeout(() => {
+    if (是基地锁定中()) 点击我方基地()
+  }, 0)
+  return 基地索引
+}
+
+function 点击我方基地() {
+  const 基地索引 = 状态.我方基地索引
+  if (!Number.isInteger(基地索引) || 基地索引 < 0) return false
+
+  const 画布 = 取游戏画布()
+  if (!画布) return false
+  if (!状态.宽度 || !状态.高度) return false
+
+  const 矩形 = 画布.getBoundingClientRect()
+  if (矩形.width <= 0 || 矩形.height <= 0) return false
+
+  const 列 = 基地索引 % 状态.宽度
+  const 行 = Math.floor(基地索引 / 状态.宽度)
+  const x = 矩形.left + ((列 + 0.5) / 状态.宽度) * 矩形.width
+  const y = 矩形.top + ((行 + 0.5) / 状态.高度) * 矩形.height
+
+  派发点击事件(画布, x, y)
+  return true
+
+  function 派发点击事件(画布, x, y) {
+    const 公共选项 = {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      clientX: x,
+      clientY: y,
+      screenX: window.screenX + x,
+      screenY: window.screenY + y,
+      button: 0,
+    }
+
+    画布.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        ...公共选项,
+        buttons: 1,
+        pointerId: 1,
+        pointerType: 'mouse',
+        isPrimary: true,
+      }),
+    )
+    画布.dispatchEvent(new MouseEvent('mousedown', { ...公共选项, buttons: 1 }))
+    画布.dispatchEvent(
+      new PointerEvent('pointerup', {
+        ...公共选项,
+        buttons: 0,
+        pointerId: 1,
+        pointerType: 'mouse',
+        isPrimary: true,
+      }),
+    )
+    画布.dispatchEvent(new MouseEvent('mouseup', { ...公共选项, buttons: 0 }))
+    画布.dispatchEvent(
+      new MouseEvent('click', { ...公共选项, buttons: 0, detail: 1 }),
+    )
+  }
 }
 
 function 清空选中状态() {
