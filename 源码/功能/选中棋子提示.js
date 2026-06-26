@@ -48,22 +48,19 @@ export const socket功能 = {
     if (事件名 !== 'attack') return false
     if (!是基地锁定中()) return false
     if (参数?.[0] === 状态.我方基地索引) return false
+    if (是排队路线续走起点(参数?.[0])) return false
 
     真实选中我方基地(请求渲染)
     return true
   },
   出站({ 事件名, 参数, 请求渲染 }) {
     if (事件名 === 'attack') {
-      if (是基地锁定中()) {
-        真实选中我方基地(请求渲染)
-        return
-      }
       停止自动选中基地()
       同步攻击终点选中(参数?.[1])
       请求渲染()
     } else if (事件名 === 'undo_move') {
       同步撤销移动选中()
-      if (是基地锁定中()) 真实选中我方基地(请求渲染)
+      if (是基地锁定中() && !状态.移动队列.length) 真实选中我方基地(请求渲染)
       请求渲染()
     } else if (事件名 === 'clear_moves') {
       同步移动队列标记()
@@ -79,6 +76,7 @@ export const socket功能 = {
       停止自动选中基地()
       return
     }
+    if (状态.移动队列.length) return
 
     真实选中我方基地(请求渲染)
   },
@@ -132,6 +130,7 @@ export function 安装选中棋子监听(请求重绘) {
 
   function 处理基地锁定点击(事件, 请求重绘) {
     if (!是基地锁定中()) return false
+    if (状态.移动队列.length) return false
 
     const 目标 = 事件.target instanceof Element ? 事件.target : null
     const 地图元素 = 目标?.closest?.('#game-page #gameMap')
@@ -243,6 +242,11 @@ function 同步攻击终点选中(终点) {
 
 function 同步移动队列最新终点选中() {
   同步攻击终点选中(取得移动队列最后移动()?.终点)
+}
+
+function 是排队路线续走起点(起点) {
+  if (!Number.isInteger(起点) || 起点 < 0) return false
+  return 起点 === 取得移动队列最后移动()?.终点
 }
 
 function 同步撤销移动选中() {
