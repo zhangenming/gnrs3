@@ -9,7 +9,7 @@ import { 同步我方玩家索引, 是我方或队友 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 读取分数玩家数据, 读取快照玩家数据 } from '../战场工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
-import { 读取当前回合 } from '../游戏工具.js'
+import { 取得周期增长次数, 读取当前回合 } from '../游戏工具.js'
 import { 读取显示回合 } from './大回合倒计时.js'
 import { 取得单元格列表, 取得玩家列索引, 取得表头行 } from '../战场DOM工具.js'
 import { 安装样式 as 注入样式 } from '../工具.js'
@@ -17,13 +17,17 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '开塔兵力列表-1'
+const 图表显示版本 = '大回合陆地拆分-1'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
 const 陆地线颜色 = '#ffbf3f'
+const 修正兵力差线颜色 = '#3ecf8e'
 const 地差劣势文字颜色 = '#ff3d5a'
 const 地差持平文字颜色 = '#000'
+const 主图表类型 = '主图表'
+const 大回合陆地兵力差图表类型 = '大回合陆地兵力差'
+const 修正兵力差图表类型 = '修正兵力差'
 const 底部标签列表 = [
   '陆地差',
   '兵力差',
@@ -32,10 +36,10 @@ const 底部标签列表 = [
   '敌方开塔兵力',
 ]
 
-let 图表实例 = null
+const 图表实例表 = new Map()
 let ECharts加载Promise = null
 let 正在等待ECharts = false
-let 图表渲染签名 = ''
+const 图表渲染签名表 = new Map()
 let 图表显示系列 = { 兵力差: true, 陆地差: false }
 let 网页回放同步动画帧编号 = null
 
@@ -149,15 +153,17 @@ function 截断回放数据进展(回合) {
   })
   if (状态.游戏数据进展列表.length === 原数据数量) return
 
-  图表渲染签名 = ''
+  图表渲染签名表.clear()
   更新游戏数据进展图表()
 }
 
 export function 重置游戏数据进展() {
   状态.游戏数据进展列表 = []
   状态.游戏数据进展上次统计回合 = null
-  图表渲染签名 = ''
-  图表实例?.clear()
+  图表渲染签名表.clear()
+  图表实例表.forEach((图表实例) => {
+    图表实例.clear()
+  })
   更新游戏数据进展图表()
 }
 
@@ -165,9 +171,11 @@ export function 更新游戏数据进展图表() {
   if (!功能已启用('游戏数据进展图表')) {
     状态.游戏数据进展面板?.remove()
     状态.游戏数据进展面板 = null
-    图表实例?.dispose()
-    图表实例 = null
-    图表渲染签名 = ''
+    图表实例表.forEach((图表实例) => {
+      图表实例.dispose()
+    })
+    图表实例表.clear()
+    图表渲染签名表.clear()
     return
   }
   if (!document.body) return
@@ -353,6 +361,7 @@ function 确保面板() {
       '<span class="gio-data-progress-legend-item" data-gio-data-progress-series="陆地差"><span class="gio-data-progress-legend-line gio-data-progress-legend-land"></span>陆地差</span>' +
       '</span>' +
       '</div>' +
+      '<div class="gio-data-progress-chart-section">' +
       '<div class="gio-data-progress-body">' +
       '<div class="gio-data-progress-row-labels" aria-hidden="true">' +
       底部标签列表
@@ -361,8 +370,21 @@ function 确保面板() {
         )
         .join('') +
       '</div>' +
-      `<div class="${图表类名}"></div>` +
+      `<div class="${图表类名}" data-gio-data-progress-chart="${主图表类型}"></div>` +
       '<div class="gio-data-progress-empty">等待回合</div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="gio-data-progress-chart-section">' +
+      '<div class="gio-data-progress-subtitle">50回合陆地兵力差</div>' +
+      '<div class="gio-data-progress-body gio-data-progress-body-simple">' +
+      `<div class="${图表类名}" data-gio-data-progress-chart="${大回合陆地兵力差图表类型}"></div>` +
+      '</div>' +
+      '</div>' +
+      '<div class="gio-data-progress-chart-section">' +
+      '<div class="gio-data-progress-subtitle">排除50回合陆地后</div>' +
+      '<div class="gio-data-progress-body gio-data-progress-body-simple">' +
+      `<div class="${图表类名}" data-gio-data-progress-chart="${修正兵力差图表类型}"></div>` +
+      '</div>' +
       '</div>'
   }
 
@@ -422,7 +444,7 @@ function 切换图表系列(系列名) {
     ...图表显示系列,
     [系列名]: !图表显示系列[系列名],
   }
-  图表渲染签名 = ''
+  图表渲染签名表.clear()
   更新游戏数据进展图表()
 }
 
@@ -459,24 +481,48 @@ function 加载ECharts() {
 }
 
 function 渲染图表(echarts, 面板) {
-  const 图表元素 = 面板.querySelector(`.${图表类名}`)
-  if (!图表元素可用(图表元素)) return
+  const 图表元素列表 = Array.from(面板.querySelectorAll(`.${图表类名}`)).filter(
+    图表元素可用,
+  )
+  if (!图表元素列表.length) return
 
-  if (图表实例 && 图表实例.getDom?.() !== 图表元素) {
-    图表实例.dispose()
-    图表实例 = null
-    图表渲染签名 = ''
+  清理失效图表实例(图表元素列表)
+  for (const 图表元素 of 图表元素列表) {
+    const 图表类型 = 图表元素.dataset.gioDataProgressChart || 主图表类型
+    const 旧图表实例 = 图表实例表.get(图表类型)
+    if (旧图表实例 && 旧图表实例.getDom?.() !== 图表元素) {
+      旧图表实例.dispose()
+      图表实例表.delete(图表类型)
+      图表渲染签名表.delete(图表类型)
+    }
+
+    const 渲染签名 = 取得图表渲染签名(图表元素, 图表类型)
+    const 图表实例 =
+      图表实例表.get(图表类型) ??
+      echarts.getInstanceByDom(图表元素) ??
+      echarts.init(图表元素)
+    if (图表渲染签名表.get(图表类型) !== 渲染签名) {
+      图表实例.setOption(取得图表配置(图表类型), true)
+      图表实例表.set(图表类型, 图表实例)
+      图表渲染签名表.set(图表类型, 渲染签名)
+    }
   }
-  const 渲染签名 = 取得图表渲染签名(图表元素)
-  if (图表实例 && 图表渲染签名 === 渲染签名) return
-
-  图表实例 ??= echarts.getInstanceByDom(图表元素) ?? echarts.init(图表元素)
-  图表实例.setOption(取得图表配置(), true)
-  图表渲染签名 = 渲染签名
   requestAnimationFrame(() => {
-    if (!图表元素可用(图表实例?.getDom?.())) return
-    图表实例?.resize()
+    图表实例表.forEach((图表实例) => {
+      if (!图表元素可用(图表实例?.getDom?.())) return
+      图表实例.resize()
+    })
   })
+
+  function 清理失效图表实例(图表元素列表) {
+    const 图表元素集合 = new Set(图表元素列表)
+    图表实例表.forEach((图表实例, 图表类型) => {
+      if (图表元素集合.has(图表实例.getDom?.())) return
+      图表实例.dispose()
+      图表实例表.delete(图表类型)
+      图表渲染签名表.delete(图表类型)
+    })
+  }
 }
 
 function 图表元素可用(图表元素) {
@@ -489,7 +535,7 @@ function 取得图表数据列表() {
   return 数据列表.slice(0, -1)
 }
 
-function 取得图表渲染签名(图表元素) {
+function 取得图表渲染签名(图表元素, 图表类型) {
   const 数据签名 = 取得图表数据列表()
     .map((数据点) => {
       return [
@@ -506,12 +552,32 @@ function 取得图表渲染签名(图表元素) {
   const 显示签名 = Object.entries(图表显示系列)
     .map(([系列名, 显示]) => `${系列名}:${显示 ? 1 : 0}`)
     .join('|')
-  return `${图表显示版本}|${显示签名}|${图表元素.clientWidth}x${图表元素.clientHeight}|${数据签名}`
+  return `${图表显示版本}|${图表类型}|${显示签名}|${图表元素.clientWidth}x${图表元素.clientHeight}|${数据签名}`
 }
 
-function 取得图表配置() {
+function 取得图表配置(图表类型) {
   const 数据列表 = 取得图表数据列表()
   const 兵力差变化列表 = 取得兵力差变化列表(数据列表)
+  const 大回合陆地兵力差列表 = 取得大回合陆地兵力差列表(数据列表)
+  if (图表类型 === 大回合陆地兵力差图表类型) {
+    return 取得单线图表配置({
+      数据列表,
+      系列名: '50回合陆地兵力差',
+      数据值列表: 大回合陆地兵力差列表,
+      线颜色: 陆地线颜色,
+    })
+  }
+  if (图表类型 === 修正兵力差图表类型) {
+    return 取得单线图表配置({
+      数据列表,
+      系列名: '排除50回合陆地后',
+      数据值列表: 数据列表.map((数据点, idx) => {
+        return 数据点.兵力差 - 大回合陆地兵力差列表[idx]
+      }),
+      线颜色: 修正兵力差线颜色,
+    })
+  }
+
   function 渲染底部数字(参数, api) {
     const 回合 = Number(api.value(4))
     const 数据点 = 数据列表[Number(api.value(5))]
@@ -728,6 +794,132 @@ function 取得图表配置() {
       },
     ],
   }
+
+  function 取得大回合陆地兵力差列表(数据列表) {
+    let 累计兵力差 = 0
+    return 数据列表.map((数据点, idx) => {
+      const 上回合数据点 = 数据列表[idx - 1]
+      if (!上回合数据点) return 累计兵力差
+
+      const 大回合增长次数 = 取得周期增长次数(
+        上回合数据点.回合,
+        数据点.回合,
+        50,
+      )
+      if (大回合增长次数 > 0) {
+        累计兵力差 += 大回合增长次数 * 上回合数据点.陆地差
+      }
+      return 累计兵力差
+    })
+  }
+
+  function 取得单线图表配置({ 数据列表, 系列名, 数据值列表, 线颜色 }) {
+    return {
+      animation: false,
+      textStyle: {
+        color: '#dce8f8',
+        fontFamily: 'Arial, sans-serif',
+      },
+      tooltip: {
+        trigger: 'axis',
+        confine: true,
+        axisPointer: {
+          label: {
+            show: false,
+          },
+        },
+        backgroundColor: 'rgba(9, 13, 20, 0.96)',
+        borderColor: 'rgba(124, 148, 176, 0.55)',
+        textStyle: {
+          color: '#f7fbff',
+          fontFamily: 'Arial, sans-serif',
+          fontWeight: 700,
+        },
+        formatter(参数列表) {
+          const 索引 = 参数列表?.[0]?.dataIndex ?? 0
+          const 数据点 = 数据列表[索引]
+          if (!数据点) return ''
+          return [
+            `turn ${数据点.回合}`,
+            `${系列名} ${格式化差值(数据值列表[索引])}`,
+          ].join('<br>')
+        },
+      },
+      grid: {
+        left: 56,
+        right: 12,
+        top: 10,
+        bottom: 24,
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: 数据列表.map((数据点) => String(数据点.回合)),
+        axisLabel: {
+          color: 'rgba(220, 232, 248, 0.82)',
+          fontWeight: 700,
+          interval(idx) {
+            const 数据点 = 数据列表[idx]
+            return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
+          },
+          formatter(回合) {
+            const 数值 = Number(回合)
+            return 数值 > 0 && 数值 % 50 === 0 ? 回合 : ''
+          },
+        },
+        axisLine: {
+          lineStyle: { color: 'rgba(220, 232, 248, 0.32)' },
+        },
+        axisTick: {
+          show: false,
+        },
+      },
+      yAxis: {
+        type: 'value',
+        min(范围) {
+          return Math.min(范围.min, -10)
+        },
+        minInterval: 1,
+        axisLabel: {
+          color: 'rgba(220, 232, 248, 0.82)',
+          fontWeight: 700,
+          formatter(值) {
+            const 数值 = Number(值)
+            if (!Number.isInteger(数值)) return ''
+            return 格式化差值(数值)
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(220, 232, 248, 0.12)',
+          },
+        },
+      },
+      series: [
+        {
+          name: 系列名,
+          type: 'line',
+          smooth: false,
+          step: 'end',
+          showSymbol: false,
+          data: 数据值列表,
+          itemStyle: { color: 线颜色 },
+          lineStyle: { color: 线颜色, width: 2.4 },
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            label: { show: false },
+            lineStyle: {
+              color: 'rgba(255, 255, 255, 0.26)',
+              type: 'dashed',
+              width: 1,
+            },
+            data: [{ yAxis: 0 }],
+          },
+        },
+      ],
+    }
+  }
 }
 
 function 取得底部数字数据列表(数据列表, 兵力差变化列表) {
@@ -925,6 +1117,19 @@ function 安装样式() {
     color: #f7fbff;
     font: 900 12px/1 Arial, sans-serif;
 }
+.gio-data-progress-chart-section + .gio-data-progress-chart-section {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(124, 148, 176, 0.2);
+}
+.gio-data-progress-panel[data-gio-data-progress-empty="true"] .gio-data-progress-chart-section + .gio-data-progress-chart-section {
+    display: none;
+}
+.gio-data-progress-subtitle {
+    margin: 0 0 2px;
+    color: rgba(247, 251, 255, 0.9);
+    font: 900 11px/1 Arial, sans-serif;
+}
 .gio-data-progress-legend {
     display: inline-flex;
     align-items: center;
@@ -970,6 +1175,9 @@ function 安装样式() {
     position: relative;
     height: 220px;
 }
+.gio-data-progress-body-simple {
+    height: 150px;
+}
 .gio-data-progress-row-labels {
     position: absolute;
     left: 2px;
@@ -991,6 +1199,9 @@ function 安装样式() {
 .${图表类名} {
     width: 100%;
     height: 220px;
+}
+.gio-data-progress-body-simple .${图表类名} {
+    height: 150px;
 }
 .gio-data-progress-empty {
     position: absolute;
