@@ -30,7 +30,6 @@ function 安装回放大回合逐帧跳转() {
   function 处理回放大回合快捷键(事件) {
     if (!功能已启用(功能定义.id)) return
     if (!是网页回放中()) return
-    if (是输入元素(事件.target)) return
     if (是Shift按键(事件)) {
       事件.preventDefault()
       事件.stopImmediatePropagation()
@@ -41,32 +40,49 @@ function 安装回放大回合逐帧跳转() {
 
     const 方向 = 读取跳转方向(事件)
     if (!方向) return
+    if (是输入元素(事件.target) && !是回放跳转输入(事件.target)) return
 
     事件.preventDefault()
     事件.stopImmediatePropagation()
     if (事件.repeat) return
 
-    开始逐帧跳转(方向)
+    请求开始逐帧跳转(方向)
   }
 
-  function 开始逐帧跳转(方向) {
+  function 请求开始逐帧跳转(方向) {
+    const 当前令牌 = ++逐帧跳转令牌
+    let 等待帧数 = 0
+    requestAnimationFrame(尝试开始)
+
+    function 尝试开始() {
+      if (当前令牌 !== 逐帧跳转令牌) return
+      if (回放回合控件已就绪() && 开始逐帧跳转(方向, 当前令牌)) return
+      等待帧数 += 1
+      if (等待帧数 >= 30) return
+      requestAnimationFrame(尝试开始)
+    }
+  }
+
+  function 开始逐帧跳转(方向, 当前令牌) {
     const 起始回合 = 读取显示回合()
-    if (!Number.isInteger(起始回合)) return
+    if (!Number.isInteger(起始回合)) return false
 
     const 目标回合 = 取得目标大回合(起始回合, 方向)
-    if (!Number.isInteger(目标回合) || 目标回合 === 起始回合) return
+    if (!Number.isInteger(目标回合) || 目标回合 === 起始回合) return true
 
-    const 当前令牌 = ++逐帧跳转令牌
+    状态.当前回合 = 起始回合
     let 已单步次数 = 0
     const 按键 =
       方向 > 0 ? 取得按键('d', 'KeyD', 68) : 取得按键('a', 'KeyA', 65)
     requestAnimationFrame(逐帧单步)
+    return true
 
     function 逐帧单步() {
       if (当前令牌 !== 逐帧跳转令牌) return
 
       const 当前回合 = 读取显示回合()
       if (!Number.isInteger(当前回合)) return
+      状态.当前回合 = 当前回合
       if (方向 > 0 ? 当前回合 >= 目标回合 : 当前回合 <= 目标回合) return
       if (已单步次数 >= 大回合turn数) return
 
@@ -85,11 +101,8 @@ function 安装回放大回合逐帧跳转() {
         等待帧数 += 1
 
         const 当前回合 = 读取显示回合()
-        if (
-          Number.isInteger(当前回合) &&
-          当前回合 !== 发送前回合 &&
-          回放数据已同步(当前回合)
-        ) {
+        if (Number.isInteger(当前回合) && 当前回合 !== 发送前回合) {
+          状态.当前回合 = 当前回合
           requestAnimationFrame(逐帧单步)
           return
         }
@@ -112,10 +125,6 @@ function 安装回放大回合逐帧跳转() {
     if (事件.code === 'KeyA' || 事件.key?.toLowerCase() === 'a') return -1
     if (事件.code === 'KeyD' || 事件.key?.toLowerCase() === 'd') return 1
     return 0
-  }
-
-  function 回放数据已同步(回合) {
-    return 状态.当前回合 === 回合
   }
 
   function 是Shift按键(事件) {
@@ -147,11 +156,23 @@ function 安装回放大回合逐帧跳转() {
     )
   }
 
+  function 回放回合控件已就绪() {
+    return Boolean(
+      document.getElementById('replay-turn-jump-input') ||
+      document.getElementById('turn-counter'),
+    )
+  }
+
   function 是输入元素(目标) {
     const 元素 = 目标 instanceof Element ? 目标 : null
     return Boolean(
       元素?.closest?.('input, textarea, select, [contenteditable="true"]'),
     )
+  }
+
+  function 是回放跳转输入(目标) {
+    const 元素 = 目标 instanceof Element ? 目标 : null
+    return 元素?.id === 'replay-turn-jump-input'
   }
 }
 
