@@ -33,6 +33,13 @@ export const socket功能 = {
   新局重置: 重置终局前棋盘恢复,
 }
 
+export const 主程序功能 = {
+  id: 功能定义.id,
+  页面同步() {
+    if (是投降结算弹窗()) 重置终局前棋盘恢复()
+  },
+}
+
 export const 功能恢复 = {
   id: 功能定义.id,
   关闭: 重置终局前棋盘恢复,
@@ -85,7 +92,9 @@ function 重置终局前棋盘恢复() {
 }
 
 function 是终局前棋盘恢复事件(事件名, 数据包) {
-  return 是游戏结束事件(事件名) || 包含死亡分数(数据包)
+  if (!是游戏结束事件(事件名) && !包含死亡分数(数据包)) return false
+  if (是投降结算弹窗()) return false
+  return 包含死亡分数(数据包) && 包含地图更新数据(数据包)
 }
 
 function 包含死亡分数(数据包) {
@@ -93,6 +102,10 @@ function 包含死亡分数(数据包) {
   return 数据包.scores.some(function (分数) {
     return 分数?.dead === true
   })
+}
+
+function 包含地图更新数据(数据包) {
+  return Array.isArray(数据包?.map) || Array.isArray(数据包?.map_diff)
 }
 
 function 取得终局前回合(数据包) {
@@ -252,9 +265,6 @@ function 解析回合文本(文本) {
 function 取得回放地址(任务) {
   const 地址 = new URL(`/replays/${任务.回放编号}`, globalThis.location.origin)
   地址.searchParams.set('t', String(任务.目标回合))
-
-  const 玩家名 = 状态.玩家名列表?.[状态.我方索引]
-  if (玩家名) 地址.searchParams.set('p', 玩家名)
   return 地址.href
 }
 
@@ -307,6 +317,8 @@ function 解析回放编号文本(值, 键名) {
 }
 
 function 读取页面回放编号() {
+  if (是投降结算弹窗()) return null
+
   const 元素列表 = document.querySelectorAll(
     [
       '[href*="/replays/"]',
@@ -368,4 +380,21 @@ function 清理回放iframe() {
   document.getElementById(iframe编号)?.remove()
 }
 
-注册功能({ 功能定义, socket功能, 覆盖层功能, 功能恢复 })
+function 是投降结算弹窗() {
+  const 候选列表 = document.body?.querySelectorAll(
+    '.popup, .modal, .alert, [role="dialog"]',
+  )
+  for (const 候选 of 候选列表 ?? []) {
+    const 文本 = (候选.textContent ?? '').toLowerCase()
+    if (文本.includes('your opponent left')) return true
+    if (文本.includes('opponent left')) return true
+    if (文本.includes('surrender')) return true
+    if (文本.includes('resign')) return true
+    if (文本.includes('对手离开')) return true
+    if (文本.includes('对手已离开')) return true
+    if (文本.includes('投降')) return true
+  }
+  return false
+}
+
+注册功能({ 功能定义, 主程序功能, socket功能, 覆盖层功能, 功能恢复 })
