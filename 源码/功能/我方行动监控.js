@@ -737,8 +737,13 @@ function 同步我方行动监控UI() {
   const 空闲数量 = 回合状态列表.filter((回合状态) => {
     return 回合状态.行动类型 === '空闲'
   }).length
+  const 空闲率 = 回合状态列表.length
+    ? (空闲数量 / 回合状态列表.length) * 100
+    : 0
   const 空闲总数元素 = 面板.querySelector('.gio-action-watch-idle-total')
-  if (空闲总数元素) 空闲总数元素.textContent = `空闲 ${空闲数量}`
+  if (空闲总数元素) {
+    空闲总数元素.textContent = `空闲 ${空闲数量} ${空闲率.toFixed(1)}%`
+  }
   const 列表元素 = 面板.querySelector('.gio-action-watch-list')
   if (!列表元素) return
 
@@ -836,7 +841,7 @@ function 同步我方行动监控UI() {
         '<div class="gio-action-watch-head">' +
         '<div class="gio-action-watch-head-main">' +
         '<span class="gio-action-watch-title">我方行动监控</span>' +
-        '<span class="gio-action-watch-idle-total">空闲 0</span>' +
+        '<span class="gio-action-watch-idle-total">空闲 0 0.0%</span>' +
         '</div>' +
         '<div class="gio-action-watch-legend">' +
         '<span data-gio-action-watch-kind="idle">空闲</span>' +
@@ -1158,7 +1163,7 @@ function 安装样式() {
 }
 .gio-action-watch-idle-total {
     box-sizing: border-box;
-    min-width: 44px;
+    min-width: 72px;
     padding: 3px 6px;
     border-radius: 4px;
     background: rgba(180, 35, 42, 0.76);
