@@ -29,7 +29,7 @@ export const 当前棋子剩余步数功能定义 = {
   id: '当前棋子剩余步数',
   名称: '当前棋子剩余步数',
   分类: '操作防呆',
-  描述: '第一大回合内走完当前棋子扩地步数后自动选中基地',
+  描述: '第一大回合内走完当前棋子扩地步数后把选中框变黑',
 }
 
 export const 功能恢复 = {
@@ -62,11 +62,6 @@ export const socket功能 = {
   id: 功能定义.id,
   阻止出站({ 事件名, 参数, 请求渲染 }) {
     if (事件名 !== 'attack') return false
-    if (应该阻止当前棋子超步(参数)) {
-      真实选中我方基地(请求渲染, { 强制点击: true })
-      return true
-    }
-
     if (!是基地锁定中()) return false
     if (参数?.[0] === 状态.我方基地索引) return false
     if (是排队路线续走起点(参数?.[0])) return false
@@ -78,7 +73,6 @@ export const socket功能 = {
     if (事件名 === 'attack') {
       停止自动选中基地()
       同步攻击终点选中(参数?.[1])
-      用完当前棋子步数后选中基地(参数, 请求渲染)
       请求渲染()
     } else if (事件名 === 'undo_move') {
       同步撤销移动选中()
@@ -282,79 +276,6 @@ function 同步撤销移动选中() {
   同步移动队列标记()
 }
 
-function 应该阻止当前棋子超步(参数) {
-  if (!功能已启用(当前棋子剩余步数功能定义.id)) return false
-
-  const 起点 = 参数?.[0]
-  const 终点 = 参数?.[1]
-  if (!是第一大回合内扩地移动(起点, 终点)) return false
-
-  const 路线 = 取得扩地路线步数(起点)
-  return Boolean(路线 && 路线.已排步数 >= 路线.最大步数)
-}
-
-function 用完当前棋子步数后选中基地(参数, 请求重绘) {
-  if (!功能已启用(当前棋子剩余步数功能定义.id)) return
-
-  const 起点 = 参数?.[0]
-  const 终点 = 参数?.[1]
-  if (!是第一大回合内扩地移动(起点, 终点)) return
-
-  const 路线 = 取得扩地路线步数(终点)
-  if (!路线 || 路线.已排步数 < 路线.最大步数) return
-
-  真实选中我方基地(请求重绘, { 强制点击: true })
-}
-
-function 取得扩地路线步数(下一步起点) {
-  if (!地图可读(状态.地图数组)) return null
-  if (!Number.isInteger(下一步起点) || 下一步起点 < 0) return null
-
-  let 当前起点 = 下一步起点
-  let 已排步数 = 0
-  for (let idx = 状态.移动队列.length - 1; idx >= 0; idx -= 1) {
-    const 移动 = 状态.移动队列[idx]
-    if (移动?.终点 !== 当前起点) break
-    if (!是第一大回合内扩地移动(移动.起点, 移动.终点)) break
-
-    已排步数 += 1
-    当前起点 = 移动.起点
-  }
-
-  const 起始兵力 = 读取地图兵力(状态.地图数组, 当前起点)
-  const 起始地块 = 读取地图地块(状态.地图数组, 当前起点)
-  if (!Number.isInteger(起始兵力) || 起始兵力 < 1) return null
-  if (!是我方或队友(起始地块?.归属)) return null
-
-  return {
-    已排步数,
-    最大步数: 起始兵力 - 1,
-  }
-}
-
-function 是第一大回合内扩地移动(起点, 终点) {
-  if (!在第一大回合()) return false
-  if (!Number.isInteger(起点) || !Number.isInteger(终点)) return false
-  if (起点 < 0 || 终点 < 0) return false
-  if (!地图可读(状态.地图数组)) return false
-  if (状态.已知塔集合.has(终点)) return false
-
-  const 终点地块 = 读取地图地块(状态.地图数组, 终点)
-  if (终点地块?.兵力 !== 0) return false
-  if (是我方或队友(终点地块?.归属)) return false
-  if (!Number.isInteger(终点地块?.归属)) return false
-  if (终点地块.归属 >= 0) return false
-  return !是阻挡地形(终点地块.归属)
-
-  function 在第一大回合() {
-    return (
-      Number.isInteger(状态.当前回合) &&
-      状态.当前回合 >= 0 &&
-      状态.当前回合 < 大回合turn数
-    )
-  }
-}
-
 function 同步移动队列标记() {
   已同步移动队列长度 = 状态.移动队列.length
   已同步移动队列最后移动 = 取得移动队列最后移动()
@@ -369,12 +290,12 @@ function 选中我方基地(请求重绘) {
   return 选中格子索引
 }
 
-function 真实选中我方基地(请求重绘, 选项 = {}) {
+function 真实选中我方基地(请求重绘) {
   const 基地索引 = 选中我方基地(请求重绘)
   if (!Number.isInteger(基地索引)) return null
 
   setTimeout(() => {
-    if (选项.强制点击 || 是基地锁定中()) 点击我方基地()
+    if (是基地锁定中()) 点击我方基地()
   }, 0)
   return 基地索引
 }
@@ -529,31 +450,32 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
   const 角长 = Math.max(7, 大小 * (0.22 + 扩张比例 * 0.04))
   const 扩张 = Math.max(2, 大小 * 0.08) * 扩张比例
   const 内缩 = Math.max(0.5, 外线宽 / 2 + 0.5 - 扩张)
+  const 选中框样式 = 取得选中框样式()
 
   ctx.save()
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.shadowColor = 'rgba(255, 38, 38, 0.92)'
+  ctx.shadowColor = 选中框样式.阴影色
   ctx.shadowBlur = Math.max(6, 大小 * (0.18 + 扩张比例 * 0.12))
 
   ctx.globalAlpha = 1
   ctx.lineWidth = 外线宽 + Math.max(4, 大小 * 0.1)
-  ctx.strokeStyle = '#4b0000'
+  ctx.strokeStyle = 选中框样式.外框底色
   画整框()
 
   ctx.lineWidth = 外线宽
-  ctx.strokeStyle = '#ff3030'
+  ctx.strokeStyle = 选中框样式.外框色
   画整框()
 
-  ctx.shadowColor = 'rgba(80, 0, 0, 0.76)'
+  ctx.shadowColor = 选中框样式.角阴影色
   ctx.shadowBlur = Math.max(4, 大小 * 0.12)
   ctx.lineWidth = 外线宽 + Math.max(2, 大小 * 0.04)
-  ctx.strokeStyle = '#4b0000'
+  ctx.strokeStyle = 选中框样式.角底色
   画四角()
 
   ctx.shadowColor = 'transparent'
   ctx.lineWidth = 内线宽
-  ctx.strokeStyle = '#ffb3b3'
+  ctx.strokeStyle = 选中框样式.角内色
   画四角()
 
   画选中倒计时()
@@ -638,6 +560,84 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
     if (倒计时 < 5) return 'rgba(255, 182, 182, 0.92)'
     if (倒计时 < 10) return 'rgba(255, 242, 150, 0.9)'
     return 'rgba(255, 255, 255, 0.72)'
+  }
+
+  function 取得选中框样式() {
+    if (!是当前棋子步数已用完()) {
+      return {
+        阴影色: 'rgba(255, 38, 38, 0.92)',
+        外框底色: '#4b0000',
+        外框色: '#ff3030',
+        角阴影色: 'rgba(80, 0, 0, 0.76)',
+        角底色: '#4b0000',
+        角内色: '#ffb3b3',
+      }
+    }
+
+    return {
+      阴影色: 'rgba(0, 0, 0, 0.95)',
+      外框底色: '#000000',
+      外框色: '#000000',
+      角阴影色: 'rgba(0, 0, 0, 0.95)',
+      角底色: '#000000',
+      角内色: '#000000',
+    }
+  }
+
+  function 是当前棋子步数已用完() {
+    if (!功能已启用(当前棋子剩余步数功能定义.id)) return false
+
+    const 路线 = 取得扩地路线步数(格子索引)
+    return Boolean(路线 && 路线.已排步数 >= 路线.最大步数)
+  }
+
+  function 取得扩地路线步数(下一步起点) {
+    if (!地图可读(状态.地图数组)) return null
+    if (!Number.isInteger(下一步起点) || 下一步起点 < 0) return null
+
+    let 当前起点 = 下一步起点
+    let 已排步数 = 0
+    for (let idx = 状态.移动队列.length - 1; idx >= 0; idx -= 1) {
+      const 移动 = 状态.移动队列[idx]
+      if (移动?.终点 !== 当前起点) break
+      if (!是第一大回合内扩地移动(移动.起点, 移动.终点)) break
+
+      已排步数 += 1
+      当前起点 = 移动.起点
+    }
+
+    const 起始兵力 = 读取地图兵力(状态.地图数组, 当前起点)
+    const 起始地块 = 读取地图地块(状态.地图数组, 当前起点)
+    if (!Number.isInteger(起始兵力) || 起始兵力 < 1) return null
+    if (!是我方或队友(起始地块?.归属)) return null
+
+    return {
+      已排步数,
+      最大步数: 起始兵力 - 1,
+    }
+
+    function 是第一大回合内扩地移动(起点, 终点) {
+      if (!在第一大回合()) return false
+      if (!Number.isInteger(起点) || !Number.isInteger(终点)) return false
+      if (起点 < 0 || 终点 < 0) return false
+      if (!地图可读(状态.地图数组)) return false
+      if (状态.已知塔集合.has(终点)) return false
+
+      const 终点地块 = 读取地图地块(状态.地图数组, 终点)
+      if (终点地块?.兵力 !== 0) return false
+      if (是我方或队友(终点地块?.归属)) return false
+      if (!Number.isInteger(终点地块?.归属)) return false
+      if (终点地块.归属 >= 0) return false
+      return !是阻挡地形(终点地块.归属)
+    }
+
+    function 在第一大回合() {
+      return (
+        Number.isInteger(状态.当前回合) &&
+        状态.当前回合 >= 0 &&
+        状态.当前回合 < 大回合turn数
+      )
+    }
   }
 }
 
