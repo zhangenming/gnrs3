@@ -179,7 +179,10 @@ export function 尝试自动扩展(socket, 请求渲染) {
 
   function 是我方可移动起点(地块) {
     return (
-      Number.isInteger(地块?.兵力) && 地块.兵力 > 1 && 是我方或队友(地块.归属)
+      Number.isInteger(地块?.兵力) &&
+      地块.兵力 > 1 &&
+      地块.兵力 <= 10 &&
+      是我方或队友(地块.归属)
     )
   }
 
