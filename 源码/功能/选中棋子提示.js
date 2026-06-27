@@ -597,6 +597,7 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
 
     let 当前起点 = 下一步起点
     let 已排步数 = 0
+    let 轨迹起点兵力 = null
     for (let idx = 状态.移动队列.length - 1; idx >= 0; idx -= 1) {
       const 移动 = 状态.移动队列[idx]
       if (移动?.终点 !== 当前起点) break
@@ -604,9 +605,10 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
 
       已排步数 += 1
       当前起点 = 移动.起点
+      if (Number.isInteger(移动.起点兵力)) 轨迹起点兵力 = 移动.起点兵力
     }
 
-    const 起始兵力 = 读取地图兵力(状态.地图数组, 当前起点)
+    const 起始兵力 = 轨迹起点兵力 ?? 读取地图兵力(状态.地图数组, 当前起点)
     const 起始地块 = 读取地图地块(状态.地图数组, 当前起点)
     if (!Number.isInteger(起始兵力) || 起始兵力 < 1) return null
     if (!是我方或队友(起始地块?.归属)) return null
