@@ -483,8 +483,14 @@ function 图表元素可用(图表元素) {
   return Boolean(图表元素?.isConnected && 图表元素.offsetParent)
 }
 
+function 取得图表数据列表() {
+  const 数据列表 = 状态.游戏数据进展列表
+  if (!是网页回放页() || 数据列表.length <= 1) return 数据列表
+  return 数据列表.slice(0, -1)
+}
+
 function 取得图表渲染签名(图表元素) {
-  const 数据签名 = 状态.游戏数据进展列表
+  const 数据签名 = 取得图表数据列表()
     .map((数据点) => {
       return [
         数据点.回合,
@@ -504,7 +510,7 @@ function 取得图表渲染签名(图表元素) {
 }
 
 function 取得图表配置() {
-  const 数据列表 = 状态.游戏数据进展列表
+  const 数据列表 = 取得图表数据列表()
   const 兵力差变化列表 = 取得兵力差变化列表(数据列表)
   function 渲染底部数字(参数, api) {
     const 回合 = Number(api.value(4))
