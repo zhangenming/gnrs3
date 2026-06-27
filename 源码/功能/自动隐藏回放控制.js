@@ -5,7 +5,7 @@ export const 功能定义 = {
   id: '自动隐藏回放控制',
   名称: '自动隐藏回放控制',
   分类: '系统',
-  描述: '进入回放时自动隐藏控制和广告',
+  描述: '进入回放时自动隐藏控制和广告，并隐藏匹配页两侧广告',
 }
 
 export const 主程序功能 = {
@@ -38,12 +38,14 @@ function 安装自动隐藏回放控制() {
     已请求隐藏检查 = true
     window.requestAnimationFrame(() => {
       已请求隐藏检查 = false
-      尝试隐藏回放控制()
+      尝试隐藏广告()
     })
   }
 
-  function 尝试隐藏回放控制() {
+  function 尝试隐藏广告() {
     if (!功能已启用(功能定义.id)) return
+    自动隐藏匹配广告()
+
     if (!是网页回放中()) {
       已隐藏控制回放键 = ''
       return
@@ -72,6 +74,19 @@ function 安装自动隐藏回放控制() {
         if (!(按钮 instanceof HTMLButtonElement)) continue
         if (按钮.textContent?.trim() !== 'Hide ad') continue
         按钮.click()
+      }
+    }
+
+    function 自动隐藏匹配广告() {
+      const 匹配广告选择器 = [
+        '#custom-queue-ad-skyscraper',
+        '#custom-queue-ad-skyscraper-2',
+        '#div-gpt-ad-1521176753598-2',
+        '#div-gpt-ad-1521176753598-2_1',
+      ].join(',')
+
+      for (const 广告元素 of document.querySelectorAll(匹配广告选择器)) {
+        广告元素.style.setProperty('display', 'none', 'important')
       }
     }
 
