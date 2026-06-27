@@ -31,6 +31,19 @@ export function 同步塔数统计() {
   return 塔数
 }
 
+export function 补齐未知开塔归属() {
+  状态.已知塔类型.forEach((类型, 塔索引) => {
+    if (状态.我方开塔集合.has(塔索引)) return
+    if (状态.敌方开塔确认集合.has(塔索引)) return
+
+    if (类型 === '我方塔') {
+      状态.我方开塔集合.add(塔索引)
+    } else if (类型 === '敌方塔') {
+      状态.敌方开塔确认集合.add(塔索引)
+    }
+  })
+}
+
 function 统计当前塔数() {
   let 我方塔数 = 0
   let 敌方塔数 = 0

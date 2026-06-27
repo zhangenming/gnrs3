@@ -18,6 +18,7 @@ import { 状态 } from '../状态.js'
 import { 是敌方格, 是阻挡地形, 取得周期增长次数 } from '../游戏工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
 import { 安装样式 as 注入样式 } from '../工具.js'
+import { 补齐未知开塔归属 } from './塔数统计.js'
 
 const 面板类名 = 'gio-action-watch-panel'
 const 画布类名 = 'gio-action-watch-canvas'
@@ -508,20 +509,34 @@ function 安装网页回放行动监控同步() {
     function 同步回放塔位置(数据包, 地图数组) {
       if (!Array.isArray(数据包?.cities)) return
 
+      const 旧塔类型表 = new Map(状态.已知塔类型)
       状态.已知塔集合.clear()
       状态.已知塔类型.clear()
       for (const 塔索引 of 数据包.cities) {
         if (!Number.isInteger(塔索引) || 塔索引 < 0) continue
 
+        const 旧类型 = 旧塔类型表.get(塔索引)
+        const 新类型 = 取得回放塔类型(塔索引, 地图数组)
         状态.已知塔集合.add(塔索引)
-        状态.已知塔类型.set(塔索引, 取得回放塔类型(塔索引, 地图数组))
+        状态.已知塔类型.set(塔索引, 新类型)
+        记录回放开塔归属(塔索引, 旧类型, 新类型)
       }
+      补齐未知开塔归属()
     }
 
     function 取得回放塔类型(塔索引, 地图数组) {
       const 归属 = 读取地图归属(地图数组, 塔索引)
       if (!Number.isInteger(归属) || 归属 < 0) return '中立塔'
       return 是我方或队友(归属) ? '我方塔' : '敌方塔'
+    }
+
+    function 记录回放开塔归属(塔索引, 旧类型, 新类型) {
+      if (旧类型 !== '中立塔') return
+      if (新类型 === '我方塔') {
+        状态.我方开塔集合.add(塔索引)
+      } else if (新类型 === '敌方塔') {
+        状态.敌方开塔确认集合.add(塔索引)
+      }
     }
 
     function 记录回放官方行动(起始回合, 结束回合, 起始地图数组, 数据包) {
