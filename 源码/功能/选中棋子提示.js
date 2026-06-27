@@ -135,6 +135,7 @@ export function 安装选中棋子监听(请求重绘) {
     if (!Number.isInteger(格子索引)) return
 
     选中格子索引 = 格子索引
+    标记新移动路线(格子索引)
     同步移动队列标记()
     请求重绘()
   }
@@ -285,9 +286,16 @@ function 选中我方基地(请求重绘) {
   if (!Number.isInteger(状态.我方基地索引) || 状态.我方基地索引 < 0) return null
 
   选中格子索引 = 状态.我方基地索引
+  标记新移动路线(选中格子索引)
   同步移动队列标记()
   if (typeof 请求重绘 === 'function') 请求重绘()
   return 选中格子索引
+}
+
+function 标记新移动路线(格子索引) {
+  const 地块 = 读取地图地块(状态.地图数组, 格子索引)
+  if (!是我方或队友(地块?.归属)) return
+  状态.移动队列选择序号 += 1
 }
 
 function 真实选中我方基地(请求重绘) {
@@ -365,6 +373,7 @@ function 清空选中状态() {
   选中格子索引 = null
   已同步移动队列长度 = 0
   已同步移动队列最后移动 = null
+  状态.移动队列选择序号 = 0
 }
 
 function 停止自动选中基地() {
@@ -598,9 +607,11 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
     let 当前起点 = 下一步起点
     let 已排步数 = 0
     let 轨迹起点兵力 = null
+    let 路线序号 = null
     for (let idx = 状态.移动队列.length - 1; idx >= 0; idx -= 1) {
       const 移动 = 状态.移动队列[idx]
       if (移动?.终点 !== 当前起点) break
+      if (!是同一路线(移动)) break
       if (!是第一大回合内扩地移动(移动.起点, 移动.终点)) break
 
       已排步数 += 1
@@ -639,6 +650,15 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
         状态.当前回合 >= 0 &&
         状态.当前回合 < 大回合turn数
       )
+    }
+
+    function 是同一路线(移动) {
+      if (!Number.isInteger(移动?.选择序号)) return 路线序号 === null
+      if (路线序号 === null) {
+        路线序号 = 移动.选择序号
+        return true
+      }
+      return 移动.选择序号 === 路线序号
     }
   }
 }
