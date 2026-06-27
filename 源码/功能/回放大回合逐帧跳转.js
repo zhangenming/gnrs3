@@ -1,6 +1,5 @@
 import { 大回合turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 状态 } from '../状态.js'
 import { 读取显示回合 } from './大回合倒计时.js'
 
 export const 功能定义 = {
@@ -85,15 +84,11 @@ function 安装回放大回合逐帧跳转() {
         等待帧数 += 1
 
         const 当前回合 = 读取显示回合()
-        if (
-          Number.isInteger(当前回合) &&
-          当前回合 !== 发送前回合 &&
-          回放数据已同步(当前回合)
-        ) {
+        if (Number.isInteger(当前回合) && 当前回合 !== 发送前回合) {
           requestAnimationFrame(逐帧单步)
           return
         }
-        if (等待帧数 >= 30) return
+        if (等待帧数 >= 10) return
         requestAnimationFrame(检查回合同步)
       }
     }
@@ -112,10 +107,6 @@ function 安装回放大回合逐帧跳转() {
     if (事件.code === 'KeyA' || 事件.key?.toLowerCase() === 'a') return -1
     if (事件.code === 'KeyD' || 事件.key?.toLowerCase() === 'd') return 1
     return 0
-  }
-
-  function 回放数据已同步(回合) {
-    return 状态.当前回合 === 回合
   }
 
   function 是Shift按键(事件) {
