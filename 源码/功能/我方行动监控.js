@@ -454,6 +454,7 @@ function 安装网页回放行动监控同步() {
               turn: props.turn,
               usernames: props.usernames,
               teams: props.teams,
+              playerColors: props.playerColors,
               executedMoves: props.executedMoves,
               replay_id: props.replay_id,
               replayWatcherIndex: props.replayWatcherIndex,

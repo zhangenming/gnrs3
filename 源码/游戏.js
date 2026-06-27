@@ -330,7 +330,7 @@ export function 取得完整地图数组(数据包) {
   if (Array.isArray(数据包?.map)) {
     地图数组 = 数据包.map
   } else if (是回放地图对象(数据包?.map)) {
-    地图数组 = 取得回放地图数组(数据包.map)
+    地图数组 = 取得回放地图数组(数据包.map, 数据包)
   } else if (
     Array.isArray(数据包?.map_diff) &&
     数据包.map_diff[0] === 0 &&
@@ -352,16 +352,60 @@ function 是回放地图对象(地图) {
   )
 }
 
-function 取得回放地图数组(地图) {
+function 取得回放地图数组(地图, 数据包) {
   const 格子数 = 地图.width * 地图.height
   if (格子数 <= 0) return null
   if (地图._map.length < 格子数 || 地图._armies.length < 格子数) return null
+  const 归属列表 = 地图._map.slice(0, 格子数)
+  const 归属映射 = 取得回放归属映射(归属列表)
   return [
     地图.width,
     地图.height,
     ...地图._armies.slice(0, 格子数),
-    ...地图._map.slice(0, 格子数),
+    ...归属列表.map((归属) => {
+      if (!Number.isInteger(归属) || 归属 < 0) return 归属
+      return 归属映射?.get(归属) ?? 归属
+    }),
   ]
+
+  function 取得回放归属映射(归属列表) {
+    if (!Array.isArray(数据包?.playerColors)) return null
+
+    const 玩家颜色列表 = 数据包.playerColors
+    let 玩家索引命中数 = 0
+    let 颜色索引命中数 = 0
+    if (Array.isArray(数据包.generals)) {
+      for (let 玩家索引 = 0; 玩家索引 < 数据包.generals.length; 玩家索引 += 1) {
+        const 基地索引 = 数据包.generals[玩家索引]
+        if (!Number.isInteger(基地索引) || 基地索引 < 0) continue
+        const 归属 = 归属列表[基地索引]
+        if (归属 === 玩家索引) 玩家索引命中数 += 1
+        if (归属 === 玩家颜色列表[玩家索引]) 颜色索引命中数 += 1
+      }
+    }
+
+    if (颜色索引命中数 > 玩家索引命中数) return 取得颜色到玩家映射()
+    if (玩家索引命中数 > 0) return null
+    if (归属列表.some(是明确颜色归属)) return 取得颜色到玩家映射()
+    return null
+
+    function 是明确颜色归属(归属) {
+      return (
+        Number.isInteger(归属) &&
+        归属 >= 玩家颜色列表.length &&
+        玩家颜色列表.includes(归属)
+      )
+    }
+
+    function 取得颜色到玩家映射() {
+      const 映射 = new Map()
+      玩家颜色列表.forEach((颜色索引, 玩家索引) => {
+        if (!Number.isInteger(颜色索引)) return
+        if (!映射.has(颜色索引)) 映射.set(颜色索引, 玩家索引)
+      })
+      return 映射
+    }
+  }
 }
 
 export function 应用增量(旧数组, 增量) {

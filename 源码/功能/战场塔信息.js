@@ -272,6 +272,7 @@ function 同步网页回放塔数据() {
         const 数据包 = {
           map: props.map,
           cities: props.cities,
+          generals: props.generals,
           turn: props.turn,
           usernames: props.usernames,
           teams: props.teams,
