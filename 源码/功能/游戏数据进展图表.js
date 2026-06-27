@@ -17,14 +17,20 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '无符号差值-2'
+const 图表显示版本 = '开塔兵力-1'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
 const 陆地线颜色 = '#ffbf3f'
 const 地差劣势文字颜色 = '#ff3d5a'
 const 地差持平文字颜色 = '#000'
-const 底部标签列表 = ['陆地差', '兵力差', '耗兵差']
+const 底部标签列表 = [
+  '陆地差',
+  '兵力差',
+  '耗兵差',
+  '我方开塔兵力',
+  '敌方开塔兵力',
+]
 
 let 图表实例 = null
 let ECharts加载Promise = null
@@ -95,16 +101,16 @@ function 安装网页回放数据进展同步() {
 
 function 记录游戏数据进展点(回合, 读取差值) {
   if (!Number.isInteger(回合) || 回合 <= 0) return
-  if (状态.游戏数据进展上次统计回合 === 回合) return
 
   const 差值 = 读取差值()
   if (!差值) return
 
-  状态.游戏数据进展上次统计回合 = 回合
+  const 开塔进展 = 读取开塔进展(回合)
   const 数据点 = {
     回合,
     兵力差: 差值.兵力差,
     陆地差: 差值.陆地差,
+    ...开塔进展,
   }
   const 最后数据点 = 状态.游戏数据进展列表.at(-1)
   const 已有索引 =
@@ -114,13 +120,27 @@ function 记录游戏数据进展点(回合, 读取差值) {
           return 点.回合 === 回合
         })
   if (已有索引 >= 0) {
-    状态.游戏数据进展列表[已有索引] = 数据点
+    const 旧数据点 = 状态.游戏数据进展列表[已有索引]
+    if (
+      状态.游戏数据进展上次统计回合 === 回合 &&
+      开塔进展.我方开塔兵力 === 旧数据点.我方开塔兵力 &&
+      开塔进展.敌方开塔兵力 === 旧数据点.敌方开塔兵力 &&
+      开塔进展.我方开塔成功 === 旧数据点.我方开塔成功 &&
+      开塔进展.敌方开塔成功 === 旧数据点.敌方开塔成功
+    ) {
+      return
+    }
+    状态.游戏数据进展列表[已有索引] = {
+      ...旧数据点,
+      ...数据点,
+    }
   } else if (!最后数据点 || 最后数据点.回合 < 回合) {
     状态.游戏数据进展列表.push(数据点)
   } else {
     状态.游戏数据进展列表.push(数据点)
     状态.游戏数据进展列表.sort((左, 右) => 左.回合 - 右.回合)
   }
+  状态.游戏数据进展上次统计回合 = 回合
   更新游戏数据进展图表()
 }
 
@@ -469,7 +489,15 @@ function 图表元素可用(图表元素) {
 function 取得图表渲染签名(图表元素) {
   const 数据签名 = 状态.游戏数据进展列表
     .map((数据点) => {
-      return `${数据点.回合}:${数据点.兵力差}:${数据点.陆地差}`
+      return [
+        数据点.回合,
+        数据点.兵力差,
+        数据点.陆地差,
+        数据点.我方开塔兵力 ?? 0,
+        数据点.敌方开塔兵力 ?? 0,
+        数据点.我方开塔成功 ? 1 : 0,
+        数据点.敌方开塔成功 ? 1 : 0,
+      ].join(':')
     })
     .join('|')
   const 显示签名 = Object.entries(图表显示系列)
@@ -483,6 +511,10 @@ function 取得图表配置() {
   const 兵力差变化列表 = 取得兵力差变化列表(数据列表)
   function 渲染底部数字(参数, api) {
     const 回合 = Number(api.value(4))
+    const 我方开塔兵力 = Number(api.value(5))
+    const 敌方开塔兵力 = Number(api.value(6))
+    const 我方开塔成功 = api.value(7) === 1
+    const 敌方开塔成功 = api.value(8) === 1
     const 兵力差变化 = Number(api.value(2))
     const 陆地差 = Number(api.value(3))
     const [x] = api.coord([api.value(0), 0])
@@ -531,6 +563,8 @@ function 取得图表配置() {
         },
       })
     }
+    添加开塔兵力文本(children, x, 底部y + 70, 我方开塔兵力, 我方开塔成功)
+    添加开塔兵力文本(children, x, 底部y + 86, 敌方开塔兵力, 敌方开塔成功)
     return { type: 'group', children }
   }
 
@@ -567,6 +601,16 @@ function 取得图表配置() {
         const 兵力差变化文本 = 格式化非零差值(兵力差变化列表[索引])
         if (兵力差变化文本)
           文本列表.splice(2, 0, `兵力差变化 ${兵力差变化文本}`)
+        if (数据点.我方开塔兵力 > 0) {
+          文本列表.push(
+            `我方开塔兵力 ${数据点.我方开塔兵力}${数据点.我方开塔成功 ? ' 成功' : ''}`,
+          )
+        }
+        if (数据点.敌方开塔兵力 > 0) {
+          文本列表.push(
+            `敌方开塔兵力 ${数据点.敌方开塔兵力}${数据点.敌方开塔成功 ? ' 成功' : ''}`,
+          )
+        }
         return 文本列表.join('<br>')
       },
     },
@@ -579,7 +623,7 @@ function 取得图表配置() {
       left: 56,
       right: 12,
       top: 14,
-      bottom: 76,
+      bottom: 108,
     },
     xAxis: {
       type: 'category',
@@ -667,7 +711,8 @@ function 取得底部数字数据列表(数据列表, 兵力差变化列表) {
     const 兵力差变化 = 兵力差变化列表[idx]
     const 有兵力差变化 = Number.isFinite(兵力差变化) && 兵力差变化 !== 0
     const 是大回合点 = 数据点.回合 > 0 && 数据点.回合 % 50 === 0
-    if (!有兵力差变化 && !是大回合点) continue
+    const 有开塔兵力 = 数据点.我方开塔兵力 > 0 || 数据点.敌方开塔兵力 > 0
+    if (!有兵力差变化 && !是大回合点 && !有开塔兵力) continue
 
     输出列表.push([
       String(数据点.回合),
@@ -675,9 +720,82 @@ function 取得底部数字数据列表(数据列表, 兵力差变化列表) {
       兵力差变化,
       数据点.陆地差,
       数据点.回合,
+      数据点.我方开塔兵力 > 0 ? 数据点.我方开塔兵力 : null,
+      数据点.敌方开塔兵力 > 0 ? 数据点.敌方开塔兵力 : null,
+      数据点.我方开塔成功 ? 1 : 0,
+      数据点.敌方开塔成功 ? 1 : 0,
     ])
   }
   return 输出列表
+}
+
+function 读取开塔进展(回合) {
+  const 我方开塔记录 = 读取我方开塔记录(回合)
+  const 敌方开塔记录 = 读取敌方开塔记录(回合)
+  const 记录 = {
+    我方开塔兵力: 我方开塔记录.开塔兵力,
+    敌方开塔兵力: 敌方开塔记录.开塔兵力,
+    我方开塔成功: 我方开塔记录.开塔成功,
+    敌方开塔成功: 敌方开塔记录.开塔成功,
+  }
+  return 记录
+
+  function 读取我方开塔记录(当前回合) {
+    let 开塔兵力 = 0
+    let 开塔成功 = false
+    状态.我方开塔增长表.forEach((记忆) => {
+      if (记忆?.回合 !== 当前回合) return
+      const 本次开塔兵力 = Number(记忆.开塔耗兵)
+      if (!Number.isInteger(本次开塔兵力) || 本次开塔兵力 <= 0) return
+      开塔兵力 += 本次开塔兵力
+      开塔成功 = true
+    })
+    return { 开塔兵力: 开塔兵力 || null, 开塔成功 }
+  }
+
+  function 读取敌方开塔记录(当前回合) {
+    const 调试 = 状态.敌方开塔调试
+    if (调试?.回合 === 当前回合) {
+      return {
+        开塔兵力: 调试.敌方偷塔耗兵 > 0 ? 调试.敌方偷塔耗兵 : null,
+        开塔成功: Boolean(调试.是敌方成功开塔 || 调试.新增开塔数 > 0),
+      }
+    }
+    const 旧记录 = 状态.游戏数据进展列表.find((数据点) => {
+      return 数据点.回合 === 当前回合
+    })
+    return {
+      开塔兵力: 旧记录?.敌方开塔兵力 ?? null,
+      开塔成功: Boolean(旧记录?.敌方开塔成功),
+    }
+  }
+}
+
+function 添加开塔兵力文本(children, x, y, 开塔兵力, 开塔成功) {
+  if (!Number.isFinite(开塔兵力) || 开塔兵力 <= 0) return
+
+  if (开塔成功) {
+    children.push({
+      type: 'circle',
+      shape: { cx: x, cy: y - 4, r: 8 },
+      style: {
+        fill: 'rgba(62, 207, 142, 0.2)',
+        stroke: '#3ecf8e',
+        lineWidth: 1.5,
+      },
+    })
+  }
+  children.push({
+    type: 'text',
+    x,
+    y,
+    style: {
+      text: 格式化差值(开塔兵力),
+      fill: 开塔成功 ? '#4dffad' : 'rgba(220, 232, 248, 0.72)',
+      align: 'center',
+      font: '900 9px Arial',
+    },
+  })
 }
 
 function 取得兵力差变化列表(数据列表) {
@@ -794,7 +912,7 @@ function 安装样式() {
 }
 .gio-data-progress-body {
     position: relative;
-    height: 188px;
+    height: 220px;
 }
 .gio-data-progress-row-labels {
     position: absolute;
@@ -804,19 +922,19 @@ function 安装样式() {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 7px;
+    gap: 6px;
     color: rgba(220, 232, 248, 0.82);
     font: 900 10px/1 Arial, sans-serif;
     pointer-events: none;
 }
 .gio-data-progress-row-label {
     display: block;
-    min-width: 48px;
+    min-width: 52px;
     text-align: left;
 }
 .${图表类名} {
     width: 100%;
-    height: 188px;
+    height: 220px;
 }
 .gio-data-progress-empty {
     position: absolute;
