@@ -118,7 +118,7 @@ export function 尝试自动扩展(socket, 请求渲染) {
 
       for (const 终点 of 取得相邻索引列表(起点)) {
         const 终点地块 = 读取地图地块(状态.地图数组, 终点)
-        if (!是可吃目标(起点地块, 终点地块)) continue
+        if (!是可吃目标(起点地块, 终点地块, 终点)) continue
         return {
           类型: `${起点地块.兵力}吃${终点地块.兵力}`,
           攻击列表: [{ 起点, 终点 }],
@@ -139,7 +139,7 @@ export function 尝试自动扩展(socket, 请求渲染) {
 
       for (const 终点 of 取得相邻索引列表(起点)) {
         const 终点地块 = 读取地图地块(状态.地图数组, 终点)
-        if (!是可扩目标(终点地块)) continue
+        if (!是可扩目标(终点地块, 终点)) continue
         return { 类型: '2扩地', 攻击列表: [{ 起点, 终点 }] }
       }
     }
@@ -152,7 +152,7 @@ export function 尝试自动扩展(socket, 请求渲染) {
 
     for (let 终点 = 0; 终点 < 格子数; 终点 += 1) {
       const 终点地块 = 读取地图地块(状态.地图数组, 终点)
-      if (!是两步可吃目标(终点地块)) continue
+      if (!是两步可吃目标(终点地块, 终点)) continue
 
       const 起点候选列表 = 取得两步起点候选列表(终点)
       for (let idx = 0; idx < 起点候选列表.length; idx += 1) {
@@ -183,25 +183,32 @@ export function 尝试自动扩展(socket, 请求渲染) {
     )
   }
 
-  function 是可吃目标(起点地块, 终点地块) {
-    if (!是非我方可攻击目标(终点地块)) return false
+  function 是可吃目标(起点地块, 终点地块, 终点) {
+    if (!是非我方可攻击目标(终点地块, 终点)) return false
     if (!Number.isInteger(终点地块.兵力) || 终点地块.兵力 <= 0) return false
     return 起点地块.兵力 - 1 > 终点地块.兵力
   }
 
-  function 是可扩目标(地块) {
-    return 地块?.兵力 === 0 && 是非我方可攻击目标(地块)
+  function 是可扩目标(地块, 终点) {
+    return 地块?.兵力 === 0 && 是非我方可攻击目标(地块, 终点)
   }
 
-  function 是两步可吃目标(地块) {
-    if (!是非我方可攻击目标(地块)) return false
+  function 是两步可吃目标(地块, 终点) {
+    if (!是非我方可攻击目标(地块, 终点)) return false
     return Number.isInteger(地块.兵力) && 地块.兵力 > 0
   }
 
-  function 是非我方可攻击目标(地块) {
+  function 是非我方可攻击目标(地块, 终点) {
+    if (是已知中立塔(终点)) return false
     if (!Number.isInteger(地块?.归属)) return false
     if (是我方或队友(地块.归属)) return false
     return !是阻挡地形(地块.归属)
+  }
+
+  function 是已知中立塔(终点) {
+    if (!Number.isInteger(终点) || !状态.已知塔集合.has(终点)) return false
+    const 塔类型 = 状态.已知塔类型.get(终点)
+    return 塔类型 !== '我方塔' && 塔类型 !== '敌方塔'
   }
 
   function 取得两步起点候选列表(终点) {
