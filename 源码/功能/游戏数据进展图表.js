@@ -675,7 +675,7 @@ function 取得图表配置() {
       {
         name: '兵力差',
         type: 'line',
-        smooth: true,
+        smooth: false,
         showSymbol: false,
         data: 数据列表.map((数据点) => 数据点.兵力差),
         itemStyle: { color: 我方蓝色 },
@@ -695,7 +695,7 @@ function 取得图表配置() {
       {
         name: '陆地差',
         type: 'line',
-        smooth: true,
+        smooth: false,
         showSymbol: false,
         data: 数据列表.map((数据点) => 数据点.陆地差),
         itemStyle: { color: 陆地线颜色 },
