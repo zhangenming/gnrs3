@@ -1,11 +1,20 @@
 import { 状态 } from '../状态.js'
+import { 大回合turn数 } from '../配置.js'
+import { 功能已启用 } from '../功能状态.js'
 import {
   读取分数玩家数据,
   读取快照玩家数据,
   读取页面玩家数据,
 } from '../战场工具.js'
-import { 取得完整地图数组, 取得地图格子数, 是我方或队友 } from '../游戏.js'
-import { 取游戏画布 } from '../游戏工具.js'
+import {
+  取得完整地图数组,
+  取得地图格子数,
+  地图可读,
+  是我方或队友,
+  读取地图兵力,
+  读取地图地块,
+} from '../游戏.js'
+import { 取游戏画布, 是阻挡地形 } from '../游戏工具.js'
 import { 取得大回合倒计时 } from '../工具.js'
 import { 读取显示回合 } from './大回合倒计时.js'
 
@@ -14,6 +23,13 @@ export const 功能定义 = {
   名称: '选中棋子提示',
   分类: '地图覆盖',
   描述: '给当前选中的棋子补高亮和倒计时角标',
+}
+
+export const 当前棋子剩余步数功能定义 = {
+  id: '当前棋子剩余步数',
+  名称: '当前棋子剩余步数',
+  分类: '操作防呆',
+  描述: '第一大回合内走完当前棋子扩地步数后自动选中基地',
 }
 
 export const 功能恢复 = {
@@ -46,6 +62,11 @@ export const socket功能 = {
   id: 功能定义.id,
   阻止出站({ 事件名, 参数, 请求渲染 }) {
     if (事件名 !== 'attack') return false
+    if (应该阻止当前棋子超步(参数)) {
+      真实选中我方基地(请求渲染, { 强制点击: true })
+      return true
+    }
+
     if (!是基地锁定中()) return false
     if (参数?.[0] === 状态.我方基地索引) return false
     if (是排队路线续走起点(参数?.[0])) return false
@@ -57,6 +78,7 @@ export const socket功能 = {
     if (事件名 === 'attack') {
       停止自动选中基地()
       同步攻击终点选中(参数?.[1])
+      用完当前棋子步数后选中基地(参数, 请求渲染)
       请求渲染()
     } else if (事件名 === 'undo_move') {
       同步撤销移动选中()
@@ -260,6 +282,79 @@ function 同步撤销移动选中() {
   同步移动队列标记()
 }
 
+function 应该阻止当前棋子超步(参数) {
+  if (!功能已启用(当前棋子剩余步数功能定义.id)) return false
+
+  const 起点 = 参数?.[0]
+  const 终点 = 参数?.[1]
+  if (!是第一大回合内扩地移动(起点, 终点)) return false
+
+  const 路线 = 取得扩地路线步数(起点)
+  return Boolean(路线 && 路线.已排步数 >= 路线.最大步数)
+}
+
+function 用完当前棋子步数后选中基地(参数, 请求重绘) {
+  if (!功能已启用(当前棋子剩余步数功能定义.id)) return
+
+  const 起点 = 参数?.[0]
+  const 终点 = 参数?.[1]
+  if (!是第一大回合内扩地移动(起点, 终点)) return
+
+  const 路线 = 取得扩地路线步数(终点)
+  if (!路线 || 路线.已排步数 < 路线.最大步数) return
+
+  真实选中我方基地(请求重绘, { 强制点击: true })
+}
+
+function 取得扩地路线步数(下一步起点) {
+  if (!地图可读(状态.地图数组)) return null
+  if (!Number.isInteger(下一步起点) || 下一步起点 < 0) return null
+
+  let 当前起点 = 下一步起点
+  let 已排步数 = 0
+  for (let idx = 状态.移动队列.length - 1; idx >= 0; idx -= 1) {
+    const 移动 = 状态.移动队列[idx]
+    if (移动?.终点 !== 当前起点) break
+    if (!是第一大回合内扩地移动(移动.起点, 移动.终点)) break
+
+    已排步数 += 1
+    当前起点 = 移动.起点
+  }
+
+  const 起始兵力 = 读取地图兵力(状态.地图数组, 当前起点)
+  const 起始地块 = 读取地图地块(状态.地图数组, 当前起点)
+  if (!Number.isInteger(起始兵力) || 起始兵力 < 1) return null
+  if (!是我方或队友(起始地块?.归属)) return null
+
+  return {
+    已排步数,
+    最大步数: 起始兵力 - 1,
+  }
+}
+
+function 是第一大回合内扩地移动(起点, 终点) {
+  if (!在第一大回合()) return false
+  if (!Number.isInteger(起点) || !Number.isInteger(终点)) return false
+  if (起点 < 0 || 终点 < 0) return false
+  if (!地图可读(状态.地图数组)) return false
+  if (状态.已知塔集合.has(终点)) return false
+
+  const 终点地块 = 读取地图地块(状态.地图数组, 终点)
+  if (终点地块?.兵力 !== 0) return false
+  if (是我方或队友(终点地块?.归属)) return false
+  if (!Number.isInteger(终点地块?.归属)) return false
+  if (终点地块.归属 >= 0) return false
+  return !是阻挡地形(终点地块.归属)
+
+  function 在第一大回合() {
+    return (
+      Number.isInteger(状态.当前回合) &&
+      状态.当前回合 >= 0 &&
+      状态.当前回合 < 大回合turn数
+    )
+  }
+}
+
 function 同步移动队列标记() {
   已同步移动队列长度 = 状态.移动队列.length
   已同步移动队列最后移动 = 取得移动队列最后移动()
@@ -274,12 +369,12 @@ function 选中我方基地(请求重绘) {
   return 选中格子索引
 }
 
-function 真实选中我方基地(请求重绘) {
+function 真实选中我方基地(请求重绘, 选项 = {}) {
   const 基地索引 = 选中我方基地(请求重绘)
   if (!Number.isInteger(基地索引)) return null
 
   setTimeout(() => {
-    if (是基地锁定中()) 点击我方基地()
+    if (选项.强制点击 || 是基地锁定中()) 点击我方基地()
   }, 0)
   return 基地索引
 }
@@ -548,3 +643,4 @@ function 画选中棋子({ ctx, 格宽, 格高, 大小, 当前动画时间 }) {
 
 import { 注册功能 } from '../注册中心.js'
 注册功能({ 功能定义, 功能恢复, socket功能, 覆盖层功能 })
+注册功能({ 功能定义: 当前棋子剩余步数功能定义 })
