@@ -30,7 +30,7 @@ const 敌方开塔提示元素编号 = 'gio-enemy-open-tower-alert'
 const 敌方开塔提示样式编号 = `${样式编号}-enemy-open-tower`
 const 敌方开塔提示持续毫秒 = 1800
 const 敌方开塔日志最大数量 = 80
-const 敌方偷塔候选最小耗兵 = 2
+const 敌方偷塔候选最小耗兵 = 1
 const 敌方偷塔候选最大间隔 = 4
 const 敌方偷塔候选最大年龄 = 16
 let 回放敌方开塔动画帧编号 = null
@@ -251,18 +251,14 @@ function 取得敌方开塔判断(上次快照, 当前快照) {
       if (!Number.isInteger(回合) || 回合 <= 上次回合 || 回合 > 当前回合) {
         return
       }
-      if (已记录我方开塔耗兵(回合, 塔索引, 开塔耗兵)) return
+      if (已记录我方开塔耗兵(回合, 塔索引)) return
       if (Number.isInteger(开塔耗兵) && 开塔耗兵 > 0) 总耗兵 += 开塔耗兵
     })
     return 总耗兵
 
-    function 已记录我方开塔耗兵(回合, 塔索引, 开塔耗兵) {
+    function 已记录我方开塔耗兵(回合, 塔索引) {
       return 状态.我方开塔耗兵记录列表.some((记录) => {
-        return (
-          记录?.回合 === 回合 &&
-          记录?.塔索引 === 塔索引 &&
-          记录?.开塔耗兵 === 开塔耗兵
-        )
+        return 记录?.回合 === 回合 && 记录?.塔索引 === 塔索引
       })
     }
   }
@@ -484,6 +480,8 @@ function 记录我方中立塔耗兵(
   数据包,
   已处理我方移动列表,
 ) {
+  if (!功能已启用('敌方开塔提示')) return
+
   const 当前回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
   if (!Number.isInteger(当前回合)) return
   if (!地图可读(旧地图数组) || !地图可读(新地图数组)) return
