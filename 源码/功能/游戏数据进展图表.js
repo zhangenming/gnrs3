@@ -17,7 +17,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '大回合陆地拆分-4'
+const 图表显示版本 = '大回合陆地拆分-5'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -941,14 +941,17 @@ function 取得图表配置(图表类型) {
             our: {
               color: 我方蓝色,
               fontWeight: 900,
+              fontSize: 11,
             },
             enemy: {
               color: 地差劣势文字颜色,
               fontWeight: 900,
+              fontSize: 11,
             },
             tie: {
               color: 'rgba(220, 232, 248, 0.82)',
               fontWeight: 900,
+              fontSize: 11,
             },
           },
           interval(idx) {
@@ -1050,24 +1053,18 @@ function 取得图表配置(图表类型) {
 
     function 渲染变化标签(参数, api) {
       const 变化 = Number(api.value(2))
-      const 当前值 = Number(api.value(1))
       if (!Number.isFinite(变化) || 变化 === 0) return { type: 'group' }
 
-      const [x, 当前y] = api.coord([api.value(0), 当前值])
-      const 原始y = 变化 > 0 ? 当前y - 8 : 当前y + 14
-      const y = Math.max(
-        参数.coordSys.y + 12,
-        Math.min(参数.coordSys.y + 参数.coordSys.height - 12, 原始y),
-      )
+      const [x] = api.coord([api.value(0), 0])
       return {
         type: 'text',
         x,
-        y,
+        y: 参数.coordSys.y + 12,
         style: {
           text: 格式化差值(变化),
           fill: 取得差值颜色(变化),
           align: 'center',
-          font: '900 10px Arial',
+          font: '900 11px Arial',
         },
       }
     }
