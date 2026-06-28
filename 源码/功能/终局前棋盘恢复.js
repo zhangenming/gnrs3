@@ -267,10 +267,16 @@ function 读取iframe回放结果(iframe, 目标回合) {
   const 兵力表格数据 = 读取兵力表格数据(
     文档.querySelector('#gameMap .game-cursor-table'),
   )
-  const 数据包 = 恢复任务?.回放数据包 ?? 读取回放数据包(文档)
+  const 回放文件数据包 = 恢复任务?.回放数据包 ?? null
+  const 数据包 = 回放文件数据包 ?? 读取回放数据包(文档)
   if (!数据包 && !兵力表格数据) return null
-  if (!回放画布已着色(画布)) return null
-  return { 画布, 数据包, 兵力表格数据 }
+  if (!回放文件数据包 && !回放画布已着色(画布)) return null
+  return {
+    画布,
+    数据包,
+    兵力表格数据,
+    使用回放文件数据: Boolean(回放文件数据包),
+  }
 }
 
 async function 加载回放数据(任务) {
@@ -294,24 +300,36 @@ async function 加载回放数据(任务) {
 }
 
 function 记录回放棋盘快照(回放结果, 任务) {
-  const { 画布: 回放画布, 数据包, 兵力表格数据 } = 回放结果
-  const 图像画布 = document.createElement('canvas')
-  图像画布.width = 回放画布.width
-  图像画布.height = 回放画布.height
+  const { 画布: 回放画布, 数据包, 兵力表格数据, 使用回放文件数据 } = 回放结果
+  const 回放文件数据包 = 使用回放文件数据 ? 数据包 : null
+  const 数据棋盘画布 = 生成回放棋盘画布(回放文件数据包, 回放画布)
+  const 图像画布 = 数据棋盘画布 ?? 复制回放画布()
+  if (!图像画布) return
 
-  const ctx = 图像画布.getContext('2d')
-  if (!ctx) return
-
-  ctx.drawImage(回放画布, 0, 0)
   状态.终局前棋盘恢复 = {
     图像画布,
-    兵力表格数据: 兵力表格数据 ?? 生成回放兵力表格数据(数据包),
+    兵力表格数据:
+      生成回放兵力表格数据(回放文件数据包) ??
+      兵力表格数据 ??
+      生成回放兵力表格数据(数据包),
     目标回合: 任务.目标回合,
-    来源: '回放',
+    来源: 数据棋盘画布 ? '回放文件棋盘' : '回放画布',
     回放编号: 任务.回放编号,
   }
   重建终局前棋盘DOM()
   请求重绘?.()
+
+  function 复制回放画布() {
+    const 图像画布 = document.createElement('canvas')
+    图像画布.width = 回放画布.width
+    图像画布.height = 回放画布.height
+
+    const ctx = 图像画布.getContext('2d')
+    if (!ctx) return null
+
+    ctx.drawImage(回放画布, 0, 0)
+    return 图像画布
+  }
 }
 
 function 回放画布已着色(画布) {
@@ -347,16 +365,16 @@ function 补当前棋盘快照数字(任务) {
   if (任务 !== 恢复任务 || !任务.回放数据包) return
 
   const 快照 = 状态.终局前棋盘恢复
-  if (!快照?.图像画布 || 快照.来源 === '回放') return
+  if (!快照?.图像画布) return
 
   const 兵力表格数据 = 生成回放兵力表格数据(任务.回放数据包)
-  if (!兵力表格数据) return
   const 图像画布 = 生成回放棋盘画布(任务.回放数据包, 快照.图像画布)
+  if (!兵力表格数据 && !图像画布) return
 
   状态.终局前棋盘恢复 = {
     ...快照,
     图像画布: 图像画布 ?? 快照.图像画布,
-    兵力表格数据,
+    兵力表格数据: 兵力表格数据 ?? 快照.兵力表格数据,
     来源: 图像画布 ? '回放文件棋盘' : '回放文件数字',
     回放编号: 任务.回放编号,
   }
@@ -651,11 +669,13 @@ function 同步终局前棋盘DOM() {
   }
 
   const 画布 = 取游戏画布()
-  const 宿主 = 取宿主(画布)
+  const 地图元素 = 画布?.closest('#gameMap')
+  const 宿主 = 地图元素 ?? 取宿主(画布)
   if (!画布 || !宿主) {
     移除终局前棋盘DOM()
     return
   }
+  确保终局前棋盘宿主可定位(宿主)
 
   if (!终局前棋盘画布) {
     终局前棋盘画布 = 创建终局前棋盘画布()
@@ -693,7 +713,14 @@ function 创建终局前棋盘画布() {
     pointerEvents: 'none',
     zIndex: String(覆盖层层级),
   })
+  画布.style.setProperty('z-index', String(覆盖层层级), 'important')
   return 画布
+}
+
+function 确保终局前棋盘宿主可定位(宿主) {
+  if (!宿主 || 宿主 === document.body) return
+  if (window.getComputedStyle(宿主).position !== 'static') return
+  宿主.style.setProperty('position', 'relative', 'important')
 }
 
 function 同步终局前棋盘画布内容(目标画布, 来源画布) {
@@ -746,6 +773,7 @@ function 创建终局前兵力表格(兵力表格数据) {
       'rgb(0, 0, 0) -1px 0px 2px, rgb(0, 0, 0) 0px 1px 2px, ' +
       'rgb(0, 0, 0) 1px 0px 2px, rgb(0, 0, 0) 0px -1px 2px',
   })
+  表格.style.setProperty('z-index', String(覆盖层层级 + 1), 'important')
 
   const tbody = document.createElement('tbody')
   for (let 行idx = 0; 行idx < 兵力表格数据.高度; 行idx += 1) {
