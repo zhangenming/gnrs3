@@ -17,7 +17,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '大回合陆地拆分-8'
+const 图表显示版本 = '大回合陆地拆分-9'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -40,6 +40,7 @@ const 图表实例表 = new Map()
 let ECharts加载Promise = null
 let 正在等待ECharts = false
 const 图表渲染签名表 = new Map()
+const 图表尺寸签名表 = new Map()
 let 图表显示系列 = { 兵力差: true, 陆地差: false }
 let 网页回放同步动画帧编号 = null
 let 回放最新数据签名 = null
@@ -190,6 +191,7 @@ export function 重置游戏数据进展() {
   回放最新数据签名 = null
   回放稳定数据签名 = null
   图表渲染签名表.clear()
+  图表尺寸签名表.clear()
   图表实例表.forEach((图表实例) => {
     图表实例.clear()
   })
@@ -205,6 +207,7 @@ export function 更新游戏数据进展图表() {
     })
     图表实例表.clear()
     图表渲染签名表.clear()
+    图表尺寸签名表.clear()
     return
   }
   if (!document.body) return
@@ -563,6 +566,7 @@ function 渲染图表(echarts, 面板) {
   )
   if (!图表元素列表.length) return
 
+  let 图表需要布局更新 = false
   清理失效图表实例(图表元素列表)
   for (const 图表元素 of 图表元素列表) {
     const 图表类型 = 图表元素.dataset.gioDataProgressChart || 主图表类型
@@ -571,6 +575,7 @@ function 渲染图表(echarts, 面板) {
       旧图表实例.dispose()
       图表实例表.delete(图表类型)
       图表渲染签名表.delete(图表类型)
+      图表尺寸签名表.delete(图表类型)
     }
 
     const 渲染签名 = 取得图表渲染签名(图表元素, 图表类型)
@@ -579,17 +584,29 @@ function 渲染图表(echarts, 面板) {
       echarts.getInstanceByDom(图表元素) ??
       echarts.init(图表元素)
     if (图表渲染签名表.get(图表类型) !== 渲染签名) {
-      图表实例.setOption(取得图表配置(图表类型), true)
+      图表实例.setOption(取得图表配置(图表类型), {
+        notMerge: true,
+        lazyUpdate: false,
+        silent: true,
+      })
       图表实例表.set(图表类型, 图表实例)
       图表渲染签名表.set(图表类型, 渲染签名)
+      图表需要布局更新 = true
     }
   }
   requestAnimationFrame(() => {
-    图表实例表.forEach((图表实例) => {
+    图表实例表.forEach((图表实例, 图表类型) => {
       if (!图表元素可用(图表实例?.getDom?.())) return
-      图表实例.resize()
+      const 图表元素 = 图表实例.getDom()
+      const 尺寸签名 = `${图表元素.clientWidth}x${图表元素.clientHeight}`
+      if (图表尺寸签名表.get(图表类型) === 尺寸签名) return
+      图表尺寸签名表.set(图表类型, 尺寸签名)
+      图表实例.resize({ silent: true })
+      图表需要布局更新 = true
     })
-    更新大回合虚线层(面板)
+    if (图表需要布局更新) {
+      更新大回合虚线层(面板)
+    }
   })
 
   function 清理失效图表实例(图表元素列表) {
@@ -599,6 +616,7 @@ function 渲染图表(echarts, 面板) {
       图表实例.dispose()
       图表实例表.delete(图表类型)
       图表渲染签名表.delete(图表类型)
+      图表尺寸签名表.delete(图表类型)
     })
   }
 }
@@ -780,6 +798,8 @@ function 取得图表配置(图表类型) {
 
   return {
     animation: false,
+    animationDuration: 0,
+    animationDurationUpdate: 0,
     textStyle: {
       color: '#dce8f8',
       fontFamily: 'Arial, sans-serif',
@@ -946,6 +966,8 @@ function 取得图表配置(图表类型) {
     const y轴范围 = 取得y轴范围()
     return {
       animation: false,
+      animationDuration: 0,
+      animationDurationUpdate: 0,
       textStyle: {
         color: '#dce8f8',
         fontFamily: 'Arial, sans-serif',
