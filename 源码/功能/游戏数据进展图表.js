@@ -17,7 +17,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '大回合陆地拆分-7'
+const 图表显示版本 = '大回合陆地拆分-8'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -214,7 +214,10 @@ export function 更新游戏数据进展图表() {
   if (!面板) return
 
   更新面板状态(面板)
-  if (!状态.游戏数据进展列表.length) return
+  if (!状态.游戏数据进展列表.length) {
+    面板.querySelector('.gio-data-progress-big-turn-lines')?.replaceChildren()
+    return
+  }
 
   if (globalThis.echarts?.init) {
     渲染图表(globalThis.echarts, 面板)
@@ -449,8 +452,10 @@ function 确保面板() {
       '<div class="gio-data-progress-body gio-data-progress-body-simple">' +
       `<div class="${图表类名}" data-gio-data-progress-chart="${修正兵力差图表类型}"></div>` +
       '</div>' +
-      '</div>'
+      '</div>' +
+      '<div class="gio-data-progress-big-turn-lines" aria-hidden="true"></div>'
   }
+  确保大回合虚线层(面板)
 
   面板.className = 'gio-data-progress-panel'
 
@@ -472,6 +477,14 @@ function 确保面板() {
 
   状态.游戏数据进展面板 = 面板
   return 面板
+}
+
+function 确保大回合虚线层(面板) {
+  if (面板.querySelector('.gio-data-progress-big-turn-lines')) return
+  面板.insertAdjacentHTML(
+    'beforeend',
+    '<div class="gio-data-progress-big-turn-lines" aria-hidden="true"></div>',
+  )
 }
 
 function 取得右侧挂载点() {
@@ -576,6 +589,7 @@ function 渲染图表(echarts, 面板) {
       if (!图表元素可用(图表实例?.getDom?.())) return
       图表实例.resize()
     })
+    更新大回合虚线层(面板)
   })
 
   function 清理失效图表实例(图表元素列表) {
@@ -587,6 +601,52 @@ function 渲染图表(echarts, 面板) {
       图表渲染签名表.delete(图表类型)
     })
   }
+}
+
+function 更新大回合虚线层(面板) {
+  const 虚线层 = 面板.querySelector('.gio-data-progress-big-turn-lines')
+  if (!虚线层) return
+
+  const 图表元素列表 = Array.from(面板.querySelectorAll(`.${图表类名}`)).filter(
+    图表元素可用,
+  )
+  const 基准图表实例 = 图表实例表.get(主图表类型)
+  const 基准图表元素 = 基准图表实例?.getDom?.()
+  const 数据列表 = 取得图表数据列表()
+  if (!图表元素列表.length || !图表元素可用(基准图表元素) || !数据列表.length) {
+    虚线层.replaceChildren()
+    return
+  }
+
+  const 面板位置 = 面板.getBoundingClientRect()
+  const 首图表位置 = 图表元素列表[0].getBoundingClientRect()
+  const 末图表位置 = 图表元素列表.at(-1).getBoundingClientRect()
+  const 基准图表位置 = 基准图表元素.getBoundingClientRect()
+  虚线层.style.top = `${首图表位置.top - 面板位置.top}px`
+  虚线层.style.height = `${末图表位置.bottom - 首图表位置.top}px`
+
+  const 最大回合 = Math.max(
+    ...数据列表.map((数据点) => {
+      return 数据点.回合
+    }),
+  )
+  const 回合集合 = new Set(
+    数据列表.map((数据点) => {
+      return 数据点.回合
+    }),
+  )
+  const 线列表 = []
+  for (let 回合 = 50; 回合 <= 最大回合; 回合 += 50) {
+    if (!回合集合.has(回合)) continue
+    const 像素 = 基准图表实例.convertToPixel({ xAxisIndex: 0 }, String(回合))
+    const 图表内x = Array.isArray(像素) ? 像素[0] : 像素
+    if (!Number.isFinite(图表内x)) continue
+    const 线 = document.createElement('span')
+    线.className = 'gio-data-progress-big-turn-line'
+    线.style.left = `${基准图表位置.left - 面板位置.left + 图表内x}px`
+    线列表.push(线)
+  }
+  虚线层.replaceChildren(...线列表)
 }
 
 function 图表元素可用(图表元素) {
@@ -782,16 +842,7 @@ function 取得图表配置(图表类型) {
       boundaryGap: false,
       data: 数据列表.map((数据点) => String(数据点.回合)),
       axisLabel: {
-        color: 'rgba(220, 232, 248, 0.82)',
-        fontWeight: 700,
-        interval(idx) {
-          const 数据点 = 数据列表[idx]
-          return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
-        },
-        formatter(回合) {
-          const 数值 = Number(回合)
-          return 数值 > 0 && 数值 % 50 === 0 ? 回合 : ''
-        },
+        show: false,
       },
       axisLine: {
         lineStyle: { color: 'rgba(220, 232, 248, 0.32)' },
@@ -935,6 +986,7 @@ function 取得图表配置(图表类型) {
         boundaryGap: false,
         data: 数据列表.map((数据点) => String(数据点.回合)),
         axisLabel: {
+          show: 显示累计变化横坐标,
           color: 'rgba(220, 232, 248, 0.82)',
           fontWeight: 700,
           rich: {
@@ -961,7 +1013,6 @@ function 取得图表配置(图表类型) {
           formatter(回合, idx) {
             const 数值 = Number(回合)
             if (数值 <= 0 || 数值 % 50 !== 0) return ''
-            if (!显示累计变化横坐标) return 回合
 
             const 累计变化 = 变化标签数据列表.find((标签数据) => {
               return 标签数据[0] === 回合
@@ -1261,6 +1312,7 @@ function 安装样式() {
     样式元素编号,
     `
 .gio-data-progress-panel {
+    position: relative;
     box-sizing: border-box;
     width: 100%;
     margin-top: 6px;
@@ -1376,6 +1428,19 @@ function 安装样式() {
 }
 .gio-data-progress-body-simple .${图表类名} {
     height: 150px;
+}
+.gio-data-progress-big-turn-lines {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 3;
+    pointer-events: none;
+}
+.gio-data-progress-big-turn-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-left: 1px dashed rgba(220, 232, 248, 0.24);
 }
 .gio-data-progress-empty {
     position: absolute;
