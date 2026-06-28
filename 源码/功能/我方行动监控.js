@@ -16,17 +16,27 @@ import {
 } from '../游戏.js'
 import { 状态 } from '../状态.js'
 import { 是敌方格, 是阻挡地形, 取得周期增长次数 } from '../游戏工具.js'
+import {
+  读取分数玩家数据,
+  读取快照玩家数据,
+  读取页面玩家数据,
+} from '../战场工具.js'
 import { 取得战场数据表格 } from './战场表格.js'
 import { 安装样式 as 注入样式 } from '../工具.js'
-import { 补齐未知开塔归属 } from './塔数统计.js'
+import { 补齐未知开塔归属, 统计塔数 } from './塔数统计.js'
+import { 取得敌方开塔判断 } from './敌方开塔提示.js'
 
 const 面板类名 = 'gio-action-watch-panel'
 const 画布类名 = 'gio-action-watch-canvas'
 const 样式编号 = 'gio-action-watch-style'
 const 每行回合数 = 50
-const 行动类型列表 = ['空闲', '集兵', '扩地(开塔)', '吃地(抢塔)']
-const 行动优先级表 = new Map(
-  行动类型列表.map((行动类型, idx) => [行动类型, idx]),
+const 我方行动类型列表 = ['空闲', '集兵', '扩地', '偷塔', '吃地(抢塔)']
+const 敌方行动类型列表 = ['集兵', '扩地', '吃地', '开塔']
+const 我方行动优先级表 = new Map(
+  我方行动类型列表.map((行动类型, idx) => [行动类型, idx]),
+)
+const 敌方行动优先级表 = new Map(
+  敌方行动类型列表.map((行动类型, idx) => [行动类型, idx]),
 )
 let 我方行动监控数据版本 = 0
 let 已请求更新我方行动监控UI = false
@@ -35,12 +45,13 @@ let 回放行动监控动画帧编号 = null
 let 回放行动监控缓存 = null
 let 回放行动监控最小已确认回合 = null
 let 回放行动监控最大已确认回合 = null
+let 行动监控玩家快照 = null
 
 export const 功能定义 = {
   id: '我方行动监控',
   名称: '我方行动监控',
   分类: '战场面板',
-  描述: '按回合记录我方空闲、集兵、开塔和抢塔',
+  描述: '按回合记录我方和敌方行动类型',
 }
 
 export const 主程序功能 = {
@@ -82,17 +93,22 @@ export function 更新我方行动地图判断(
   if (!地图可读(旧地图数组) || !地图可读(新地图数组)) return
 
   const 格子数 = 状态.宽度 * 状态.高度
+  const 上次玩家快照 = 行动监控玩家快照
+  const 当前玩家快照 = 读取行动监控玩家快照(数据包, 回合 + 1)
+  if (当前玩家快照) 行动监控玩家快照 = 当前玩家快照
 
   const 真实行动类型 = 取得已处理移动行动类型()
   if (真实行动类型) {
     设置我方行动类型(回合, 真实行动类型)
-    return
+  } else {
+    const 地图差分行动类型 = 取得地图差分行动类型()
+    if (地图差分行动类型) {
+      设置我方行动类型(回合, 地图差分行动类型)
+    }
   }
 
-  const 地图差分行动类型 = 取得地图差分行动类型()
-  if (地图差分行动类型) {
-    设置我方行动类型(回合, 地图差分行动类型)
-  }
+  const 敌方行动类型 = 取得敌方行动类型()
+  if (敌方行动类型) 设置敌方行动类型(回合, 敌方行动类型)
 
   function 取得地图差分行动类型() {
     const 我方来源索引集合 = 取得我方来源索引集合()
@@ -107,19 +123,19 @@ export function 更新我方行动地图判断(
       if (旧归属 !== 新归属 && 是我方格(新归属)) {
         if (是敌方格(旧归属)) return '吃地(抢塔)'
         if (是中立或迷雾地(旧归属)) {
-          行动类型 = 取得更高优先级行动类型(行动类型, '扩地(开塔)')
+          行动类型 = 取得更高我方行动类型(行动类型, 取得我方占中立行动类型(idx))
         }
       }
 
       if (是我方集兵目标(idx, 旧地块, 新地块)) {
-        行动类型 = 取得更高优先级行动类型(行动类型, '集兵')
+        行动类型 = 取得更高我方行动类型(行动类型, '集兵')
         continue
       }
 
       if (!是未占领中立目标(idx, 旧地块, 新地块) || !有相邻我方来源(idx)) {
         continue
       }
-      行动类型 = 取得更高优先级行动类型(行动类型, '扩地(开塔)')
+      行动类型 = 取得更高我方行动类型(行动类型, 取得我方占中立行动类型(idx))
     }
 
     return 行动类型
@@ -194,7 +210,7 @@ export function 更新我方行动地图判断(
     for (const 移动 of 已处理我方移动列表) {
       if (!移动产生实际变化(移动)) continue
       const 移动行动类型 = 取得移动行动类型(移动.终点)
-      行动类型 = 取得更高优先级行动类型(行动类型, 移动行动类型)
+      行动类型 = 取得更高我方行动类型(行动类型, 移动行动类型)
     }
     return 行动类型
   }
@@ -250,23 +266,114 @@ export function 更新我方行动地图判断(
     if (!Number.isInteger(目标索引) || 目标索引 < 0) return '集兵'
 
     const 塔类型 = 状态.已知塔类型.get(目标索引)
-    if (塔类型 === '中立塔') return '扩地(开塔)'
+    if (塔类型 === '中立塔') return '偷塔'
     if (塔类型 === '敌方塔') return '吃地(抢塔)'
 
     if (目标索引 >= 格子数) return '集兵'
 
     const 旧归属 = 读取地图归属(旧地图数组, 目标索引)
-    if (是中立或迷雾地(旧归属)) return '扩地(开塔)'
+    if (是中立或迷雾地(旧归属)) return 取得我方占中立行动类型(目标索引)
     if (Number.isInteger(旧归属) && 旧归属 >= 0 && !是我方或队友(旧归属)) {
       return '吃地(抢塔)'
     }
     return '集兵'
   }
 
-  function 取得更高优先级行动类型(左行动类型, 右行动类型) {
-    const 左优先级 = 行动优先级表.get(左行动类型) ?? -1
-    const 右优先级 = 行动优先级表.get(右行动类型) ?? -1
-    return 右优先级 > 左优先级 ? 右行动类型 : 左行动类型
+  function 取得敌方行动类型() {
+    const 开塔行动类型 = 取得敌方开塔行动类型()
+    if (开塔行动类型) return 开塔行动类型
+
+    const 地图变化 = 取得可见地图归属变化()
+    if (地图变化.敌方占中立塔数量 > 0) return '开塔'
+
+    const 敌方吃我方地块数量 = 取得敌方吃我方地块数量(地图变化)
+    const 敌方地块变化 = 取得敌方陆地变化()
+    if (Number.isInteger(敌方地块变化)) {
+      const 敌方自身新增地块 = 敌方地块变化 + 地图变化.我方吃敌方地块数量
+      if (敌方自身新增地块 > 0) {
+        return 敌方吃我方地块数量 > 0 ? '吃地' : '扩地'
+      }
+    }
+
+    if (敌方吃我方地块数量 > 0) return '吃地'
+    if (地图变化.敌方占中立地块数量 > 0) return '扩地'
+    return '集兵'
+  }
+
+  function 取得敌方开塔行动类型() {
+    if (!上次玩家快照 || !当前玩家快照) return null
+
+    const 新增敌方开塔数 = Math.max(
+      0,
+      当前玩家快照.敌方.开塔数 - 上次玩家快照.敌方.开塔数,
+    )
+    if (新增敌方开塔数 > 0) return '开塔'
+
+    const 判断 = 取得敌方开塔判断(上次玩家快照, 当前玩家快照)
+    if (判断.是敌方偷塔攻击) return '开塔'
+
+    return null
+  }
+
+  function 取得可见地图归属变化() {
+    let 我方吃敌方地块数量 = 0
+    let 我方占中立地块数量 = 0
+    let 敌方吃我方地块数量 = 0
+    let 敌方占中立地块数量 = 0
+    let 敌方占中立塔数量 = 0
+    for (let idx = 0; idx < 格子数; idx += 1) {
+      const 旧归属 = 读取地图归属(旧地图数组, idx)
+      const 新归属 = 读取地图归属(新地图数组, idx)
+      if (旧归属 === 新归属) continue
+
+      if (是敌方格(旧归属) && 是我方格(新归属)) {
+        我方吃敌方地块数量 += 1
+      } else if (是中立或迷雾地(旧归属) && 是我方格(新归属)) {
+        我方占中立地块数量 += 1
+      } else if (是我方格(旧归属) && 是敌方格(新归属)) {
+        敌方吃我方地块数量 += 1
+      } else if (是中立或迷雾地(旧归属) && 是敌方格(新归属)) {
+        敌方占中立地块数量 += 1
+        if (状态.已知塔集合.has(idx) || 状态.已知塔类型.has(idx)) {
+          敌方占中立塔数量 += 1
+        }
+      }
+    }
+
+    return {
+      我方吃敌方地块数量,
+      我方占中立地块数量,
+      敌方吃我方地块数量,
+      敌方占中立地块数量,
+      敌方占中立塔数量,
+    }
+  }
+
+  function 取得敌方吃我方地块数量(地图变化) {
+    const 可见数量 = 地图变化.敌方吃我方地块数量
+    if (!上次玩家快照 || !当前玩家快照) return 可见数量
+
+    const 我方地块变化 = 当前玩家快照.我方.陆地 - 上次玩家快照.我方.陆地
+    const 我方自身新增地块 =
+      地图变化.我方吃敌方地块数量 + 地图变化.我方占中立地块数量
+    return Math.max(可见数量, 我方自身新增地块 - 我方地块变化)
+  }
+
+  function 取得敌方陆地变化() {
+    if (上次玩家快照 && 当前玩家快照) {
+      return 当前玩家快照.敌方.陆地 - 上次玩家快照.敌方.陆地
+    }
+    return null
+  }
+
+  function 取得我方占中立行动类型(目标索引) {
+    return 状态.已知塔集合.has(目标索引) || 状态.已知塔类型.has(目标索引)
+      ? '偷塔'
+      : '扩地'
+  }
+
+  function 取得更高我方行动类型(左行动类型, 右行动类型) {
+    return 取得更高优先级行动类型(我方行动优先级表, 左行动类型, 右行动类型)
   }
 }
 
@@ -276,6 +383,10 @@ export function 结算我方行动回合(回合) {
 
   if (!状态.我方行动类型表.has(回合)) {
     状态.我方行动类型表.set(回合, '空闲')
+    我方行动监控数据版本 += 1
+  }
+  if (!状态.敌方行动类型表.has(回合)) {
+    状态.敌方行动类型表.set(回合, '集兵')
     我方行动监控数据版本 += 1
   }
   更新我方行动监控UI()
@@ -288,9 +399,11 @@ export function 结算当前我方行动回合() {
 
 export function 重置我方行动监控() {
   状态.我方行动类型表.clear()
+  状态.敌方行动类型表.clear()
   回放行动监控缓存 = null
   回放行动监控最小已确认回合 = null
   回放行动监控最大已确认回合 = null
+  行动监控玩家快照 = null
   我方行动监控数据版本 += 1
   更新我方行动监控UI()
 }
@@ -380,8 +493,10 @@ function 安装网页回放行动监控同步() {
 
     function 清空回放行动记录() {
       状态.我方行动类型表.clear()
+      状态.敌方行动类型表.clear()
       回放行动监控最小已确认回合 = null
       回放行动监控最大已确认回合 = null
+      行动监控玩家快照 = null
       我方行动监控数据版本 += 1
     }
 
@@ -395,6 +510,12 @@ function 安装网页回放行动监控同步() {
         if (!Number.isInteger(回合) || 回合 < 起始回合) return
 
         状态.我方行动类型表.delete(回合)
+        已删除 = true
+      })
+      状态.敌方行动类型表.forEach((_行动类型, 回合) => {
+        if (!Number.isInteger(回合) || 回合 < 起始回合) return
+
+        状态.敌方行动类型表.delete(回合)
         已删除 = true
       })
       重算回放已确认范围()
@@ -412,6 +533,9 @@ function 安装网页回放行动监控同步() {
       回放行动监控最小已确认回合 = null
       回放行动监控最大已确认回合 = null
       状态.我方行动类型表.forEach((_行动类型, 回合) => {
+        记录回放已确认回合(回合)
+      })
+      状态.敌方行动类型表.forEach((_行动类型, 回合) => {
         记录回放已确认回合(回合)
       })
     }
@@ -548,24 +672,33 @@ function 安装网页回放行动监控同步() {
       const 移动列表 = 取得回放官方移动列表(数据包, 起始回合, 结束回合)
       let 移动idx = 0
       for (let 回合 = 起始回合; 回合 < 结束回合; 回合 += 1) {
-        let 行动类型 = null
+        let 我方行动类型 = null
+        let 敌方行动类型 = null
         while (移动idx < 移动列表.length && 移动列表[移动idx].回合 === 回合) {
           const 移动 = 移动列表[移动idx]
           if (是我方或队友(移动.玩家索引)) {
-            行动类型 = 取得回放更高优先级行动类型(
-              行动类型,
-              取得回放移动行动类型(移动, 模拟地图数组),
+            我方行动类型 = 取得更高优先级行动类型(
+              我方行动优先级表,
+              我方行动类型,
+              取得回放移动行动类型(移动, 模拟地图数组, '我方'),
+            )
+          } else {
+            敌方行动类型 = 取得更高优先级行动类型(
+              敌方行动优先级表,
+              敌方行动类型,
+              取得回放移动行动类型(移动, 模拟地图数组, '敌方'),
             )
           }
           应用回放移动(模拟地图数组, 移动)
           移动idx += 1
         }
         应用回放自然增长(模拟地图数组, 回合)
-        if (行动类型) {
-          设置我方行动类型(回合, 行动类型)
+        if (我方行动类型) {
+          设置我方行动类型(回合, 我方行动类型)
         } else {
           结算我方行动回合(回合)
         }
+        设置敌方行动类型(回合, 敌方行动类型 ?? '集兵')
         记录回放已确认回合(回合)
       }
     }
@@ -598,7 +731,7 @@ function 安装网页回放行动监控同步() {
         })
     }
 
-    function 取得回放移动行动类型(移动, 地图数组) {
+    function 取得回放移动行动类型(移动, 地图数组, 阵营) {
       const 目标索引 = 移动.终点
       const 格子数 = 状态.宽度 * 状态.高度
       if (!Number.isInteger(目标索引) || 目标索引 < 0 || 目标索引 >= 格子数) {
@@ -607,15 +740,23 @@ function 安装网页回放行动监控同步() {
 
       const 旧归属 = 读取地图归属(地图数组, 目标索引)
       if (状态.已知塔集合.has(目标索引)) {
-        if (Number.isInteger(旧归属) && 旧归属 >= 0 && !是我方或队友(旧归属)) {
-          return '吃地(抢塔)'
+        if (是对手格(旧归属)) return 阵营 === '我方' ? '吃地(抢塔)' : '吃地'
+        if (!Number.isInteger(旧归属) || 旧归属 < 0) {
+          return 阵营 === '我方' ? '偷塔' : '开塔'
         }
-        if (!Number.isInteger(旧归属) || 旧归属 < 0) return '扩地(开塔)'
       }
       if (!Number.isInteger(旧归属)) return '集兵'
-      if (旧归属 < 0 && !是阻挡地形(旧归属)) return '扩地(开塔)'
-      if (旧归属 >= 0 && !是我方或队友(旧归属)) return '吃地(抢塔)'
+      if (旧归属 < 0 && !是阻挡地形(旧归属)) {
+        return 阵营 === '我方' ? '扩地' : '扩地'
+      }
+      if (是对手格(旧归属)) return 阵营 === '我方' ? '吃地(抢塔)' : '吃地'
       return '集兵'
+
+      function 是对手格(归属) {
+        if (!Number.isInteger(归属) || 归属 < 0) return false
+        const 是我方归属 = 是我方或队友(归属)
+        return 阵营 === '我方' ? !是我方归属 : 是我方归属
+      }
     }
 
     function 应用回放移动(地图数组, 移动) {
@@ -696,12 +837,6 @@ function 安装网页回放行动监控同步() {
       const 格子数 = 状态.宽度 * 状态.高度
       地图数组[2 + 格子数 + 格子索引] = 归属
     }
-
-    function 取得回放更高优先级行动类型(左行动类型, 右行动类型) {
-      const 左优先级 = 行动优先级表.get(左行动类型) ?? -1
-      const 右优先级 = 行动优先级表.get(右行动类型) ?? -1
-      return 右优先级 > 左优先级 ? 右行动类型 : 左行动类型
-    }
   }
 }
 
@@ -733,25 +868,37 @@ function 同步我方行动监控UI() {
   const 面板 = 确保面板()
   if (!面板) return
 
-  const 回合状态列表 = 取得回合状态列表()
-  const 空闲数量 = 回合状态列表.filter((回合状态) => {
+  const 我方回合状态列表 = 取得回合状态列表('我方')
+  const 敌方回合状态列表 = 取得回合状态列表('敌方')
+  const 空闲数量 = 我方回合状态列表.filter((回合状态) => {
     return 回合状态.行动类型 === '空闲'
   }).length
-  const 空闲率 = 回合状态列表.length
-    ? (空闲数量 / 回合状态列表.length) * 100
+  const 空闲率 = 我方回合状态列表.length
+    ? (空闲数量 / 我方回合状态列表.length) * 100
     : 0
   const 空闲总数元素 = 面板.querySelector('.gio-action-watch-idle-total')
   if (空闲总数元素) {
     空闲总数元素.textContent = `空闲 ${空闲数量} ${空闲率.toFixed(1)}%`
   }
-  const 列表元素 = 面板.querySelector('.gio-action-watch-list')
-  if (!列表元素) return
+  const 我方列表元素 = 面板.querySelector(
+    '.gio-action-watch-section[data-gio-action-watch-side="self"] .gio-action-watch-list',
+  )
+  const 敌方列表元素 = 面板.querySelector(
+    '.gio-action-watch-section[data-gio-action-watch-side="enemy"] .gio-action-watch-list',
+  )
+  if (!我方列表元素 || !敌方列表元素) return
 
-  const { 画布, 空状态 } = 确保画布列表(列表元素)
-  const 画布宽 = 取得画布CSS宽(列表元素)
+  const 我方画布状态 = 确保画布列表(我方列表元素)
+  const 敌方画布状态 = 确保画布列表(敌方列表元素)
+  const 画布宽 = Math.max(
+    取得画布CSS宽(我方列表元素),
+    取得画布CSS宽(敌方列表元素),
+  )
   const 起始回合 = 取得行动监控起始回合()
   const 最大已确认回合 =
-    回合状态列表[回合状态列表.length - 1]?.回合 ?? 起始回合 - 1
+    我方回合状态列表[我方回合状态列表.length - 1]?.回合 ??
+    敌方回合状态列表[敌方回合状态列表.length - 1]?.回合 ??
+    起始回合 - 1
   const 绘制签名 = `${画布宽}:${最大已确认回合}:${我方行动监控数据版本}`
   const 悬停回合 = 悬停我方行动监控回合
 
@@ -759,19 +906,33 @@ function 同步我方行动监控UI() {
     return
   面板.dataset.gioActionWatchTurns = `${绘制签名}:${悬停回合 ?? ''}`
 
-  面板.dataset.gioActionWatchEmpty = 回合状态列表.length ? 'false' : 'true'
+  const 有记录 = 我方回合状态列表.length || 敌方回合状态列表.length
+  面板.dataset.gioActionWatchEmpty = 有记录 ? 'false' : 'true'
 
-  if (!回合状态列表.length) {
-    空状态.textContent = '等待回合'
-    列表元素.appendChild(空状态)
+  if (!有记录) {
+    我方画布状态.空状态.textContent = '等待回合'
+    敌方画布状态.空状态.textContent = '等待回合'
     面板.title = '等待我方行动记录'
     return
   }
 
-  绘制行动监控画布(画布, 画布宽, 取得大回合分组(回合状态列表), 悬停回合)
-  面板.title = `空闲 ${空闲数量} / 已记录 ${回合状态列表.length}`
+  绘制行动监控画布(
+    我方画布状态.画布,
+    画布宽,
+    取得大回合分组(我方回合状态列表),
+    悬停回合,
+    '我方',
+  )
+  绘制行动监控画布(
+    敌方画布状态.画布,
+    画布宽,
+    取得大回合分组(敌方回合状态列表),
+    悬停回合,
+    '敌方',
+  )
+  面板.title = `我方空闲 ${空闲数量} / 已记录 ${我方回合状态列表.length}`
 
-  function 取得回合状态列表() {
+  function 取得回合状态列表(阵营) {
     const 最小回合 = 取得行动监控起始回合()
     const 最大回合 = 取得最大已确认回合()
     if (!Number.isInteger(最大回合) || 最大回合 < 最小回合) return []
@@ -783,10 +944,15 @@ function 同步我方行动监控UI() {
       列表.push({
         回合,
         大回合内回合: 取得大回合内回合(回合),
-        行动类型: 状态.我方行动类型表.get(回合) ?? '空闲',
+        行动类型: 取得回合行动类型(回合, 阵营),
       })
     }
     return 列表
+
+    function 取得回合行动类型(回合, 阵营) {
+      if (阵营 === '敌方') return 状态.敌方行动类型表.get(回合) ?? '集兵'
+      return 状态.我方行动类型表.get(回合) ?? '空闲'
+    }
   }
 
   function 取得最大已确认回合() {
@@ -798,6 +964,10 @@ function 同步我方行动监控UI() {
     let 最大回合 = 当前已确认回合
 
     状态.我方行动类型表.forEach((_行动类型, 回合) => {
+      if (!Number.isInteger(回合) || 回合 < 取得行动监控起始回合()) return
+      if (!Number.isInteger(最大回合) || 回合 > 最大回合) 最大回合 = 回合
+    })
+    状态.敌方行动类型表.forEach((_行动类型, 回合) => {
       if (!Number.isInteger(回合) || 回合 < 取得行动监控起始回合()) return
       if (!Number.isInteger(最大回合) || 回合 > 最大回合) 最大回合 = 回合
     })
@@ -834,10 +1004,12 @@ function 同步我方行动监控UI() {
     if (!面板 || !document.documentElement.contains(面板)) {
       面板 = document.querySelector(`.${面板类名}`)
     }
-    if (!面板) {
+    if (!面板 || !面板.querySelector('.gio-action-watch-section')) {
+      const 旧面板 = 面板
       面板 = document.createElement('section')
       面板.className = 面板类名
       面板.innerHTML =
+        '<div class="gio-action-watch-section" data-gio-action-watch-side="self">' +
         '<div class="gio-action-watch-head">' +
         '<div class="gio-action-watch-head-main">' +
         '<span class="gio-action-watch-title">我方行动监控</span>' +
@@ -846,11 +1018,28 @@ function 同步我方行动监控UI() {
         '<div class="gio-action-watch-legend">' +
         '<span data-gio-action-watch-kind="idle">空闲</span>' +
         '<span data-gio-action-watch-kind="gather">集兵</span>' +
-        '<span data-gio-action-watch-kind="expand">扩地(开塔)</span>' +
+        '<span data-gio-action-watch-kind="expand">扩地</span>' +
+        '<span data-gio-action-watch-kind="tower">偷塔</span>' +
         '<span data-gio-action-watch-kind="fight">吃地(抢塔)</span>' +
         '</div>' +
         '</div>' +
-        `<div class="gio-action-watch-list"><canvas class="${画布类名}"></canvas><span class="gio-action-watch-empty">等待回合</span></div>`
+        `<div class="gio-action-watch-list"><canvas class="${画布类名}"></canvas><span class="gio-action-watch-empty">等待回合</span></div>` +
+        '</div>' +
+        '<div class="gio-action-watch-section" data-gio-action-watch-side="enemy">' +
+        '<div class="gio-action-watch-head">' +
+        '<div class="gio-action-watch-head-main">' +
+        '<span class="gio-action-watch-title">敌方行动监控</span>' +
+        '</div>' +
+        '<div class="gio-action-watch-legend">' +
+        '<span data-gio-action-watch-kind="gather">集兵</span>' +
+        '<span data-gio-action-watch-kind="expand">扩地</span>' +
+        '<span data-gio-action-watch-kind="fight">吃地</span>' +
+        '<span data-gio-action-watch-kind="tower">开塔</span>' +
+        '</div>' +
+        '</div>' +
+        `<div class="gio-action-watch-list"><canvas class="${画布类名}"></canvas><span class="gio-action-watch-empty">等待回合</span></div>` +
+        '</div>'
+      旧面板?.replaceWith(面板)
     }
 
     if (
@@ -952,7 +1141,7 @@ function 同步我方行动监控UI() {
     return Math.max(716, Math.floor(列表元素.clientWidth || 0))
   }
 
-  function 绘制行动监控画布(画布, css宽, 分组表, 悬停回合) {
+  function 绘制行动监控画布(画布, css宽, 分组表, 悬停回合, 阵营) {
     const dpr = window.devicePixelRatio ?? 1
     const 标签宽 = 38
     const 标签间距 = 6
@@ -1023,7 +1212,7 @@ function 同步我方行动监控UI() {
       const 列 = 序号 % 每行回合数
       const x = 标签宽 + 标签间距 + 列 * (单元宽 + 单元间距)
       const y = 组Y + 行 * (单元高 + 单元间距)
-      const 样式 = 取得行动样式(回合状态.行动类型)
+      const 样式 = 取得行动样式(回合状态.行动类型, 阵营)
       画布.__gioActionWatchHitBoxes.push({
         回合: 回合状态.回合,
         x,
@@ -1032,7 +1221,7 @@ function 同步我方行动监控UI() {
         高: 单元高,
       })
 
-      if (回合状态.行动类型 === '吃地(抢塔)') {
+      if (回合状态.行动类型 === '吃地(抢塔)' || 回合状态.行动类型 === '吃地') {
         绘制五角星(x, y, 单元宽, 单元高, 样式.背景)
       } else {
         ctx.fillStyle = 样式.背景
@@ -1081,14 +1270,20 @@ function 同步我方行动监控UI() {
       ctx.fill()
     }
 
-    function 取得行动样式(行动类型) {
+    function 取得行动样式(行动类型, 阵营) {
       if (行动类型 === '空闲') {
         return { 背景: '#b4232a', 文字: '#fff7f7' }
       }
-      if (行动类型 === '扩地(开塔)') {
+      if (行动类型 === '扩地') {
         return { 背景: '#247448', 文字: '#effff5' }
       }
-      if (行动类型 === '吃地(抢塔)') {
+      if (行动类型 === '偷塔' || 行动类型 === '开塔') {
+        return {
+          背景: 阵营 === '敌方' ? '#d64545' : '#0e8fb8',
+          文字: '#f7fbff',
+        }
+      }
+      if (行动类型 === '吃地(抢塔)' || 行动类型 === '吃地') {
         return { 背景: '#d48b13', 文字: '#fff8ee' }
       }
       return {
@@ -1112,14 +1307,53 @@ function 取得行动监控起始回合() {
 
 function 设置我方行动类型(回合, 行动类型) {
   const 旧行动类型 = 状态.我方行动类型表.get(回合)
-  const 旧优先级 = 行动优先级表.get(旧行动类型) ?? -1
-  const 新优先级 = 行动优先级表.get(行动类型) ?? -1
+  const 旧优先级 = 我方行动优先级表.get(旧行动类型) ?? -1
+  const 新优先级 = 我方行动优先级表.get(行动类型) ?? -1
   if (旧行动类型 === 行动类型) return
   if (旧优先级 > 新优先级) return
 
   状态.我方行动类型表.set(回合, 行动类型)
   我方行动监控数据版本 += 1
   更新我方行动监控UI()
+}
+
+function 设置敌方行动类型(回合, 行动类型) {
+  const 旧行动类型 = 状态.敌方行动类型表.get(回合)
+  const 旧优先级 = 敌方行动优先级表.get(旧行动类型) ?? -1
+  const 新优先级 = 敌方行动优先级表.get(行动类型) ?? -1
+  if (旧行动类型 === 行动类型) return
+  if (旧优先级 > 新优先级) return
+
+  状态.敌方行动类型表.set(回合, 行动类型)
+  我方行动监控数据版本 += 1
+  更新我方行动监控UI()
+}
+
+function 读取行动监控玩家快照(数据包, 回合) {
+  const 玩家数据 =
+    读取分数玩家数据(数据包) ?? 读取快照玩家数据() ?? 读取页面玩家数据()
+  if (!玩家数据) return null
+
+  const 塔数 = 统计塔数()
+  return {
+    回合,
+    我方: {
+      ...玩家数据.我方,
+      塔数: 塔数.我方塔数,
+      开塔数: 塔数.我方开塔数,
+    },
+    敌方: {
+      ...玩家数据.敌方,
+      塔数: 塔数.敌方塔数,
+      开塔数: 塔数.敌方开塔数,
+    },
+  }
+}
+
+function 取得更高优先级行动类型(优先级表, 左行动类型, 右行动类型) {
+  const 左优先级 = 优先级表.get(左行动类型) ?? -1
+  const 右优先级 = 优先级表.get(右行动类型) ?? -1
+  return 右优先级 > 左优先级 ? 右行动类型 : 左行动类型
 }
 
 function 安装样式() {
@@ -1143,6 +1377,11 @@ function 安装样式() {
     position: fixed;
     width: min(520px, calc(100vw - 24px));
     z-index: 2147482999;
+}
+.gio-action-watch-section + .gio-action-watch-section {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(124, 148, 176, 0.22);
 }
 .gio-action-watch-head {
     display: flex;
@@ -1197,6 +1436,13 @@ function 安装样式() {
 .gio-action-watch-legend [data-gio-action-watch-kind="expand"] {
     background: rgba(36, 116, 72, 0.82);
     color: #effff5;
+}
+.gio-action-watch-legend [data-gio-action-watch-kind="tower"] {
+    background: rgba(14, 143, 184, 0.82);
+    color: #f7fbff;
+}
+.gio-action-watch-section[data-gio-action-watch-side="enemy"] .gio-action-watch-legend [data-gio-action-watch-kind="tower"] {
+    background: rgba(214, 69, 69, 0.84);
 }
 .gio-action-watch-legend [data-gio-action-watch-kind="fight"] {
     background: rgba(212, 139, 19, 0.82);
