@@ -161,19 +161,25 @@ function 记录当前棋盘快照(目标回合) {
   const 画布 = 取游戏画布()
   if (!画布?.width || !画布?.height) return
 
-  const 图像画布 = document.createElement('canvas')
-  图像画布.width = 画布.width
-  图像画布.height = 画布.height
+  let 来源 = '当前地图缓存棋盘'
+  let 图像画布 = 生成当前地图缓存棋盘画布(画布)
+  if (!图像画布) {
+    来源 = '当前画布'
+    图像画布 = document.createElement('canvas')
+    图像画布.width = 画布.width
+    图像画布.height = 画布.height
 
-  const ctx = 图像画布.getContext('2d')
-  if (!ctx) return
+    const ctx = 图像画布.getContext('2d')
+    if (!ctx) return
 
-  ctx.drawImage(画布, 0, 0)
+    ctx.drawImage(画布, 0, 0)
+  }
+
   状态.终局前棋盘恢复 = {
     图像画布,
-    兵力表格数据: 读取当前页面兵力表格数据(),
+    兵力表格数据: 读取当前页面兵力表格数据() ?? 生成当前地图缓存兵力表格数据(),
     目标回合,
-    来源: '当前画布',
+    来源,
     回放编号: null,
   }
   重建终局前兵力表格()
@@ -470,11 +476,19 @@ function 读取兵力表格数据(文字表格) {
 
 function 生成回放兵力表格数据(数据包) {
   const 地图信息 = 取得回放地图信息(数据包)
+  return 生成地图兵力表格数据(地图信息, 数据包?.cities)
+}
+
+function 生成当前地图缓存兵力表格数据() {
+  return 生成地图兵力表格数据(取得当前地图缓存信息(), 状态.塔列表)
+}
+
+function 生成地图兵力表格数据(地图信息, 塔列表) {
   if (!地图信息) return null
 
   const { 宽度, 高度, 兵力列表, 归属列表 } = 地图信息
   const 塔集合 = new Set(
-    (数据包?.cities ?? []).filter(function (索引) {
+    (塔列表 ?? []).filter(function (索引) {
       return Number.isInteger(索引)
     }),
   )
@@ -493,8 +507,16 @@ function 生成回放兵力表格数据(数据包) {
   return { 宽度, 高度, 文本列表 }
 }
 
+function 生成当前地图缓存棋盘画布(参照画布) {
+  return 生成地图棋盘画布(取得当前地图缓存信息(), 参照画布, 状态.塔列表)
+}
+
 function 生成回放棋盘画布(数据包, 参照画布) {
   const 地图信息 = 取得回放地图信息(数据包)
+  return 生成地图棋盘画布(地图信息, 参照画布, 数据包?.cities, 数据包?.generals)
+}
+
+function 生成地图棋盘画布(地图信息, 参照画布, 塔列表, 基地列表) {
   if (!地图信息 || !参照画布?.width || !参照画布?.height) return null
 
   const 图像画布 = document.createElement('canvas')
@@ -508,12 +530,12 @@ function 生成回放棋盘画布(数据包, 参照画布) {
   const 格宽 = 图像画布.width / 宽度
   const 格高 = 图像画布.height / 高度
   const 塔集合 = new Set(
-    (数据包?.cities ?? []).filter(function (索引) {
+    (塔列表 ?? []).filter(function (索引) {
       return Number.isInteger(索引)
     }),
   )
   const 基地集合 = new Set(
-    (数据包?.generals ?? []).filter(function (索引) {
+    (基地列表 ?? []).filter(function (索引) {
       return Number.isInteger(索引)
     }),
   )
@@ -785,6 +807,26 @@ function 取得回放地图信息(数据包) {
     }
   }
 
+  if (!Array.isArray(地图) || 地图.length < 2) return null
+
+  const 宽度 = 地图[0]
+  const 高度 = 地图[1]
+  const 格子数 = 宽度 * 高度
+  if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) {
+    return null
+  }
+  if (地图.length < 2 + 格子数 * 2) return null
+
+  return {
+    宽度,
+    高度,
+    兵力列表: 地图.slice(2, 2 + 格子数),
+    归属列表: 地图.slice(2 + 格子数, 2 + 格子数 * 2),
+  }
+}
+
+function 取得当前地图缓存信息() {
+  const 地图 = 状态.地图数组
   if (!Array.isArray(地图) || 地图.length < 2) return null
 
   const 宽度 = 地图[0]
