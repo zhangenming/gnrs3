@@ -41,6 +41,7 @@ let 恢复任务 = null
 let 回放编号重试定时器 = null
 let 回放画布轮询定时器 = null
 let 请求重绘 = null
+let 终局前棋盘画布 = null
 let 终局前兵力表格 = null
 
 export const 功能定义 = {
@@ -77,7 +78,7 @@ export const 覆盖层功能 = {
   id: 功能定义.id,
   层级: -10000,
   渲染前() {
-    同步终局前兵力表格()
+    同步终局前棋盘DOM()
   },
   需要绘制() {
     return Boolean(状态.终局前棋盘恢复?.图像画布)
@@ -114,7 +115,7 @@ function 准备终局前棋盘恢复(数据包, 参数, 请求渲染) {
 }
 
 function 重置终局前棋盘恢复() {
-  移除终局前兵力表格()
+  移除终局前棋盘DOM()
   状态.终局前棋盘恢复 = null
   恢复任务 = null
   请求重绘 = null
@@ -182,7 +183,7 @@ function 记录当前棋盘快照(目标回合) {
     来源,
     回放编号: null,
   }
-  重建终局前兵力表格()
+  重建终局前棋盘DOM()
   请求重绘?.()
 }
 
@@ -309,7 +310,7 @@ function 记录回放棋盘快照(回放结果, 任务) {
     来源: '回放',
     回放编号: 任务.回放编号,
   }
-  重建终局前兵力表格()
+  重建终局前棋盘DOM()
   请求重绘?.()
 }
 
@@ -359,7 +360,7 @@ function 补当前棋盘快照数字(任务) {
     来源: 图像画布 ? '回放文件棋盘' : '回放文件数字',
     回放编号: 任务.回放编号,
   }
-  重建终局前兵力表格()
+  重建终局前棋盘DOM()
   请求重绘?.()
 }
 
@@ -637,36 +638,85 @@ function 取得回放地块颜色(归属) {
   return 原始地图颜色列表[归属 % 原始地图颜色列表.length] ?? 敌方红色
 }
 
-function 重建终局前兵力表格() {
-  移除终局前兵力表格()
-  同步终局前兵力表格()
+function 重建终局前棋盘DOM() {
+  移除终局前棋盘DOM()
+  同步终局前棋盘DOM()
 }
 
-function 同步终局前兵力表格() {
-  const 兵力表格数据 = 状态.终局前棋盘恢复?.兵力表格数据
-  if (!兵力表格数据) {
-    移除终局前兵力表格()
+function 同步终局前棋盘DOM() {
+  const 快照 = 状态.终局前棋盘恢复
+  if (!快照?.图像画布) {
+    移除终局前棋盘DOM()
     return
   }
 
   const 画布 = 取游戏画布()
   const 宿主 = 取宿主(画布)
   if (!画布 || !宿主) {
-    移除终局前兵力表格()
+    移除终局前棋盘DOM()
     return
   }
 
-  if (!终局前兵力表格) {
-    终局前兵力表格 = 创建终局前兵力表格(兵力表格数据)
+  if (!终局前棋盘画布) {
+    终局前棋盘画布 = 创建终局前棋盘画布()
   }
-  if (终局前兵力表格.parentElement !== 宿主) {
+  if (终局前棋盘画布.parentElement !== 宿主) {
+    宿主.appendChild(终局前棋盘画布)
+  }
+
+  同步终局前棋盘画布内容(终局前棋盘画布, 快照.图像画布)
+
+  if (快照.兵力表格数据 && !终局前兵力表格) {
+    终局前兵力表格 = 创建终局前兵力表格(快照.兵力表格数据)
+  } else if (!快照.兵力表格数据) {
+    移除终局前兵力表格()
+  }
+  if (终局前兵力表格 && 终局前兵力表格.parentElement !== 宿主) {
     宿主.appendChild(终局前兵力表格)
   }
 
-  const 定位 = 读取终局前兵力表格定位(画布, 宿主)
+  const 定位 = 读取终局前棋盘DOM定位(画布, 宿主)
   if (!定位) return
 
-  const 样式 = 终局前兵力表格.style
+  同步DOM定位(终局前棋盘画布, 定位)
+  if (终局前兵力表格) 同步DOM定位(终局前兵力表格, 定位)
+}
+
+function 创建终局前棋盘画布() {
+  const 画布 = document.createElement('canvas')
+  画布.className = 'gio-before-end-board-canvas'
+  画布.setAttribute('aria-hidden', 'true')
+  Object.assign(画布.style, {
+    position: 'absolute',
+    left: '0px',
+    top: '0px',
+    pointerEvents: 'none',
+    zIndex: String(覆盖层层级),
+  })
+  return 画布
+}
+
+function 同步终局前棋盘画布内容(目标画布, 来源画布) {
+  if (
+    目标画布.__gio来源画布 === 来源画布 &&
+    目标画布.width === 来源画布.width &&
+    目标画布.height === 来源画布.height
+  ) {
+    return
+  }
+
+  目标画布.width = 来源画布.width
+  目标画布.height = 来源画布.height
+  const ctx = 目标画布.getContext('2d')
+  if (!ctx) return
+
+  ctx.clearRect(0, 0, 目标画布.width, 目标画布.height)
+  ctx.drawImage(来源画布, 0, 0)
+  目标画布.__gio来源画布 = 来源画布
+}
+
+function 同步DOM定位(元素, 定位) {
+  const 样式 = 元素.style
   样式.left = `${定位.左}px`
   样式.top = `${定位.上}px`
   样式.width = `${定位.宽}px`
@@ -733,7 +783,13 @@ function 移除终局前兵力表格() {
   终局前兵力表格 = null
 }
 
-function 读取终局前兵力表格定位(画布, 宿主) {
+function 移除终局前棋盘DOM() {
+  终局前棋盘画布?.remove()
+  终局前棋盘画布 = null
+  移除终局前兵力表格()
+}
+
+function 读取终局前棋盘DOM定位(画布, 宿主) {
   const 画布矩形 = 画布.getBoundingClientRect()
   const 宿主矩形 = 宿主.getBoundingClientRect()
   const 地图元素 = 画布.closest('#gameMap')
