@@ -42,6 +42,8 @@ let 正在等待ECharts = false
 const 图表渲染签名表 = new Map()
 let 图表显示系列 = { 兵力差: true, 陆地差: false }
 let 网页回放同步动画帧编号 = null
+let 回放最新数据签名 = null
+let 回放稳定数据签名 = null
 
 export const 功能定义 = {
   id: '游戏数据进展图表',
@@ -88,8 +90,17 @@ function 同步游戏数据进展图表() {
 function 记录网页回放数据进展() {
   if (!是网页回放页()) return
   const 回合 = 读取显示回合()
+  const 差值 = 读取页面数据差()
+  const 当前数据签名 = 取得回放数据签名(回合, 差值)
+  if (当前数据签名) {
+    if (当前数据签名 === 回放最新数据签名) {
+      回放稳定数据签名 = 当前数据签名
+    } else {
+      回放最新数据签名 = 当前数据签名
+    }
+  }
   截断回放数据进展(回合)
-  记录游戏数据进展点(回合, 读取页面数据差)
+  记录游戏数据进展点(回合, () => 差值)
 }
 
 function 安装网页回放数据进展同步() {
@@ -127,6 +138,8 @@ function 记录游戏数据进展点(回合, 读取差值) {
     const 旧数据点 = 状态.游戏数据进展列表[已有索引]
     if (
       状态.游戏数据进展上次统计回合 === 回合 &&
+      旧数据点.兵力差 === 数据点.兵力差 &&
+      旧数据点.陆地差 === 数据点.陆地差 &&
       取得开塔进展签名(开塔进展) === 取得开塔进展签名(旧数据点)
     ) {
       return
@@ -160,6 +173,8 @@ function 截断回放数据进展(回合) {
 export function 重置游戏数据进展() {
   状态.游戏数据进展列表 = []
   状态.游戏数据进展上次统计回合 = null
+  回放最新数据签名 = null
+  回放稳定数据签名 = null
   图表渲染签名表.clear()
   图表实例表.forEach((图表实例) => {
     图表实例.clear()
@@ -337,6 +352,11 @@ function 是网页回放页() {
     globalThis.location?.pathname?.startsWith('/replays/') ||
     document.getElementById('replay-turn-jump-input'),
   )
+}
+
+function 取得回放数据签名(回合, 数据点) {
+  if (!Number.isInteger(回合) || !数据点) return ''
+  return [回合, 数据点.兵力差, 数据点.陆地差].join(':')
 }
 
 function 是游戏结束数据(数据包) {
@@ -529,8 +549,18 @@ function 图表元素可用(图表元素) {
   return Boolean(图表元素?.isConnected && 图表元素.offsetParent)
 }
 
+function 取得图表数据列表() {
+  const 数据列表 = 状态.游戏数据进展列表
+  if (!是网页回放页() || 数据列表.length <= 1) return 数据列表
+
+  const 最后数据点 = 数据列表.at(-1)
+  const 最后数据签名 = 取得回放数据签名(最后数据点?.回合, 最后数据点)
+  if (最后数据签名 === 回放稳定数据签名) return 数据列表
+  return 数据列表.slice(0, -1)
+}
+
 function 取得图表渲染签名(图表元素, 图表类型) {
-  const 数据签名 = 状态.游戏数据进展列表
+  const 数据签名 = 取得图表数据列表()
     .map((数据点) => {
       return [
         数据点.回合,
@@ -550,7 +580,7 @@ function 取得图表渲染签名(图表元素, 图表类型) {
 }
 
 function 取得图表配置(图表类型) {
-  const 数据列表 = 状态.游戏数据进展列表
+  const 数据列表 = 取得图表数据列表()
   const 兵力差变化列表 = 取得兵力差变化列表(数据列表)
   const 大回合陆地兵力差列表 = 取得大回合陆地兵力差列表(数据列表)
   if (图表类型 === 大回合陆地兵力差图表类型) {
