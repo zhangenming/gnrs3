@@ -21,11 +21,13 @@ function 安装回放大回合逐帧跳转() {
   if (已安装) return
   已安装 = true
   let 逐帧跳转令牌 = 0
+  let 已自动跳转回放地址 = null
 
   window.addEventListener('keydown', 处理回放大回合快捷键, {
     capture: true,
     passive: false,
   })
+  请求自动跳到第50回合()
 
   function 处理回放大回合快捷键(事件) {
     if (!功能已启用(功能定义.id)) return
@@ -47,6 +49,40 @@ function 安装回放大回合逐帧跳转() {
     if (事件.repeat) return
 
     请求开始逐帧跳转(方向)
+  }
+
+  function 请求自动跳到第50回合() {
+    requestAnimationFrame(尝试自动跳转)
+
+    function 尝试自动跳转() {
+      const 回放地址 = 取得回放地址()
+      if (!回放地址) {
+        requestAnimationFrame(尝试自动跳转)
+        return
+      }
+      if (已自动跳转回放地址 === 回放地址) {
+        requestAnimationFrame(尝试自动跳转)
+        return
+      }
+      if (!功能已启用(功能定义.id) || !是网页回放中()) {
+        requestAnimationFrame(尝试自动跳转)
+        return
+      }
+      if (!回放回合控件已就绪()) {
+        requestAnimationFrame(尝试自动跳转)
+        return
+      }
+
+      const 当前回合 = 读取显示回合()
+      if (!Number.isInteger(当前回合)) {
+        requestAnimationFrame(尝试自动跳转)
+        return
+      }
+
+      已自动跳转回放地址 = 回放地址
+      if (当前回合 < 大回合turn数) 请求开始逐帧跳转(1)
+      requestAnimationFrame(尝试自动跳转)
+    }
   }
 
   function 请求开始逐帧跳转(方向) {
@@ -154,6 +190,11 @@ function 安装回放大回合逐帧跳转() {
       globalThis.location?.pathname?.startsWith('/replays/') ||
       document.getElementById('replay-turn-jump-input'),
     )
+  }
+
+  function 取得回放地址() {
+    if (!是网页回放中()) return null
+    return `${globalThis.location?.pathname ?? ''}${globalThis.location?.search ?? ''}`
   }
 
   function 回放回合控件已就绪() {
