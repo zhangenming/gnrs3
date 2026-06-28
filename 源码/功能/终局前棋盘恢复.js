@@ -3,9 +3,8 @@
 import { 注册功能 } from '../注册中心.js'
 import { 状态 } from '../状态.js'
 import { 功能已启用 } from '../功能状态.js'
-import { 取游戏画布, 是游戏结束事件 } from '../游戏工具.js'
-import { 画兵力文本 } from '../覆盖层工具.js'
-import { 大回合turn数, 基地自然增长turn数 } from '../配置.js'
+import { 取游戏画布, 取宿主, 是游戏结束事件 } from '../游戏工具.js'
+import { 大回合turn数, 基地自然增长turn数, 覆盖层层级 } from '../配置.js'
 
 const iframe编号 = 'gio-before-end-board-replay-frame'
 const 回放编号重试间隔毫秒 = 500
@@ -17,6 +16,7 @@ let 恢复任务 = null
 let 回放编号重试定时器 = null
 let 回放画布轮询定时器 = null
 let 请求重绘 = null
+let 终局前兵力表格 = null
 
 export const 功能定义 = {
   id: '终局前棋盘恢复',
@@ -51,6 +51,9 @@ export const 功能恢复 = {
 export const 覆盖层功能 = {
   id: 功能定义.id,
   层级: -10000,
+  渲染前() {
+    同步终局前兵力表格()
+  },
   需要绘制() {
     return Boolean(状态.终局前棋盘恢复?.图像画布)
   },
@@ -86,6 +89,7 @@ function 准备终局前棋盘恢复(数据包, 参数, 请求渲染) {
 }
 
 function 重置终局前棋盘恢复() {
+  移除终局前兵力表格()
   状态.终局前棋盘恢复 = null
   恢复任务 = null
   请求重绘 = null
@@ -142,10 +146,12 @@ function 记录当前棋盘快照(目标回合) {
   ctx.drawImage(画布, 0, 0)
   状态.终局前棋盘恢复 = {
     图像画布,
+    兵力表格数据: 读取当前页面兵力表格数据(),
     目标回合,
     来源: '当前画布',
     回放编号: null,
   }
+  重建终局前兵力表格()
   请求重绘?.()
 }
 
@@ -226,9 +232,12 @@ function 读取iframe回放结果(iframe, 目标回合) {
   const 画布 = 文档.querySelector('#gameMap .game-map-canvas')
   if (!画布?.width || !画布?.height) return null
 
+  const 兵力表格数据 = 读取兵力表格数据(
+    文档.querySelector('#gameMap .game-cursor-table'),
+  )
   const 数据包 = 恢复任务?.回放数据包 ?? 读取回放数据包(文档)
-  if (!数据包) return null
-  return { 画布, 数据包 }
+  if (!数据包 && !兵力表格数据) return null
+  return { 画布, 数据包, 兵力表格数据 }
 }
 
 async function 加载回放数据(任务) {
@@ -252,7 +261,7 @@ async function 加载回放数据(任务) {
 }
 
 function 记录回放棋盘快照(回放结果, 任务) {
-  const { 画布: 回放画布, 数据包 } = 回放结果
+  const { 画布: 回放画布, 数据包, 兵力表格数据 } = 回放结果
   const 图像画布 = document.createElement('canvas')
   图像画布.width = 回放画布.width
   图像画布.height = 回放画布.height
@@ -261,13 +270,14 @@ function 记录回放棋盘快照(回放结果, 任务) {
   if (!ctx) return
 
   ctx.drawImage(回放画布, 0, 0)
-  画回放兵力数字(ctx, 图像画布, 数据包)
   状态.终局前棋盘恢复 = {
     图像画布,
+    兵力表格数据: 兵力表格数据 ?? 生成回放兵力表格数据(数据包),
     目标回合: 任务.目标回合,
     来源: '回放',
     回放编号: 任务.回放编号,
   }
+  重建终局前兵力表格()
   请求重绘?.()
 }
 
@@ -277,15 +287,16 @@ function 补当前棋盘快照数字(任务) {
   const 快照 = 状态.终局前棋盘恢复
   if (!快照?.图像画布 || 快照.来源 === '回放') return
 
-  const ctx = 快照.图像画布.getContext('2d')
-  if (!ctx) return
+  const 兵力表格数据 = 生成回放兵力表格数据(任务.回放数据包)
+  if (!兵力表格数据) return
 
-  画回放兵力数字(ctx, 快照.图像画布, 任务.回放数据包)
   状态.终局前棋盘恢复 = {
     ...快照,
+    兵力表格数据,
     来源: '回放文件数字',
     回放编号: 任务.回放编号,
   }
+  重建终局前兵力表格()
   请求重绘?.()
 }
 
@@ -366,43 +377,215 @@ function 读取回放数据包(文档) {
   }
 }
 
-function 画回放兵力数字(ctx, 图像画布, 数据包) {
+function 读取当前页面兵力表格数据() {
+  return 读取兵力表格数据(document.querySelector('#gameMap .game-cursor-table'))
+}
+
+function 读取兵力表格数据(文字表格) {
+  const 行列表 = Array.from(文字表格?.rows ?? [])
+  if (!行列表.length) return null
+
+  const 高度 = 行列表.length
+  const 宽度 = Math.max(
+    ...行列表.map(function (行) {
+      return 行.cells.length
+    }),
+  )
+  if (!Number.isInteger(宽度) || 宽度 <= 0) return null
+
+  const 文本列表 = new Array(宽度 * 高度).fill('')
+  for (let 行idx = 0; 行idx < 高度; 行idx += 1) {
+    const 单元格列表 = 行列表[行idx].cells
+    for (let 列idx = 0; 列idx < 宽度; 列idx += 1) {
+      const 单元格 = 单元格列表[列idx]
+      const 文本 = (
+        单元格?.querySelector('span')?.textContent ??
+        单元格?.textContent ??
+        ''
+      ).trim()
+      if (/^\d+$/.test(文本)) 文本列表[行idx * 宽度 + 列idx] = 文本
+    }
+  }
+
+  if (!文本列表.some(Boolean)) return null
+  return { 宽度, 高度, 文本列表 }
+}
+
+function 生成回放兵力表格数据(数据包) {
   const 地图信息 = 取得回放地图信息(数据包)
-  if (!地图信息) return
+  if (!地图信息) return null
 
   const { 宽度, 高度, 兵力列表, 归属列表 } = 地图信息
-  const 格宽 = 图像画布.width / 宽度
-  const 格高 = 图像画布.height / 高度
-  const 大小 = Math.min(格宽, 格高)
-  const 不补数字集合 = 取得官方已有数字集合(数据包)
+  const 塔集合 = new Set(
+    (数据包?.cities ?? []).filter(function (索引) {
+      return Number.isInteger(索引)
+    }),
+  )
+  const 文本列表 = new Array(宽度 * 高度).fill('')
 
-  for (let idx = 0; idx < 兵力列表.length; idx += 1) {
-    if (不补数字集合.has(idx)) continue
-
+  for (let idx = 0; idx < 文本列表.length; idx += 1) {
     const 兵力 = 兵力列表[idx]
     const 归属 = 归属列表[idx]
-    if (!Number.isInteger(兵力) || 兵力 <= 1) continue
-    if (!Number.isInteger(归属) || 归属 < 0) continue
+    if (!Number.isInteger(兵力) || 兵力 <= 0) continue
+    if (!塔集合.has(idx) && (!Number.isInteger(归属) || 归属 < 0)) continue
 
-    const 行 = Math.floor(idx / 宽度)
-    const 列 = idx % 宽度
-    画兵力文本(ctx, 列 * 格宽, 行 * 格高, 大小, String(兵力), '#ffffff')
+    文本列表[idx] = String(兵力)
   }
 
-  function 取得官方已有数字集合(数据包) {
-    const 集合 = new Set()
-    if (Array.isArray(数据包?.cities)) {
-      for (const 塔索引 of 数据包.cities) {
-        if (Number.isInteger(塔索引)) 集合.add(塔索引)
-      }
-    }
-    if (Array.isArray(数据包?.generals)) {
-      for (const 基地索引 of 数据包.generals) {
-        if (Number.isInteger(基地索引)) 集合.add(基地索引)
-      }
-    }
-    return 集合
+  if (!文本列表.some(Boolean)) return null
+  return { 宽度, 高度, 文本列表 }
+}
+
+function 重建终局前兵力表格() {
+  移除终局前兵力表格()
+  同步终局前兵力表格()
+}
+
+function 同步终局前兵力表格() {
+  const 兵力表格数据 = 状态.终局前棋盘恢复?.兵力表格数据
+  if (!兵力表格数据) {
+    移除终局前兵力表格()
+    return
   }
+
+  const 画布 = 取游戏画布()
+  const 宿主 = 取宿主(画布)
+  if (!画布 || !宿主) {
+    移除终局前兵力表格()
+    return
+  }
+
+  if (!终局前兵力表格) {
+    终局前兵力表格 = 创建终局前兵力表格(兵力表格数据)
+  }
+  if (终局前兵力表格.parentElement !== 宿主) {
+    宿主.appendChild(终局前兵力表格)
+  }
+
+  const 定位 = 读取终局前兵力表格定位(画布, 宿主)
+  if (!定位) return
+
+  const 样式 = 终局前兵力表格.style
+  样式.left = `${定位.左}px`
+  样式.top = `${定位.上}px`
+  样式.width = `${定位.宽}px`
+  样式.height = `${定位.高}px`
+}
+
+function 创建终局前兵力表格(兵力表格数据) {
+  const 表格 = document.createElement('table')
+  表格.className = 'gio-before-end-army-table'
+  表格.setAttribute('aria-hidden', 'true')
+  Object.assign(表格.style, {
+    position: 'absolute',
+    left: '0px',
+    top: '0px',
+    borderCollapse: 'collapse',
+    borderSpacing: '0',
+    tableLayout: 'fixed',
+    pointerEvents: 'none',
+    zIndex: String(覆盖层层级 + 1),
+    color: '#fff',
+    font:
+      '700 12px Quicksand, "Microsoft YaHei", "PingFang SC", ' +
+      '"Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", ' +
+      '"WenQuanYi Micro Hei", "Liberation Sans", sans-serif',
+    lineHeight: 'normal',
+    textShadow:
+      'rgb(0, 0, 0) -1px 0px 2px, rgb(0, 0, 0) 0px 1px 2px, ' +
+      'rgb(0, 0, 0) 1px 0px 2px, rgb(0, 0, 0) 0px -1px 2px',
+  })
+
+  const tbody = document.createElement('tbody')
+  for (let 行idx = 0; 行idx < 兵力表格数据.高度; 行idx += 1) {
+    const 行 = document.createElement('tr')
+    行.style.height = `${100 / 兵力表格数据.高度}%`
+
+    for (let 列idx = 0; 列idx < 兵力表格数据.宽度; 列idx += 1) {
+      const 单元格 = document.createElement('td')
+      Object.assign(单元格.style, {
+        width: `${100 / 兵力表格数据.宽度}%`,
+        padding: '0',
+        border: '0',
+        boxSizing: 'border-box',
+        position: 'relative',
+        textAlign: 'center',
+        verticalAlign: 'middle',
+        whiteSpace: 'nowrap',
+      })
+
+      const 文本 = document.createElement('span')
+      文本.textContent =
+        兵力表格数据.文本列表[行idx * 兵力表格数据.宽度 + 列idx] ?? ''
+      单元格.appendChild(文本)
+      行.appendChild(单元格)
+    }
+
+    tbody.appendChild(行)
+  }
+  表格.appendChild(tbody)
+  return 表格
+}
+
+function 移除终局前兵力表格() {
+  终局前兵力表格?.remove()
+  终局前兵力表格 = null
+}
+
+function 读取终局前兵力表格定位(画布, 宿主) {
+  const 画布矩形 = 画布.getBoundingClientRect()
+  const 宿主矩形 = 宿主.getBoundingClientRect()
+  const 地图元素 = 画布.closest('#gameMap')
+  const 官方文字表格 = 地图元素?.querySelector('.game-cursor-table')
+  const 当前缩放 = Math.max(
+    0.0001,
+    读取数字(地图元素?.style.getPropertyValue('--gio-adaptive-map-scale'), 1),
+  )
+  const 宽 = Math.max(
+    1,
+    读取像素尺寸(
+      画布.style.width,
+      官方文字表格?.style.width,
+      地图元素?.style.width,
+      地图元素?.style.getPropertyValue('--gio-adaptive-map-width'),
+      画布矩形.width / 当前缩放,
+      画布.offsetWidth,
+      画布矩形.width,
+    ),
+  )
+  const 高 = Math.max(
+    1,
+    读取像素尺寸(
+      画布.style.height,
+      官方文字表格?.style.height,
+      地图元素?.style.height,
+      地图元素?.style.getPropertyValue('--gio-adaptive-map-height'),
+      画布矩形.height / 当前缩放,
+      画布.offsetHeight,
+      画布矩形.height,
+    ),
+  )
+  const 左 =
+    画布.parentElement === 宿主
+      ? 画布.offsetLeft
+      : 画布矩形.left - 宿主矩形.left
+  const 上 =
+    画布.parentElement === 宿主 ? 画布.offsetTop : 画布矩形.top - 宿主矩形.top
+
+  return { 左, 上, 宽, 高 }
+}
+
+function 读取像素尺寸(...候选值列表) {
+  for (const 候选值 of 候选值列表) {
+    const 数值 = 读取数字(候选值, 0)
+    if (数值 > 0) return 数值
+  }
+  return 0
+}
+
+function 读取数字(值, 默认值) {
+  const 数值 = Number.parseFloat(值)
+  return Number.isFinite(数值) ? 数值 : 默认值
 }
 
 function 取得回放地图信息(数据包) {
