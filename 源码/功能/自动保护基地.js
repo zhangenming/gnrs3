@@ -31,6 +31,10 @@ export const socket功能 = {
   id: 功能定义.id,
   新局重置: 重置自动保护基地,
   game_update(上下文) {
+    if (上下文.已自动吃基地) {
+      上下文.已自动保护 = false
+      return
+    }
     上下文.已自动保护 = 功能已启用('自动保护基地')
       ? 尝试自动保护基地(上下文.socket, 上下文.请求渲染)
       : false

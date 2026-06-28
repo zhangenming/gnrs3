@@ -35,22 +35,23 @@ export const 功能恢复 = {
 export const socket功能 = {
   id: 功能定义.id,
   新局重置: 重置自动吃基地,
-  game_update({ socket, 请求渲染, 已自动保护 }) {
+  game_update(上下文) {
+    const { socket, 请求渲染, 已自动保护 } = 上下文
     if (已自动保护) return
     if (!功能已启用('自动吃基地')) return
-    尝试自动吃敌方基地(socket, 请求渲染)
+    上下文.已自动吃基地 = 尝试自动吃敌方基地(socket, 请求渲染)
   },
 }
 
 export function 尝试自动吃敌方基地(socket, 请求渲染) {
-  if (!socket || typeof socket.emit !== 'function') return
-  if (globalThis.location?.pathname?.startsWith('/replays/')) return
-  if (!地图可读(状态.地图数组)) return
-  if (!状态.已知敌方基地集合.size) return
-  if (接管冷却中()) return
+  if (!socket || typeof socket.emit !== 'function') return false
+  if (globalThis.location?.pathname?.startsWith('/replays/')) return false
+  if (!地图可读(状态.地图数组)) return false
+  if (!状态.已知敌方基地集合.size) return false
+  if (接管冷却中()) return false
 
   const 计划 = 取得吃基地计划()
-  if (!计划) return
+  if (!计划) return false
   let 自动攻击序号 = 取得下个攻击序号()
 
   状态.自动吃基地接管 = {
@@ -67,6 +68,7 @@ export function 尝试自动吃敌方基地(socket, 请求渲染) {
   }, 请求渲染)
   状态.自动吃基地攻击序号 = 自动攻击序号
   请求渲染()
+  return true
 
   function 取得吃基地计划() {
     const 格子数 = 状态.宽度 * 状态.高度
