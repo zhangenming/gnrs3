@@ -17,7 +17,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '大回合陆地拆分-2'
+const 图表显示版本 = '大回合陆地拆分-3'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -634,7 +634,7 @@ function 取得图表配置(图表类型) {
       数据值列表: 大回合陆地兵力差列表,
       线颜色: 陆地线颜色,
       显示变化标签: true,
-      显示总兵力差横坐标: true,
+      显示累计变化横坐标: true,
     })
   }
   if (图表类型 === 修正兵力差图表类型) {
@@ -889,7 +889,7 @@ function 取得图表配置(图表类型) {
     数据值列表,
     线颜色,
     显示变化标签 = false,
-    显示总兵力差横坐标 = false,
+    显示累计变化横坐标 = false,
   }) {
     const 变化标签数据列表 = 取得变化标签数据列表()
     return {
@@ -957,10 +957,14 @@ function 取得图表配置(图表类型) {
           formatter(回合, idx) {
             const 数值 = Number(回合)
             if (数值 <= 0 || 数值 % 50 !== 0) return ''
-            if (!显示总兵力差横坐标) return 回合
+            if (!显示累计变化横坐标) return 回合
 
-            const 总兵力差 = 数据列表[idx]?.兵力差
-            return `{${取得差值标签样式(总兵力差)}|${格式化差值(总兵力差)}}`
+            const 累计变化 = 变化标签数据列表.find((标签数据) => {
+              return 标签数据[0] === 回合
+            })?.[4]
+            if (!Number.isFinite(累计变化)) return ''
+
+            return `{${取得差值标签样式(累计变化)}|${格式化差值(累计变化)}}`
           },
         },
         axisLine: {
@@ -1031,6 +1035,7 @@ function 取得图表配置(图表类型) {
 
     function 取得变化标签数据列表() {
       const 输出列表 = []
+      let 累计变化 = 0
       for (let idx = 1; idx < 数据列表.length; idx += 1) {
         const 当前值 = 数据值列表[idx]
         const 上个值 = 数据值列表[idx - 1]
@@ -1039,20 +1044,19 @@ function 取得图表配置(图表类型) {
         if (!Number.isFinite(变化) || 变化 === 0) continue
         if (数据点.回合 <= 0 || 数据点.回合 % 50 !== 0) continue
 
-        输出列表.push([String(数据点.回合), 0, 变化])
+        累计变化 += 变化
+        输出列表.push([String(数据点.回合), 当前值, 变化, idx, 累计变化])
       }
       return 输出列表
     }
 
     function 渲染变化标签(参数, api) {
       const 变化 = Number(api.value(2))
+      const 当前值 = Number(api.value(1))
       if (!Number.isFinite(变化) || 变化 === 0) return { type: 'group' }
 
-      const [x] = api.coord([api.value(0), 0])
-      const y =
-        变化 > 0
-          ? 参数.coordSys.y + 10
-          : 参数.coordSys.y + 参数.coordSys.height - 4
+      const [x, 当前y] = api.coord([api.value(0), 当前值])
+      const y = 变化 > 0 ? 当前y - 8 : 当前y + 14
       return {
         type: 'text',
         x,
