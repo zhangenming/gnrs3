@@ -17,7 +17,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '大回合陆地拆分-6'
+const 图表显示版本 = '大回合陆地拆分-7'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -941,17 +941,17 @@ function 取得图表配置(图表类型) {
             our: {
               color: 我方蓝色,
               fontWeight: 900,
-              fontSize: 12,
+              fontSize: 13,
             },
             enemy: {
               color: 地差劣势文字颜色,
               fontWeight: 900,
-              fontSize: 12,
+              fontSize: 13,
             },
             tie: {
               color: 'rgba(220, 232, 248, 0.82)',
               fontWeight: 900,
-              fontSize: 12,
+              fontSize: 13,
             },
           },
           interval(idx) {
@@ -968,7 +968,7 @@ function 取得图表配置(图表类型) {
             })?.[4]
             if (!Number.isFinite(累计变化)) return ''
 
-            return `{${取得差值标签样式(累计变化)}|${格式化差值(累计变化)}}`
+            return `{${取得差值标签样式(累计变化)}|${格式化带符号差值(累计变化)}}`
           },
         },
         axisLine: {
@@ -1061,10 +1061,10 @@ function 取得图表配置(图表类型) {
         x,
         y: 参数.coordSys.y - 6,
         style: {
-          text: 格式化差值(变化),
+          text: 格式化带符号差值(变化),
           fill: 取得差值颜色(变化),
           align: 'center',
-          font: '900 12px Arial',
+          font: '900 13px Arial',
         },
       }
     }
@@ -1073,6 +1073,12 @@ function 取得图表配置(图表类型) {
       const 数值 = Number(值)
       if (!Number.isFinite(数值) || 数值 === 0) return 'tie'
       return 数值 > 0 ? 'our' : 'enemy'
+    }
+
+    function 格式化带符号差值(值) {
+      const 数值 = Number(值)
+      if (!Number.isFinite(数值)) return ''
+      return 数值 < 0 ? `-${Math.abs(数值)}` : String(数值)
     }
 
     function 取得y轴范围() {
