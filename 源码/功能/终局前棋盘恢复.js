@@ -4,7 +4,14 @@ import { 注册功能 } from '../注册中心.js'
 import { 状态 } from '../状态.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 取游戏画布, 取宿主, 是游戏结束事件 } from '../游戏工具.js'
-import { 大回合turn数, 基地自然增长turn数, 覆盖层层级 } from '../配置.js'
+import {
+  大回合turn数,
+  基地自然增长turn数,
+  敌方红色,
+  覆盖层层级,
+  我方蓝色,
+} from '../配置.js'
+import { 是我方或队友 } from '../游戏.js'
 
 const iframe编号 = 'gio-before-end-board-replay-frame'
 const 回放编号重试间隔毫秒 = 500
@@ -17,6 +24,8 @@ let 回放画布轮询定时器 = null
 let 请求重绘 = null
 let 终局前棋盘画布 = null
 let 终局前兵力表格 = null
+let 上一帧棋盘快照 = null
+let 上一帧快照动画帧 = null
 
 export const 功能定义 = {
   id: '终局前棋盘恢复',
@@ -31,6 +40,11 @@ export const socket功能 = {
     if (!功能已启用(功能定义.id)) return
     if (!是终局前棋盘恢复事件(事件名, 数据包)) return
     准备终局前棋盘恢复(数据包 ?? {}, 参数 ?? [], 请求渲染)
+  },
+  game_update({ 数据包 }) {
+    if (!功能已启用(功能定义.id)) return
+    if (是终局前棋盘恢复事件('game_update', 数据包)) return
+    安排记录上一帧棋盘快照(数据包)
   },
   新局重置: 重置终局前棋盘恢复,
 }
@@ -74,7 +88,7 @@ function 准备终局前棋盘恢复(数据包, 参数, 请求渲染) {
   if (!Number.isInteger(目标回合)) return
 
   if (!状态.终局前棋盘恢复?.图像画布) {
-    记录当前棋盘快照(目标回合)
+    记录缓存棋盘快照(目标回合) || 记录当前棋盘快照(目标回合)
   }
 
   const 回放编号 = 读取回放编号(数据包, 参数) ?? 读取页面回放编号()
@@ -93,6 +107,11 @@ function 重置终局前棋盘恢复() {
   状态.终局前棋盘恢复 = null
   恢复任务 = null
   请求重绘 = null
+  上一帧棋盘快照 = null
+  if (上一帧快照动画帧 !== null) {
+    cancelAnimationFrame(上一帧快照动画帧)
+    上一帧快照动画帧 = null
+  }
   清理回放定时器()
   清理回放iframe()
 }
@@ -130,6 +149,46 @@ function 取得恢复任务(目标回合) {
     回放编号尝试次数: 0,
   }
   return 恢复任务
+}
+
+function 安排记录上一帧棋盘快照(数据包) {
+  const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
+  记录上一帧棋盘快照(回合)
+  if (上一帧快照动画帧 !== null) return
+
+  上一帧快照动画帧 = requestAnimationFrame(function () {
+    上一帧快照动画帧 = null
+    记录上一帧棋盘快照(回合)
+  })
+}
+
+function 记录上一帧棋盘快照(回合) {
+  if (状态.终局前棋盘恢复?.图像画布) return
+
+  const 画布 = 取游戏画布()
+  const 图像画布 = 复制画布(画布)
+  if (!图像画布) return
+
+  上一帧棋盘快照 = {
+    图像画布,
+    兵力表格数据: 读取当前页面兵力表格数据() ?? 生成当前地图缓存兵力表格数据(),
+    回合: Number.isInteger(回合) ? 回合 : null,
+  }
+}
+
+function 记录缓存棋盘快照(目标回合) {
+  if (!上一帧棋盘快照?.图像画布) return false
+
+  状态.终局前棋盘恢复 = {
+    图像画布: 上一帧棋盘快照.图像画布,
+    兵力表格数据: 上一帧棋盘快照.兵力表格数据,
+    目标回合,
+    来源: '上一帧画布',
+    回放编号: null,
+  }
+  重建终局前棋盘DOM()
+  请求重绘?.()
+  return true
 }
 
 function 记录当前棋盘快照(目标回合) {
@@ -280,6 +339,7 @@ function 记录回放棋盘快照(回放结果, 任务) {
   const 旧快照 = 状态.终局前棋盘恢复
   const 图像画布 = 复制画布(回放画布)
   if (!图像画布) return
+  if (!回放画布比当前更可靠(图像画布, 旧快照?.图像画布)) return
   const 新兵力表格数据 = 兵力表格数据 ?? 生成回放兵力表格数据(数据包)
 
   状态.终局前棋盘恢复 = {
@@ -296,8 +356,17 @@ function 记录回放棋盘快照(回放结果, 任务) {
 }
 
 function 回放画布已着色(画布) {
+  return 统计画布彩色像素(画布) >= 6
+}
+
+function 回放画布比当前更可靠(新画布, 旧画布) {
+  if (!旧画布) return true
+  return 统计画布彩色像素(新画布) > 统计画布彩色像素(旧画布)
+}
+
+function 统计画布彩色像素(画布) {
   const ctx = 画布.getContext('2d', { willReadFrequently: true })
-  if (!ctx) return false
+  if (!ctx) return 0
 
   const 宽 = 画布.width
   const 高 = 画布.height
@@ -321,7 +390,7 @@ function 回放画布已着色(画布) {
     }
   }
 
-  return 彩色数量 >= Math.max(6, 有效数量 * 0.015)
+  return 彩色数量 >= 有效数量 * 0.015 ? 彩色数量 : 0
 }
 
 function 补当前棋盘快照数字(任务) {
@@ -331,13 +400,19 @@ function 补当前棋盘快照数字(任务) {
   if (!快照?.图像画布) return
 
   const 兵力表格数据 = 生成回放兵力表格数据(任务.回放数据包)
-  if (!兵力表格数据) return
-  if (!兵力表格更完整(兵力表格数据, 快照.兵力表格数据)) return
+  let 图像画布 = 生成可靠回放棋盘画布(任务.回放数据包, 快照.图像画布)
+  if (图像画布 && !回放画布比当前更可靠(图像画布, 快照.图像画布)) {
+    图像画布 = null
+  }
+  if (!兵力表格数据 && !图像画布) return
 
   状态.终局前棋盘恢复 = {
     ...快照,
-    兵力表格数据,
-    来源: '当前画布+回放文件数字',
+    图像画布: 图像画布 ?? 快照.图像画布,
+    兵力表格数据: 兵力表格更完整(兵力表格数据, 快照.兵力表格数据)
+      ? 兵力表格数据
+      : 快照.兵力表格数据,
+    来源: 图像画布 ? '回放文件棋盘' : '回放文件数字',
     回放编号: 任务.回放编号,
   }
   重建终局前棋盘DOM()
@@ -496,6 +571,60 @@ function 生成地图兵力表格数据(地图信息, 塔列表) {
 
   if (!文本列表.some(Boolean)) return null
   return { 宽度, 高度, 文本列表 }
+}
+
+function 生成可靠回放棋盘画布(数据包, 参照画布) {
+  const 地图信息 = 取得回放地图信息(数据包)
+  if (!地图信息 || !参照画布?.width || !参照画布?.height) return null
+  if (!地图归属足够完整(地图信息)) return null
+
+  const 图像画布 = document.createElement('canvas')
+  图像画布.width = 参照画布.width
+  图像画布.height = 参照画布.height
+
+  const ctx = 图像画布.getContext('2d')
+  if (!ctx) return null
+
+  const { 宽度, 高度, 归属列表 } = 地图信息
+  const 格宽 = 图像画布.width / 宽度
+  const 格高 = 图像画布.height / 高度
+
+  for (let idx = 0; idx < 归属列表.length; idx += 1) {
+    const 行 = Math.floor(idx / 宽度)
+    const 列 = idx % 宽度
+    ctx.fillStyle = 取得地块颜色(归属列表[idx])
+    ctx.fillRect(列 * 格宽, 行 * 格高, 格宽, 格高)
+  }
+
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)'
+  ctx.lineWidth = Math.max(1, Math.min(格宽, 格高) * 0.025)
+  ctx.beginPath()
+  for (let 列 = 0; 列 <= 宽度; 列 += 1) {
+    const x = 列 * 格宽
+    ctx.moveTo(x, 0)
+    ctx.lineTo(x, 图像画布.height)
+  }
+  for (let 行 = 0; 行 <= 高度; 行 += 1) {
+    const y = 行 * 格高
+    ctx.moveTo(0, y)
+    ctx.lineTo(图像画布.width, y)
+  }
+  ctx.stroke()
+
+  return 图像画布
+
+  function 地图归属足够完整(地图信息) {
+    const 已占领数量 = 地图信息.归属列表.filter(function (归属) {
+      return Number.isInteger(归属) && 归属 >= 0
+    }).length
+    return 已占领数量 >= Math.max(12, 地图信息.归属列表.length * 0.08)
+  }
+
+  function 取得地块颜色(归属) {
+    if (归属 === -2) return '#b8b8b8'
+    if (!Number.isInteger(归属) || 归属 < 0) return '#d8d8d8'
+    return 是我方或队友(归属) ? 我方蓝色 : 敌方红色
+  }
 }
 
 function 重建终局前棋盘DOM() {
