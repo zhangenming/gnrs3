@@ -91,6 +91,12 @@ function 记录网页回放数据进展() {
   if (!是网页回放页()) return
   const 回合 = 读取显示回合()
   const 差值 = 读取页面数据差()
+  if (是回放终局数据(差值)) {
+    回放最新数据签名 = null
+    回放稳定数据签名 = null
+    截断回放数据进展(回合 - 1)
+    return
+  }
   const 当前数据签名 = 取得回放数据签名(回合, 差值)
   let 稳定状态已变化 = false
   if (当前数据签名) {
@@ -280,6 +286,10 @@ function 读取页面数据差() {
   return {
     兵力差: 我方兵力 - 敌方兵力,
     陆地差: 我方陆地 - 敌方陆地,
+    我方兵力,
+    敌方兵力,
+    我方陆地,
+    敌方陆地,
   }
 
   function 取得列索引(单元格列表, 原文本, 类型) {
@@ -360,6 +370,32 @@ function 是网页回放页() {
     globalThis.location?.pathname?.startsWith('/replays/') ||
     document.getElementById('replay-turn-jump-input'),
   )
+}
+
+function 是回放终局数据(差值) {
+  if (是投降结算弹窗()) return true
+  if (!差值) return false
+  return (
+    (差值.我方兵力 <= 0 && 差值.我方陆地 <= 0) ||
+    (差值.敌方兵力 <= 0 && 差值.敌方陆地 <= 0)
+  )
+}
+
+function 是投降结算弹窗() {
+  const 候选列表 = document.body?.querySelectorAll(
+    '.popup, .modal, .alert, [role="dialog"]',
+  )
+  for (const 候选 of 候选列表 ?? []) {
+    const 文本 = (候选.textContent ?? '').toLowerCase()
+    if (文本.includes('your opponent left')) return true
+    if (文本.includes('opponent left')) return true
+    if (文本.includes('surrender')) return true
+    if (文本.includes('resign')) return true
+    if (文本.includes('对手离开')) return true
+    if (文本.includes('对手已离开')) return true
+    if (文本.includes('投降')) return true
+  }
+  return false
 }
 
 function 取得回放数据签名(回合, 数据点) {
