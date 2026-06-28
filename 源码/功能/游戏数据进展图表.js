@@ -17,7 +17,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '大回合陆地拆分-3'
+const 图表显示版本 = '大回合陆地拆分-4'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -892,6 +892,7 @@ function 取得图表配置(图表类型) {
     显示累计变化横坐标 = false,
   }) {
     const 变化标签数据列表 = 取得变化标签数据列表()
+    const y轴范围 = 取得y轴范围()
     return {
       animation: false,
       textStyle: {
@@ -926,8 +927,8 @@ function 取得图表配置(图表类型) {
       grid: {
         left: 56,
         right: 12,
-        top: 显示变化标签 ? 20 : 10,
-        bottom: 显示变化标签 ? 34 : 24,
+        top: 显示变化标签 ? 24 : 10,
+        bottom: 显示变化标签 ? 44 : 24,
       },
       xAxis: {
         type: 'category',
@@ -976,23 +977,20 @@ function 取得图表配置(图表类型) {
       },
       yAxis: {
         type: 'value',
-        min(范围) {
-          return Math.min(范围.min, -10)
-        },
+        min: y轴范围.min,
+        max: y轴范围.max,
         minInterval: 1,
         axisLabel: {
-          color: 'rgba(220, 232, 248, 0.82)',
-          fontWeight: 700,
-          formatter(值) {
-            const 数值 = Number(值)
-            if (!Number.isInteger(数值)) return ''
-            return 格式化差值(数值)
-          },
+          show: false,
+        },
+        axisLine: {
+          show: false,
+        },
+        axisTick: {
+          show: false,
         },
         splitLine: {
-          lineStyle: {
-            color: 'rgba(220, 232, 248, 0.12)',
-          },
+          show: false,
         },
       },
       series: [
@@ -1056,7 +1054,11 @@ function 取得图表配置(图表类型) {
       if (!Number.isFinite(变化) || 变化 === 0) return { type: 'group' }
 
       const [x, 当前y] = api.coord([api.value(0), 当前值])
-      const y = 变化 > 0 ? 当前y - 8 : 当前y + 14
+      const 原始y = 变化 > 0 ? 当前y - 8 : 当前y + 14
+      const y = Math.max(
+        参数.coordSys.y + 12,
+        Math.min(参数.coordSys.y + 参数.coordSys.height - 12, 原始y),
+      )
       return {
         type: 'text',
         x,
@@ -1074,6 +1076,19 @@ function 取得图表配置(图表类型) {
       const 数值 = Number(值)
       if (!Number.isFinite(数值) || 数值 === 0) return 'tie'
       return 数值 > 0 ? 'our' : 'enemy'
+    }
+
+    function 取得y轴范围() {
+      const 有效值列表 = 数据值列表.filter((值) => {
+        return Number.isFinite(值)
+      })
+      const 最小值 = Math.min(0, ...有效值列表)
+      const 最大值 = Math.max(0, ...有效值列表)
+      const 留白 = Math.max(2, Math.ceil((最大值 - 最小值) * 0.18))
+      return {
+        min: 最小值 - 留白,
+        max: 最大值 + 留白,
+      }
     }
   }
 }
