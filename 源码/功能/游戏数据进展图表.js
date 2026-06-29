@@ -17,7 +17,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '大回合陆地拆分-11'
+const 图表显示版本 = '大回合陆地拆分-12'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -706,13 +706,18 @@ function 取得图表配置(图表类型) {
   const x轴回合列表 = 取得x轴回合列表(数据列表)
   const 兵力差变化列表 = 取得兵力差变化列表(数据列表)
   const 大回合陆地兵力差列表 = 取得大回合陆地兵力差列表(数据列表)
+  const 大回合陆地兵力差过程列表 = 取得大回合陆地兵力差过程列表(
+    数据列表,
+    大回合陆地兵力差列表,
+  )
   if (图表类型 === 大回合陆地兵力差图表类型) {
     return 取得单线图表配置({
       数据列表,
       系列名: '50回合陆地兵力差',
-      数据值列表: 大回合陆地兵力差列表,
+      数据值列表: 大回合陆地兵力差过程列表,
       线颜色: 陆地线颜色,
       显示变化标签: true,
+      累计值列表: 大回合陆地兵力差列表,
     })
   }
   if (图表类型 === 修正兵力差图表类型) {
@@ -954,6 +959,20 @@ function 取得图表配置(图表类型) {
     })
   }
 
+  function 取得大回合陆地兵力差过程列表(数据列表, 累计值列表) {
+    let 上次大回合陆地差 = 0
+    let 过程值 = 0
+    return 数据列表.map((数据点, idx) => {
+      if (数据点.回合 <= 0 || 数据点.回合 % 50 !== 0) return 过程值
+      if (!Number.isFinite(累计值列表[idx]) || !Number.isFinite(数据点.陆地差))
+        return 过程值
+
+      过程值 += 数据点.陆地差 - 上次大回合陆地差
+      上次大回合陆地差 = 数据点.陆地差
+      return 过程值
+    })
+  }
+
   function 取得x轴回合列表(数据列表) {
     const 最大回合 = Math.max(
       0,
@@ -973,6 +992,7 @@ function 取得图表配置(图表类型) {
     数据值列表,
     线颜色,
     显示变化标签 = false,
+    累计值列表 = 数据值列表,
   }) {
     const 变化标签数据列表 = 取得变化标签数据列表()
     const y轴范围 = 取得y轴范围()
@@ -1005,7 +1025,7 @@ function 取得图表配置(图表类型) {
           if (!数据点) return ''
           const 文本列表 = [
             `turn ${数据点.回合}`,
-            `${系列名} ${格式化差值(数据值列表[索引])}`,
+            `${系列名} ${格式化差值(累计值列表[索引])}`,
           ]
           const 标签数据 = 变化标签数据列表.find((候选) => {
             return 候选[3] === 索引
@@ -1101,9 +1121,14 @@ function 取得图表配置(图表类型) {
       let 上次大回合陆地差 = 0
       for (let idx = 1; idx < 数据列表.length; idx += 1) {
         const 当前值 = 数据值列表[idx]
+        const 累计值 = 累计值列表[idx]
         const 数据点 = 数据列表[idx]
         if (数据点.回合 <= 0 || 数据点.回合 % 50 !== 0) continue
-        if (!Number.isFinite(当前值) || !Number.isFinite(数据点.陆地差))
+        if (
+          !Number.isFinite(当前值) ||
+          !Number.isFinite(累计值) ||
+          !Number.isFinite(数据点.陆地差)
+        )
           continue
 
         const 陆地差变动 = 数据点.陆地差 - 上次大回合陆地差
@@ -1113,7 +1138,7 @@ function 取得图表配置(图表类型) {
           当前值,
           数据点.陆地差,
           idx,
-          当前值,
+          累计值,
           陆地差变动,
         ])
       }
