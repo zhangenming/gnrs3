@@ -17,7 +17,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '大回合陆地拆分-10'
+const 图表显示版本 = '大回合陆地拆分-11'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -961,7 +961,7 @@ function 取得图表配置(图表类型) {
         return 数据点.回合
       }),
     )
-    const x轴最大回合 = Math.max(50, Math.ceil(最大回合 / 50) * 50)
+    const x轴最大回合 = Math.max(50, (Math.floor(最大回合 / 50) + 1) * 50)
     return Array.from({ length: x轴最大回合 }, (_, idx) => {
       return String(idx + 1)
     })
