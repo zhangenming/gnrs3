@@ -96,6 +96,12 @@ function 安装回放大回合逐帧跳转() {
   }
 
   async function 执行回放初始化流程(回放地址, 起始回合) {
+    const 文件胜负结果 = await 读取回放文件胜负结果(回放地址)
+    if (文件胜负结果) {
+      回放胜负结果表.set(回放地址, 文件胜负结果)
+      更新回放胜负表头(文件胜负结果)
+    }
+
     if (!(await 直接跳转到最后回合())) {
       if (起始回合 < 大回合turn数) 请求开始逐帧跳转(1)
       return
@@ -110,7 +116,7 @@ function 安装回放大回合逐帧跳转() {
 
     const 胜负结果 = await 等待读取胜负结果()
     if (取得回放地址() !== 回放地址) return
-    if (胜负结果) {
+    if (!文件胜负结果 && 胜负结果) {
       回放胜负结果表.set(回放地址, 胜负结果)
       更新回放胜负表头(胜负结果)
     }
@@ -222,6 +228,309 @@ function 安装回放大回合逐帧跳转() {
     const 表格结果 = 读取回放表格胜负结果()
     if (表格结果) return 表格结果
     return null
+  }
+
+  async function 读取回放文件胜负结果(回放地址) {
+    const 回放编号 = 读取回放编号(回放地址)
+    if (!回放编号) return null
+
+    try {
+      const 响应 = await fetch(取得回放文件地址(回放编号))
+      if (!响应.ok) return null
+
+      const 内容 = new Uint8Array(await 响应.arrayBuffer())
+      const 回放 = 解析回放文件(内容)
+      return 计算回放胜负结果(回放)
+    } catch (错误) {
+      console.warn('[回放大回合逐帧跳转] 读取回放胜负失败:', 错误)
+      return null
+    }
+
+    function 读取回放编号(地址) {
+      const 匹配 = String(地址 ?? '').match(/\/replays\/([^/?#]+)/)
+      return 匹配?.[1] ?? null
+    }
+
+    function 取得回放文件地址(编号) {
+      return `https://generalsio-replays-na.s3.amazonaws.com/${编号}.gior`
+    }
+  }
+
+  function 解析回放文件(内容) {
+    const 原始列表 = JSON.parse(解压Uint8数组(内容))
+    return {
+      宽度: 原始列表[2],
+      高度: 原始列表[3],
+      玩家名列表: 原始列表[4],
+      塔列表: 原始列表[6],
+      塔兵力列表: 原始列表[7],
+      基地列表: 原始列表[8],
+      山列表: 原始列表[9],
+      移动列表: Array.isArray(原始列表[10])
+        ? 原始列表[10].map(function (移动, idx) {
+            return {
+              idx,
+              玩家索引: 移动?.[0],
+              起点: 移动?.[1],
+              终点: 移动?.[2],
+              是否半兵: Boolean(移动?.[3]),
+              回合: 移动?.[4],
+            }
+          })
+        : [],
+    }
+  }
+
+  function 计算回放胜负结果(回放) {
+    const 我方索引 = 取得回放我方索引(回放.玩家名列表)
+    if (!Number.isInteger(我方索引)) return null
+
+    const 胜方索引 = 计算回放胜方索引(回放)
+    if (!Number.isInteger(胜方索引)) return null
+    return 胜方索引 === 我方索引 ? '胜' : '负'
+  }
+
+  function 计算回放胜方索引(回放) {
+    if (!Number.isInteger(回放?.宽度) || !Number.isInteger(回放?.高度)) {
+      return null
+    }
+
+    const 格子数 = 回放.宽度 * 回放.高度
+    if (格子数 <= 0) return null
+
+    const 兵力列表 = new Array(格子数).fill(0)
+    const 归属列表 = new Array(格子数).fill(-1)
+    const 塔集合 = new Set()
+    const 基地集合 = new Set()
+
+    if (Array.isArray(回放.山列表)) {
+      for (const 索引 of 回放.山列表) {
+        if (是有效索引(索引)) 归属列表[索引] = -2
+      }
+    }
+
+    if (Array.isArray(回放.塔列表)) {
+      for (let idx = 0; idx < 回放.塔列表.length; idx += 1) {
+        const 索引 = 回放.塔列表[idx]
+        if (!是有效索引(索引)) continue
+
+        塔集合.add(索引)
+        兵力列表[索引] = Number.isInteger(回放.塔兵力列表?.[idx])
+          ? 回放.塔兵力列表[idx]
+          : 40
+      }
+    }
+
+    if (Array.isArray(回放.基地列表)) {
+      for (let 玩家索引 = 0; 玩家索引 < 回放.基地列表.length; 玩家索引 += 1) {
+        const 索引 = 回放.基地列表[玩家索引]
+        if (!是有效索引(索引)) continue
+
+        基地集合.add(索引)
+        兵力列表[索引] = 1
+        归属列表[索引] = 玩家索引
+      }
+    }
+
+    const 移动列表 = 回放.移动列表
+      .filter(function (移动) {
+        return (
+          Number.isInteger(移动.玩家索引) &&
+          Number.isInteger(移动.起点) &&
+          Number.isInteger(移动.终点) &&
+          Number.isInteger(移动.回合) &&
+          移动.回合 >= 0
+        )
+      })
+      .sort(function (左, 右) {
+        if (左.回合 !== 右.回合) return 左.回合 - 右.回合
+        return 左.idx - 右.idx
+      })
+
+    let 当前回合 = 0
+    for (const 移动 of 移动列表) {
+      while (当前回合 < 移动.回合) {
+        应用自然增长(当前回合)
+        当前回合 += 1
+      }
+
+      const 胜方索引 = 应用移动并读取胜方(移动)
+      if (Number.isInteger(胜方索引)) return 胜方索引
+    }
+
+    return null
+
+    function 应用移动并读取胜方(移动) {
+      if (!是有效索引(移动.起点) || !是有效索引(移动.终点)) return null
+      if (归属列表[移动.起点] !== 移动.玩家索引) return null
+
+      const 起点兵力 = 兵力列表[移动.起点]
+      const 终点兵力 = 兵力列表[移动.终点]
+      const 终点归属 = 归属列表[移动.终点]
+      if (!Number.isInteger(起点兵力) || 起点兵力 <= 1) return null
+      if (!Number.isInteger(终点兵力) || !Number.isInteger(终点归属)) {
+        return null
+      }
+
+      const 留守兵力 = 移动.是否半兵 ? Math.ceil(起点兵力 / 2) : 1
+      const 移动兵力 = Math.max(0, 起点兵力 - 留守兵力)
+      if (移动兵力 <= 0) return null
+
+      兵力列表[移动.起点] = 留守兵力
+      if (终点归属 === 移动.玩家索引) {
+        兵力列表[移动.终点] = 终点兵力 + 移动兵力
+        return null
+      }
+
+      if (移动兵力 <= 终点兵力) {
+        兵力列表[移动.终点] = 终点兵力 - 移动兵力
+        return null
+      }
+
+      const 吃掉基地 = 基地集合.has(移动.终点) && 终点归属 >= 0
+      兵力列表[移动.终点] = 移动兵力 - 终点兵力
+      归属列表[移动.终点] = 移动.玩家索引
+      if (吃掉基地) return 移动.玩家索引
+      return null
+    }
+
+    function 应用自然增长(回合) {
+      const 基地塔增长 = 取得周期增长次数(回合, 回合 + 1, 2)
+      if (基地塔增长 > 0) {
+        基地集合.forEach(function (索引) {
+          增加兵力(索引, 基地塔增长)
+        })
+        塔集合.forEach(function (索引) {
+          增加兵力(索引, 基地塔增长)
+        })
+      }
+
+      const 大回合增长 = 取得周期增长次数(回合, 回合 + 1, 大回合turn数)
+      if (大回合增长 <= 0) return
+
+      for (let idx = 0; idx < 格子数; idx += 1) {
+        增加兵力(idx, 大回合增长)
+      }
+    }
+
+    function 增加兵力(索引, 增长) {
+      if (!是有效索引(索引)) return
+      if (!Number.isInteger(归属列表[索引]) || 归属列表[索引] < 0) return
+      if (!Number.isInteger(兵力列表[索引])) return
+      兵力列表[索引] += 增长
+    }
+
+    function 是有效索引(索引) {
+      return Number.isInteger(索引) && 索引 >= 0 && 索引 < 格子数
+    }
+  }
+
+  function 取得周期增长次数(起始回合, 目标回合, 周期) {
+    return Math.floor(目标回合 / 周期) - Math.floor(起始回合 / 周期)
+  }
+
+  function 解压Uint8数组(压缩数组) {
+    if (!压缩数组?.length) return ''
+
+    const 压缩码列表 = []
+    for (let idx = 0; idx < 压缩数组.length; idx += 2) {
+      压缩码列表.push(压缩数组[idx] * 256 + (压缩数组[idx + 1] ?? 0))
+    }
+    return 解压压缩码(压缩码列表.length, 32768, function (idx) {
+      return 压缩码列表[idx]
+    })
+  }
+
+  function 解压压缩码(长度, 重置值, 读取值) {
+    const 字典 = []
+    let 扩容剩余 = 4
+    let 字典大小 = 4
+    let 位数 = 3
+    let 词条 = ''
+    let 字符 = ''
+    let 旧词条 = ''
+    const 结果 = []
+    const 数据 = {
+      值: 读取值(0),
+      位置: 重置值,
+      索引: 1,
+    }
+
+    for (let idx = 0; idx < 3; idx += 1) 字典[idx] = idx
+
+    const 初始标记 = 读取位(2)
+    if (初始标记 === 0) {
+      字符 = String.fromCharCode(读取位(8))
+    } else if (初始标记 === 1) {
+      字符 = String.fromCharCode(读取位(16))
+    } else if (初始标记 === 2) {
+      return ''
+    }
+
+    字典[3] = 字符
+    旧词条 = 字符
+    结果.push(字符)
+
+    while (true) {
+      if (数据.索引 > 长度) return ''
+
+      let 字典索引 = 读取位(位数)
+      if (字典索引 === 0) {
+        字典[字典大小] = String.fromCharCode(读取位(8))
+        字典索引 = 字典大小
+        字典大小 += 1
+        扩容剩余 -= 1
+      } else if (字典索引 === 1) {
+        字典[字典大小] = String.fromCharCode(读取位(16))
+        字典索引 = 字典大小
+        字典大小 += 1
+        扩容剩余 -= 1
+      } else if (字典索引 === 2) {
+        return 结果.join('')
+      }
+
+      if (扩容剩余 === 0) {
+        扩容剩余 = 2 ** 位数
+        位数 += 1
+      }
+
+      if (字典[字典索引]) {
+        词条 = 字典[字典索引]
+      } else if (字典索引 === 字典大小) {
+        词条 = 旧词条 + 旧词条.charAt(0)
+      } else {
+        return ''
+      }
+
+      结果.push(词条)
+      字典[字典大小] = 旧词条 + 词条.charAt(0)
+      字典大小 += 1
+      扩容剩余 -= 1
+      旧词条 = 词条
+
+      if (扩容剩余 === 0) {
+        扩容剩余 = 2 ** 位数
+        位数 += 1
+      }
+    }
+
+    function 读取位(数量) {
+      let bits = 0
+      let power = 1
+      const 最大 = 2 ** 数量
+      while (power !== 最大) {
+        const resb = 数据.值 & 数据.位置
+        数据.位置 >>= 1
+        if (数据.位置 === 0) {
+          数据.位置 = 重置值
+          数据.值 = 读取值(数据.索引)
+          数据.索引 += 1
+        }
+        bits |= (resb > 0 ? 1 : 0) * power
+        power <<= 1
+      }
+      return bits
+    }
   }
 
   function 读取回放分数胜负结果() {
@@ -354,16 +663,73 @@ function 安装回放大回合逐帧跳转() {
     }
   }
 
-  function 取得回放我方索引() {
+  function 取得回放我方索引(玩家名列表 = 状态.玩家名列表) {
     const 玩家名 = new URLSearchParams(globalThis.location?.search ?? '')
       .get('p')
       ?.trim()
-    if (玩家名 && Array.isArray(状态.玩家名列表)) {
-      const 玩家索引 = 状态.玩家名列表.indexOf(玩家名)
+    if (玩家名 && Array.isArray(玩家名列表)) {
+      const 玩家索引 = 玩家名列表.indexOf(玩家名)
       if (玩家索引 >= 0) return 玩家索引
     }
+
+    const POV玩家索引 = 读取回放POV玩家索引(玩家名列表)
+    if (Number.isInteger(POV玩家索引)) return POV玩家索引
+
+    const 本地玩家索引 = 读取本地玩家索引(玩家名列表)
+    if (Number.isInteger(本地玩家索引)) return 本地玩家索引
+
     if (Number.isInteger(状态.我方索引)) return 状态.我方索引
     return null
+  }
+
+  function 读取回放POV玩家索引(玩家名列表) {
+    if (!Array.isArray(玩家名列表)) return null
+
+    const 表格 = 取得战场数据表格()
+    const 表头行 = 表格 ? 取得表头行(表格) : null
+    if (!表头行) return null
+
+    const 表头格列表 = 取得单元格列表(表头行)
+    const 玩家列 = 取得玩家列索引(表头格列表)
+    const 视角列 = 表头格列表.findIndex((单元格) => {
+      if (单元格.dataset.gioReplayTurnCell === 'true') return true
+      return (单元格.textContent ?? '').trim() === 'POV'
+    })
+    if (玩家列 < 0 || 视角列 < 0) return null
+
+    for (const 行 of 表格.querySelectorAll('tr')) {
+      if (行 === 表头行) continue
+
+      const 单元格列表 = 取得单元格列表(行)
+      const 勾选框 = 读取POV勾选框(单元格列表[视角列])
+      if (勾选框?.checked !== true) continue
+
+      const 玩家名 = (单元格列表[玩家列]?.textContent ?? '').trim()
+      const 玩家索引 = 玩家名列表.indexOf(玩家名)
+      return 玩家索引 >= 0 ? 玩家索引 : null
+    }
+    return null
+
+    function 读取POV勾选框(单元格) {
+      const 勾选框列表 = Array.from(
+        单元格?.querySelectorAll('input[type="checkbox"]') ?? [],
+      )
+      return (
+        勾选框列表.find((勾选框) => {
+          return !勾选框.closest('.perspective-select')
+        }) ?? null
+      )
+    }
+  }
+
+  function 读取本地玩家索引(玩家名列表) {
+    if (!Array.isArray(玩家名列表)) return null
+
+    const 玩家名 = globalThis.localStorage?.GIO_CACHED_USERNAME?.trim()
+    if (!玩家名) return null
+
+    const 玩家索引 = 玩家名列表.indexOf(玩家名)
+    return 玩家索引 >= 0 ? 玩家索引 : null
   }
 
   function 读取网页回放数据包() {
