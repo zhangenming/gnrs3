@@ -29,6 +29,7 @@ import { 取得敌方开塔判断 } from './敌方开塔提示.js'
 const 面板类名 = 'gio-action-watch-panel'
 const 画布类名 = 'gio-action-watch-canvas'
 const 样式编号 = 'gio-action-watch-style'
+const 敌方开塔行动确认事件名 = 'gio敌方开塔行动确认'
 const 每行回合数 = 50
 const 我方行动类型列表 = ['空闲', '集兵', '扩地', '偷塔', '吃地(抢塔)']
 const 敌方行动类型列表 = ['集兵', '扩地', '吃地', '开塔']
@@ -47,6 +48,7 @@ let 回放行动监控缓存 = null
 let 回放行动监控最小已确认回合 = null
 let 回放行动监控最大已确认回合 = null
 let 行动监控玩家快照 = null
+let 已安装敌方开塔行动确认同步 = false
 
 export const 功能定义 = {
   id: '我方行动监控',
@@ -57,7 +59,7 @@ export const 功能定义 = {
 
 export const 主程序功能 = {
   id: 功能定义.id,
-  启动: 安装网页回放行动监控同步,
+  启动: 启动我方行动监控,
   页面同步: 更新我方行动监控UI,
 }
 
@@ -453,6 +455,31 @@ export function 重置我方行动监控() {
   状态.行动开塔记录版本 = 行动开塔记录版本
   我方行动监控数据版本 += 1
   更新我方行动监控UI()
+}
+
+function 启动我方行动监控() {
+  安装敌方开塔行动确认同步()
+  安装网页回放行动监控同步()
+}
+
+function 安装敌方开塔行动确认同步() {
+  if (已安装敌方开塔行动确认同步) return
+
+  window.addEventListener(敌方开塔行动确认事件名, (event) => {
+    记录敌方开塔行动确认(event.detail)
+  })
+  已安装敌方开塔行动确认同步 = true
+}
+
+function 记录敌方开塔行动确认(详情) {
+  if (!功能已启用('我方行动监控')) return
+  确保行动开塔记录版本()
+
+  const 回合 = 详情?.回合
+  if (!Number.isInteger(回合) || 回合 < 取得行动监控起始回合()) return
+
+  设置敌方行动类型(回合, '开塔')
+  设置行动开塔兵力('敌方', 回合, 详情?.开塔兵力, 详情?.开塔成功 === true)
 }
 
 function 安装网页回放行动监控同步() {

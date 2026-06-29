@@ -29,6 +29,7 @@ import { 统计塔数, 同步塔数统计 } from './塔数统计.js'
 
 const 敌方开塔提示元素编号 = 'gio-enemy-open-tower-alert'
 const 敌方开塔提示样式编号 = `${样式编号}-enemy-open-tower`
+const 敌方开塔行动确认事件名 = 'gio敌方开塔行动确认'
 const 敌方开塔提示持续毫秒 = 1800
 const 敌方开塔日志最大数量 = 80
 const 敌方偷塔候选最小耗兵 = 1
@@ -126,6 +127,8 @@ export function 更新敌方开塔提示(数据包) {
   })
   if (!候选结果.是敌方成功开塔) return
 
+  同步敌方开塔行动监控(当前快照, 判断)
+
   播放敌方开塔语音({
     敌方偷塔耗兵: 判断.敌方偷塔耗兵,
     是敌方成功开塔: 候选结果.是敌方成功开塔,
@@ -143,6 +146,21 @@ export function 更新敌方开塔提示(数据包) {
     敌方塔数变化: 判断.敌方变化.塔数变化,
   }
   显示敌方开塔提示()
+}
+
+function 同步敌方开塔行动监控(当前快照, 判断) {
+  const 回合 = 当前快照.回合 - 1
+  if (!Number.isInteger(回合)) return
+
+  window.dispatchEvent(
+    new CustomEvent(敌方开塔行动确认事件名, {
+      detail: {
+        回合,
+        开塔兵力: 判断.敌方偷塔耗兵,
+        开塔成功: true,
+      },
+    }),
+  )
 }
 
 export function 清除敌方开塔提示() {
