@@ -174,7 +174,7 @@ export function 尝试自动扩展(socket, 请求渲染) {
   }
 
   function 是扩地起点(地块) {
-    return [3, 4, 5].includes(地块?.兵力) && 是我方或队友(地块.归属)
+    return [2, 3, 4, 5].includes(地块?.兵力) && 是我方或队友(地块.归属)
   }
 
   function 是我方可移动起点(地块) {
