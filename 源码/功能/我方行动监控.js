@@ -552,9 +552,6 @@ function 安装网页回放行动监控同步() {
       更新我方行动地图判断(旧缓存.地图数组, 新地图数组, 数据包)
       结算我方行动回合(新回合 - 1)
       记录回放已确认回合(新回合 - 1)
-    } else {
-      清空回放行动记录()
-      更新我方行动监控UI()
     }
     状态.地图数组 = 新地图数组.slice()
     回放行动监控缓存 = {
@@ -656,11 +653,12 @@ function 安装网页回放行动监控同步() {
       function 读取节点回放数据包(节点) {
         const fiber = 读取ReactFiber(节点)
         const 已访问 = new Set()
+        let 候选数据包 = null
         for (let 当前 = fiber; 当前 && !已访问.has(当前); 当前 = 当前.return) {
           已访问.add(当前)
           const props = 当前.memoizedProps
           if (是回放数据Props(props)) {
-            return {
+            const 数据包 = {
               map: props.map,
               cities: props.cities,
               generals: props.generals,
@@ -673,9 +671,17 @@ function 安装网页回放行动监控同步() {
               replay_id: props.replay_id,
               replayWatcherIndex: props.replayWatcherIndex,
             }
+            if (
+              Array.isArray(props.scores) &&
+              Array.isArray(props.playerColors) &&
+              Array.isArray(props.executedMoves)
+            ) {
+              return 数据包
+            }
+            候选数据包 ??= 数据包
           }
         }
-        return null
+        return 候选数据包
       }
 
       function 读取ReactFiber(节点) {
