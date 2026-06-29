@@ -21,8 +21,9 @@ export const socket功能 = {
   阻止出站: 阻止2吃1,
 }
 
-export function 阻止2吃1({ 事件名, 参数 }) {
+export function 阻止2吃1({ 事件名, 参数, socket }) {
   if (!功能已启用(功能定义.id)) return false
+  if (socket?.__自动保护基地发送中) return false
   if (事件名 !== 'attack') return false
   if (!在第一大回合()) return false
   if (!地图可读(状态.地图数组)) return false

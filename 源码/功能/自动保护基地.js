@@ -1,18 +1,12 @@
 // 功能目的:
-// 当敌方相邻兵力足以在下一步吃掉我方基地时，自动清空队列并插入保命动作。
+// 当敌方相邻兵力足以吃掉我方基地时，自动清空队列并插入保命动作。
 //
 // 作用范围:
 // 只处理 1v1 中我方基地已经可见、敌方威胁已经贴脸的场景。
-import { 大回合turn数, 基地自然增长turn数 } from '../配置.js'
 import { 功能已启用 } from '../功能状态.js'
 import { 地图可读, 是我方或队友, 读取地图地块 } from '../游戏.js'
 import { 状态 } from '../状态.js'
-import {
-  取得相邻索引列表,
-  是敌方格,
-  取得周期增长次数,
-  取得回合间增长,
-} from '../游戏工具.js'
+import { 取得相邻索引列表, 是敌方格 } from '../游戏工具.js'
 import { 执行后恢复选中棋子 } from './选中棋子提示.js'
 
 export const 功能定义 = {
@@ -22,6 +16,8 @@ export const 功能定义 = {
   描述: '敌方下一步能吃基地时自动接管保命',
 }
 
+let 正在发送自动保护 = false
+
 export const 功能恢复 = {
   id: 功能定义.id,
   关闭: 重置自动保护基地,
@@ -29,12 +25,9 @@ export const 功能恢复 = {
 
 export const socket功能 = {
   id: 功能定义.id,
+  阻止出站: 处理用户出站前,
   新局重置: 重置自动保护基地,
   game_update(上下文) {
-    if (上下文.已自动吃基地) {
-      上下文.已自动保护 = false
-      return
-    }
     上下文.已自动保护 = 功能已启用('自动保护基地')
       ? 尝试自动保护基地(上下文.socket, 上下文.请求渲染)
       : false
@@ -60,10 +53,17 @@ export function 尝试自动保护基地(socket, 请求渲染) {
   }
   状态.自动吃基地接管 = null
 
-  执行后恢复选中棋子(() => {
-    socket.emit('clear_moves')
-    socket.emit('attack', 计划.起点, 计划.终点, false, 自动攻击序号)
-  }, 请求渲染)
+  正在发送自动保护 = true
+  socket.__自动保护基地发送中 = true
+  try {
+    执行后恢复选中棋子(() => {
+      socket.emit('clear_moves')
+      socket.emit('attack', 计划.起点, 计划.终点, false, 自动攻击序号)
+    }, 请求渲染)
+  } finally {
+    socket.__自动保护基地发送中 = false
+    正在发送自动保护 = false
+  }
   自动攻击序号 += 1
   状态.自动保护基地攻击序号 = 自动攻击序号
   状态.自动吃基地攻击序号 = Math.max(
@@ -84,8 +84,7 @@ export function 尝试自动保护基地(socket, 请求渲染) {
     if (!Number.isInteger(基地兵力) || 基地兵力 < 0) return null
     if (!是我方或队友(基地归属)) return null
 
-    const 基地战力 =
-      基地兵力 + (取得回合间增长(状态.当前回合, 状态.当前回合 + 1) ?? 0)
+    const 基地战力 = 基地兵力
     const 威胁列表 = 取得威胁列表(基地索引, 基地战力)
     if (!威胁列表.length) return null
 
@@ -96,7 +95,6 @@ export function 尝试自动保护基地(socket, 请求渲染) {
   }
 
   function 取得威胁列表(基地索引, 基地战力) {
-    const 格子数 = 状态.宽度 * 状态.高度
     const 列表 = []
     for (const 索引 of 取得相邻索引列表(基地索引)) {
       const 地块 = 读取地图地块(状态.地图数组, 索引)
@@ -123,7 +121,6 @@ export function 尝试自动保护基地(socket, 请求渲染) {
   }
 
   function 取得增援计划(基地索引, 基地战力, 威胁列表) {
-    const 格子数 = 状态.宽度 * 状态.高度
     const 候选列表 = []
     for (const 索引 of 取得相邻索引列表(基地索引)) {
       const 地块 = 读取地图地块(状态.地图数组, 索引)
@@ -206,7 +203,6 @@ export function 尝试自动保护基地(socket, 请求渲染) {
   }
 
   function 取得可攻击威胁的我方列表(威胁索引) {
-    const 格子数 = 状态.宽度 * 状态.高度
     const 列表 = []
     for (const 索引 of 取得相邻索引列表(威胁索引)) {
       const 地块 = 读取地图地块(状态.地图数组, 索引)
@@ -264,6 +260,19 @@ export function 尝试自动保护基地(socket, 请求渲染) {
 export function 重置自动保护基地() {
   状态.自动保护基地接管 = null
   状态.自动保护基地攻击序号 = 1
+}
+
+function 处理用户出站前({ 事件名, socket, 请求渲染 }) {
+  if (正在发送自动保护) return false
+  if (!功能已启用('自动保护基地')) return false
+  if (!是用户操作事件(事件名)) return false
+  return 尝试自动保护基地(socket, 请求渲染)
+
+  function 是用户操作事件(事件名) {
+    return (
+      事件名 === 'attack' || 事件名 === 'undo_move' || 事件名 === 'clear_moves'
+    )
+  }
 }
 
 import { 注册功能 } from '../注册中心.js'
