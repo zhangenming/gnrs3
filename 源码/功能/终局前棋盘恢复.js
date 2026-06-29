@@ -43,6 +43,10 @@ export const socket功能 = {
       return
     }
     if (!是终局前棋盘恢复事件(事件名, 数据包)) return
+    if (保留官方终局前地图数据(数据包)) {
+      重置终局前棋盘恢复()
+      return
+    }
     准备终局前棋盘恢复(数据包 ?? {}, 参数 ?? [], 请求渲染)
   },
   game_update({ 数据包 }) {
@@ -144,6 +148,25 @@ function 是投降或退出事件(数据包) {
 
 function 包含地图更新数据(数据包) {
   return Array.isArray(数据包?.map) || Array.isArray(数据包?.map_diff)
+}
+
+function 保留官方终局前地图数据(数据包) {
+  if (!Array.isArray(状态.地图数组) || 状态.地图数组.length <= 0) return false
+
+  let 已保留 = false
+  if (Array.isArray(数据包?.map)) {
+    数据包.map = 状态.地图数组.slice()
+    已保留 = true
+  }
+  if (Array.isArray(数据包?.map_diff)) {
+    数据包.map_diff = [状态.地图数组.length]
+    已保留 = true
+  }
+  if (Array.isArray(状态.塔列表)) {
+    数据包.cities = 状态.塔列表.slice()
+    delete 数据包.cities_diff
+  }
+  return 已保留
 }
 
 function 取得终局前回合(数据包) {
