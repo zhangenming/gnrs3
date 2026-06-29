@@ -38,11 +38,16 @@ export const socket功能 = {
   id: 功能定义.id,
   入站预处理({ 事件名, 数据包, 参数, 请求渲染 }) {
     if (!功能已启用(功能定义.id)) return
+    if (是投降或退出事件(数据包)) {
+      重置终局前棋盘恢复()
+      return
+    }
     if (!是终局前棋盘恢复事件(事件名, 数据包)) return
     准备终局前棋盘恢复(数据包 ?? {}, 参数 ?? [], 请求渲染)
   },
   game_update({ 数据包 }) {
     if (!功能已启用(功能定义.id)) return
+    if (是投降或退出事件(数据包)) return
     if (是终局前棋盘恢复事件('game_update', 数据包)) return
     安排记录上一帧棋盘快照(数据包)
   },
@@ -118,6 +123,7 @@ function 重置终局前棋盘恢复() {
 
 function 是终局前棋盘恢复事件(事件名, 数据包) {
   if (!是游戏结束事件(事件名) && !包含死亡分数(数据包)) return false
+  if (是投降或退出事件(数据包)) return false
   if (是投降结算弹窗()) return false
   return 包含死亡分数(数据包) && 包含地图更新数据(数据包)
 }
@@ -126,6 +132,13 @@ function 包含死亡分数(数据包) {
   if (!Array.isArray(数据包?.scores)) return false
   return 数据包.scores.some(function (分数) {
     return 分数?.dead === true
+  })
+}
+
+function 是投降或退出事件(数据包) {
+  if (!Array.isArray(数据包?.scores)) return false
+  return 数据包.scores.some(function (分数) {
+    return 分数?.dead === true && 分数.total === 0
   })
 }
 
