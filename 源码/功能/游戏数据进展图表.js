@@ -17,7 +17,7 @@ import { 安装样式 as 注入样式 } from '../工具.js'
 const 面板编号 = 'gio-data-progress-chart-panel'
 const 图表类名 = 'gio-data-progress-chart'
 const 样式元素编号 = `${样式编号}-data-progress-chart`
-const 图表显示版本 = '大回合陆地拆分-9'
+const 图表显示版本 = '大回合陆地拆分-10'
 const ECharts脚本编号 = 'gio-echarts-script'
 const ECharts地址 =
   'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js'
@@ -712,7 +712,6 @@ function 取得图表配置(图表类型) {
       数据值列表: 大回合陆地兵力差列表,
       线颜色: 陆地线颜色,
       显示变化标签: true,
-      显示累计变化横坐标: true,
     })
   }
   if (图表类型 === 修正兵力差图表类型) {
@@ -960,7 +959,6 @@ function 取得图表配置(图表类型) {
     数据值列表,
     线颜色,
     显示变化标签 = false,
-    显示累计变化横坐标 = false,
   }) {
     const 变化标签数据列表 = 取得变化标签数据列表()
     const y轴范围 = 取得y轴范围()
@@ -991,58 +989,35 @@ function 取得图表配置(图表类型) {
           const 索引 = 参数列表?.[0]?.dataIndex ?? 0
           const 数据点 = 数据列表[索引]
           if (!数据点) return ''
-          return [
+          const 文本列表 = [
             `turn ${数据点.回合}`,
             `${系列名} ${格式化差值(数据值列表[索引])}`,
-          ].join('<br>')
+          ]
+          const 标签数据 = 变化标签数据列表.find((候选) => {
+            return 候选[3] === 索引
+          })
+          if (标签数据) {
+            文本列表.push(
+              `当前陆地差 ${格式化带符号差值(标签数据[2])}`,
+              `累计陆地差 ${格式化带符号差值(标签数据[4])}`,
+              `本次陆地差变动 ${格式化带符号差值(标签数据[5])}`,
+            )
+          }
+          return 文本列表.join('<br>')
         },
       },
       grid: {
         left: 56,
         right: 12,
-        top: 显示变化标签 ? 30 : 10,
-        bottom: 显示变化标签 ? 44 : 24,
+        top: 显示变化标签 ? 48 : 10,
+        bottom: 显示变化标签 ? 36 : 24,
       },
       xAxis: {
         type: 'category',
         boundaryGap: false,
         data: 数据列表.map((数据点) => String(数据点.回合)),
         axisLabel: {
-          show: 显示累计变化横坐标,
-          color: 'rgba(220, 232, 248, 0.82)',
-          fontWeight: 700,
-          rich: {
-            our: {
-              color: 我方蓝色,
-              fontWeight: 900,
-              fontSize: 13,
-            },
-            enemy: {
-              color: 地差劣势文字颜色,
-              fontWeight: 900,
-              fontSize: 13,
-            },
-            tie: {
-              color: 'rgba(220, 232, 248, 0.82)',
-              fontWeight: 900,
-              fontSize: 13,
-            },
-          },
-          interval(idx) {
-            const 数据点 = 数据列表[idx]
-            return 数据点?.回合 > 0 && 数据点.回合 % 50 === 0
-          },
-          formatter(回合, idx) {
-            const 数值 = Number(回合)
-            if (数值 <= 0 || 数值 % 50 !== 0) return ''
-
-            const 累计变化 = 变化标签数据列表.find((标签数据) => {
-              return 标签数据[0] === 回合
-            })?.[4]
-            if (!Number.isFinite(累计变化)) return ''
-
-            return `{${取得差值标签样式(累计变化)}|${格式化带符号差值(累计变化)}}`
-          },
+          show: false,
         },
         axisLine: {
           lineStyle: { color: 'rgba(220, 232, 248, 0.32)' },
@@ -1109,43 +1084,74 @@ function 取得图表配置(图表类型) {
 
     function 取得变化标签数据列表() {
       const 输出列表 = []
-      let 累计变化 = 0
+      let 上次大回合陆地差 = 0
       for (let idx = 1; idx < 数据列表.length; idx += 1) {
         const 当前值 = 数据值列表[idx]
-        const 上个值 = 数据值列表[idx - 1]
-        const 变化 = 当前值 - 上个值
         const 数据点 = 数据列表[idx]
-        if (!Number.isFinite(变化) || 变化 === 0) continue
         if (数据点.回合 <= 0 || 数据点.回合 % 50 !== 0) continue
+        if (!Number.isFinite(当前值) || !Number.isFinite(数据点.陆地差))
+          continue
 
-        累计变化 += 变化
-        输出列表.push([String(数据点.回合), 当前值, 变化, idx, 累计变化])
+        const 陆地差变动 = 数据点.陆地差 - 上次大回合陆地差
+        上次大回合陆地差 = 数据点.陆地差
+        输出列表.push([
+          String(数据点.回合),
+          当前值,
+          数据点.陆地差,
+          idx,
+          当前值,
+          陆地差变动,
+        ])
       }
       return 输出列表
     }
 
     function 渲染变化标签(参数, api) {
-      const 变化 = Number(api.value(2))
-      if (!Number.isFinite(变化) || 变化 === 0) return { type: 'group' }
+      const 当前陆地差 = Number(api.value(2))
+      const 累计陆地差 = Number(api.value(4))
+      const 陆地差变动 = Number(api.value(5))
+      if (
+        !Number.isFinite(当前陆地差) ||
+        !Number.isFinite(累计陆地差) ||
+        !Number.isFinite(陆地差变动)
+      ) {
+        return { type: 'group' }
+      }
 
       const [x] = api.coord([api.value(0), 0])
       return {
+        type: 'group',
+        children: [
+          取得标签图形(x, 参数.coordSys.y - 28, '地', 当前陆地差),
+          取得标签图形(x, 参数.coordSys.y - 10, '变', 陆地差变动),
+          取得标签图形(
+            x,
+            参数.coordSys.y + 参数.coordSys.height + 20,
+            '总',
+            累计陆地差,
+          ),
+        ],
+      }
+    }
+
+    function 取得标签图形(x, y, 标签, 值) {
+      return {
         type: 'text',
         x,
-        y: 参数.coordSys.y - 6,
+        y,
         style: {
-          text: 格式化带符号差值(变化),
-          fill: 取得差值颜色(变化),
+          text: `${标签}${格式化带符号差值(值)}`,
+          fill: 取得标签颜色(值),
           align: 'center',
-          font: '900 13px Arial',
+          font: '900 12px Arial',
         },
       }
     }
 
-    function 取得差值标签样式(值) {
+    function 取得标签颜色(值) {
       const 数值 = Number(值)
-      if (!Number.isFinite(数值) || 数值 === 0) return 'tie'
-      return 数值 > 0 ? 'our' : 'enemy'
+      if (!Number.isFinite(数值) || 数值 === 0) return '#dce8f8'
+      return 取得差值颜色(数值)
     }
 
     function 格式化带符号差值(值) {
