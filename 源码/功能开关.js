@@ -113,6 +113,7 @@ function 读取功能配置() {
   const 默认功能开关 = Object.fromEntries(
     功能列表.map((功能) => {
       if (功能.id === '自动扩展') return [功能.id, true]
+      if (功能.id === '敌方开塔提示') return [功能.id, false]
       return [功能.id, 功能.分类 !== '自动操作']
     }),
   )
@@ -131,12 +132,23 @@ function 读取功能配置() {
       原配置 && typeof 原配置 === 'object' ? 原配置.功能开关 : null
     const 已迁移自动操作默认关闭 = 原配置?.自动操作默认关闭已迁移 === true
     const 已迁移自动扩展默认开启 = 原配置?.自动扩展默认开启已迁移 === true
+    const 已迁移旧版敌方开塔默认关闭 =
+      原配置?.旧版敌方开塔默认关闭已迁移 === true
     return {
       总开关: 原配置?.总开关 !== false,
       功能开关: Object.fromEntries(
         功能列表.map((功能) => {
           if (!已迁移自动扩展默认开启 && 功能.id === '自动扩展') {
             return [功能.id, true]
+          }
+          if (功能.id === '敌方开塔提示') {
+            if (!已迁移旧版敌方开塔默认关闭) return [功能.id, false]
+            return [
+              功能.id,
+              Object.hasOwn(原功能开关 ?? {}, 功能.id)
+                ? 原功能开关[功能.id] !== false
+                : false,
+            ]
           }
           if (!已迁移自动操作默认关闭 && 功能.分类 === '自动操作') {
             return [功能.id, false]
@@ -167,6 +179,7 @@ function 保存功能配置() {
         功能开关: 状态.功能开关,
         自动操作默认关闭已迁移: true,
         自动扩展默认开启已迁移: true,
+        旧版敌方开塔默认关闭已迁移: true,
       }),
     )
   } catch {}
