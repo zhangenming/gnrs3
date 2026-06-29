@@ -96,13 +96,17 @@ function 安装回放大回合逐帧跳转() {
   }
 
   async function 执行回放初始化流程(回放地址, 起始回合) {
-    if (!直接跳转到最后回合()) {
+    if (!(await 直接跳转到最后回合())) {
       if (起始回合 < 大回合turn数) 请求开始逐帧跳转(1)
       return
     }
 
-    await 等待回合变化后稳定(起始回合)
+    const 已到最后回合 = await 等待回合变化后稳定(起始回合)
     if (取得回放地址() !== 回放地址) return
+    if (!已到最后回合) {
+      if (起始回合 < 大回合turn数) 请求开始逐帧跳转(1)
+      return
+    }
 
     const 胜负结果 = await 等待读取胜负结果()
     if (取得回放地址() !== 回放地址) return
@@ -117,19 +121,19 @@ function 安装回放大回合逐帧跳转() {
     请求开始逐帧跳转(1)
   }
 
-  function 直接跳转到最后回合() {
+  async function 直接跳转到最后回合() {
     return 直接跳转到回合文本('999999')
   }
 
   async function 跳回第1回合() {
-    if (直接跳转到回合文本('0.')) {
+    if (await 直接跳转到回合文本('0.')) {
       if (await 等待回合满足((回合) => 回合 <= 1, 90)) return true
     }
-    if (!直接跳转到回合文本('1')) return false
+    if (!(await 直接跳转到回合文本('1'))) return false
     return 等待回合满足((回合) => 回合 <= 2, 90)
   }
 
-  function 直接跳转到回合文本(文本) {
+  async function 直接跳转到回合文本(文本) {
     const 输入框 = document.getElementById('replay-turn-jump-input')
     if (!(输入框 instanceof HTMLInputElement)) return false
 
@@ -146,7 +150,9 @@ function 安装回放大回合逐帧跳转() {
       }),
     )
     输入框.dispatchEvent(new Event('change', { bubbles: true }))
+    await 等待短暂延迟()
     发送按键到目标(输入框, 'keydown', 取得按键('Enter', 'Enter', 13))
+    发送按键到目标(输入框, 'keypress', 取得按键('Enter', 'Enter', 13))
     发送按键到目标(输入框, 'keyup', 取得按键('Enter', 'Enter', 13))
     return true
 
@@ -157,6 +163,12 @@ function 安装回放大回合逐帧跳转() {
       )
       描述符?.set?.call(输入框, 值)
     }
+  }
+
+  function 等待短暂延迟() {
+    return new Promise((resolve) => {
+      setTimeout(resolve, 0)
+    })
   }
 
   async function 等待回合变化后稳定(原回合) {
