@@ -203,14 +203,14 @@ function 取得差值文本(差值) {
   return 差值 >= 0 ? `+${差值}` : String(差值)
 }
 
-function 同步网页回放塔数据() {
-  if (!是网页回放中()) return
+export function 同步网页回放塔数据() {
+  if (!是网页回放中()) return null
 
   const 回放数据包 = 读取网页回放数据包()
-  if (!回放数据包) return
+  if (!回放数据包) return null
 
   const 回放地图数组 = 取得完整地图数组(回放数据包)
-  if (!回放地图数组) return
+  if (!回放地图数组) return null
 
   const 回放玩家索引 = 同步回放玩家索引(回放数据包)
   const 回放键 = [
@@ -236,7 +236,7 @@ function 同步网页回放塔数据() {
       : '',
     取得回放塔地图签名(回放地图数组, 回放数据包.cities),
   ].join(':')
-  if (状态.战场塔信息回放签名 === 签名) return
+  if (状态.战场塔信息回放签名 === 签名) return 回放数据包
   状态.战场塔信息回放签名 = 签名
 
   重构玩家颜色(回放数据包)
@@ -251,6 +251,7 @@ function 同步网页回放塔数据() {
     回放键,
     回合: 回放数据包.turn,
   }
+  return 回放数据包
 
   function 读取网页回放数据包() {
     const 地图元素 = document.getElementById('gameMap')
@@ -277,6 +278,7 @@ function 同步网页回放塔数据() {
           turn: props.turn,
           usernames: props.usernames,
           teams: props.teams,
+          scores: props.scores,
           playerColors: props.playerColors,
           replay_id: props.replay_id,
           replayWatcherIndex: props.replayWatcherIndex,

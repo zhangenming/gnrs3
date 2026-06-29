@@ -18,6 +18,7 @@ import { 状态 } from '../状态.js'
 import { 是敌方格, 是阻挡地形, 取得周期增长次数 } from '../游戏工具.js'
 import {
   读取分数玩家数据,
+  读取地图玩家数据,
   读取快照玩家数据,
   读取页面玩家数据,
 } from '../战场工具.js'
@@ -335,13 +336,12 @@ export function 更新我方行动地图判断(
       上次玩家快照.敌方.陆地 +
       地图变化.我方吃敌方地块数量
     const 判断 = 取得敌方开塔判断(上次玩家快照, 当前玩家快照)
-    if (判断.敌方偷塔耗兵 > 0 && (新增敌方开塔数 > 0 || 是网页回放中())) {
+    const 是敌方成功开塔 = 判断.是敌方偷塔攻击 && 敌方自身新增地块 > 0
+    if (判断.敌方偷塔耗兵 > 0 && (新增敌方开塔数 > 0 || 是敌方成功开塔)) {
       设置行动开塔兵力('敌方', 回合, 判断.敌方偷塔耗兵, 敌方自身新增地块 > 0)
     }
     if (新增敌方开塔数 > 0) return '开塔'
-    if (是网页回放中() && 判断.是敌方偷塔攻击) {
-      return '开塔'
-    }
+    if (是敌方成功开塔) return '开塔'
 
     return null
   }
@@ -633,6 +633,7 @@ function 安装网页回放行动监控同步() {
               turn: props.turn,
               usernames: props.usernames,
               teams: props.teams,
+              scores: props.scores,
               playerColors: props.playerColors,
               executedMoves: props.executedMoves,
               replay_id: props.replay_id,
@@ -1502,8 +1503,12 @@ function 取得行动开塔兵力键(阵营, 回合) {
 }
 
 function 读取行动监控玩家快照(数据包, 回合) {
+  const 地图数组 = 是网页回放中() ? 取得完整地图数组(数据包) : null
   const 玩家数据 = 是网页回放中()
-    ? (读取分数玩家数据(数据包) ?? 读取快照玩家数据() ?? 读取页面玩家数据())
+    ? (读取地图玩家数据(地图数组) ??
+      读取分数玩家数据(数据包) ??
+      读取快照玩家数据() ??
+      读取页面玩家数据())
     : 读取分数玩家数据(数据包)
   if (!玩家数据) return null
 

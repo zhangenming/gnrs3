@@ -1,5 +1,5 @@
 import { 状态 } from './状态.js'
-import { 是我方或队友 } from './游戏.js'
+import { 取得地图格子数, 是我方或队友 } from './游戏.js'
 import { 取得表头行, 取得单元格列表, 取得玩家列索引 } from './战场DOM工具.js'
 import { 取得战场数据表格 } from './功能/战场表格.js'
 
@@ -37,6 +37,32 @@ export function 读取快照玩家数据() {
   const 我方 = 读取快照玩家(快照.get(我方玩家名))
   const 敌方 = 读取快照玩家(快照.get(敌方玩家名))
   return 我方 && 敌方 ? { 我方, 敌方 } : null
+}
+
+export function 读取地图玩家数据(地图数组) {
+  const 格子数 = 取得地图格子数(地图数组)
+  if (!Number.isInteger(格子数)) return null
+
+  const 我方 = { 兵力: 0, 陆地: 0 }
+  const 敌方 = { 兵力: 0, 陆地: 0 }
+  let 有我方 = false
+  let 有敌方 = false
+  for (let idx = 0; idx < 格子数; idx += 1) {
+    const 归属 = 地图数组[2 + 格子数 + idx]
+    if (!Number.isInteger(归属) || 归属 < 0) continue
+
+    const 玩家 = 是我方或队友(归属) ? 我方 : 敌方
+    玩家.陆地 += 1
+    const 兵力 = 地图数组[2 + idx]
+    if (Number.isInteger(兵力)) 玩家.兵力 += 兵力
+    if (玩家 === 我方) {
+      有我方 = true
+    } else {
+      有敌方 = true
+    }
+  }
+
+  return 有我方 && 有敌方 ? { 我方, 敌方 } : null
 }
 
 export function 读取页面玩家数据() {
