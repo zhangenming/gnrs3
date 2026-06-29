@@ -1256,17 +1256,14 @@ function 同步我方行动监控UI() {
 
   function 绘制行动监控画布(画布, css宽, 分组表, 悬停回合, 阵营) {
     const dpr = window.devicePixelRatio ?? 1
-    const 标签宽 = 38
-    const 标签间距 = 6
     const 单元间距 = 3
     const 组间距 = 6
     const 单元高 = 19
     const 单元宽 = Math.max(
       12,
-      (css宽 - 标签宽 - 标签间距 - 单元间距 * (每行回合数 - 1)) / 每行回合数,
+      (css宽 - 单元间距 * (每行回合数 - 1)) / 每行回合数,
     )
-    const 内容宽 =
-      标签宽 + 标签间距 + 单元宽 * 每行回合数 + 单元间距 * (每行回合数 - 1)
+    const 内容宽 = 单元宽 * 每行回合数 + 单元间距 * (每行回合数 - 1)
     const 分组列表 = Array.from(分组表)
     const 组高度列表 = 分组列表.map(([, 分组回合列表]) => {
       const 最大回合 = 分组回合列表.reduce((最大值, 回合状态) => {
@@ -1300,30 +1297,19 @@ function 同步我方行动监控UI() {
 
     let y = 0
     for (let idx = 0; idx < 分组列表.length; idx += 1) {
-      const [大回合序号, 分组回合列表] = 分组列表[idx]
+      const [, 分组回合列表] = 分组列表[idx]
       const 组高 = 组高度列表[idx]
-      绘制大回合标签(大回合序号, y, 组高)
       for (const 回合状态 of 分组回合列表) {
         绘制回合单元(回合状态, y)
       }
       y += 组高 + 组间距
     }
 
-    function 绘制大回合标签(大回合序号, y, 高) {
-      ctx.fillStyle = 'rgba(255, 191, 63, 0.16)'
-      ctx.beginPath()
-      ctx.roundRect(0, y, 标签宽, 高, 5)
-      ctx.fill()
-      ctx.fillStyle = '#ffcf66'
-      ctx.font = '900 11px Arial, sans-serif'
-      ctx.fillText(`大${大回合序号}`, 标签宽 / 2, y + 高 / 2)
-    }
-
     function 绘制回合单元(回合状态, 组Y) {
       const 序号 = Math.max(1, 回合状态.大回合内回合) - 1
       const 行 = Math.floor(序号 / 每行回合数)
       const 列 = 序号 % 每行回合数
-      const x = 标签宽 + 标签间距 + 列 * (单元宽 + 单元间距)
+      const x = 列 * (单元宽 + 单元间距)
       const y = 组Y + 行 * (单元高 + 单元间距)
       const 样式 = 取得行动样式(回合状态.行动类型, 阵营)
       画布.__gioActionWatchHitBoxes.push({
