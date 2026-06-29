@@ -703,6 +703,7 @@ function 取得图表渲染签名(图表元素, 图表类型) {
 
 function 取得图表配置(图表类型) {
   const 数据列表 = 取得图表数据列表()
+  const x轴回合列表 = 取得x轴回合列表(数据列表)
   const 兵力差变化列表 = 取得兵力差变化列表(数据列表)
   const 大回合陆地兵力差列表 = 取得大回合陆地兵力差列表(数据列表)
   if (图表类型 === 大回合陆地兵力差图表类型) {
@@ -859,7 +860,7 @@ function 取得图表配置(图表类型) {
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: 数据列表.map((数据点) => String(数据点.回合)),
+      data: x轴回合列表,
       axisLabel: {
         show: false,
       },
@@ -953,6 +954,19 @@ function 取得图表配置(图表类型) {
     })
   }
 
+  function 取得x轴回合列表(数据列表) {
+    const 最大回合 = Math.max(
+      0,
+      ...数据列表.map((数据点) => {
+        return 数据点.回合
+      }),
+    )
+    const x轴最大回合 = Math.max(50, Math.ceil(最大回合 / 50) * 50)
+    return Array.from({ length: x轴最大回合 }, (_, idx) => {
+      return String(idx + 1)
+    })
+  }
+
   function 取得单线图表配置({
     数据列表,
     系列名,
@@ -1015,7 +1029,7 @@ function 取得图表配置(图表类型) {
       xAxis: {
         type: 'category',
         boundaryGap: false,
-        data: 数据列表.map((数据点) => String(数据点.回合)),
+        data: x轴回合列表,
         axisLabel: {
           show: false,
         },
