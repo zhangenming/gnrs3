@@ -1,5 +1,11 @@
 // 功能目的:
-// 基地被吃导致游戏结束时，用终局前一 turn 的棋盘盖住官方“兵力减半并改色”的终局画面。
+// 基地被吃导致游戏结束时，最终显示录像倒数第二帧的完整棋盘数据，避开官方“兵力减半并改色”的终局画面。
+//
+// 实现逻辑:
+// 1. 只处理吃基地导致的终局；投降、退出、对手离开不执行恢复逻辑。
+// 2. 终局事件入站后查找 replay id，读取 .gior 回放文件并从移动序列中找到真正吃基地的那一步。
+// 3. 在吃基地移动执行前截取完整棋盘，用这份录像倒数第二帧重建颜色层和兵力数字层。
+// 4. 如果回放文件不可用，或回放里没有吃基地移动，就不绘制恢复层，避免影响投降和退出。
 import { 注册功能 } from '../注册中心.js'
 import { 状态 } from '../状态.js'
 import { 功能已启用 } from '../功能状态.js'
@@ -8,24 +14,21 @@ import {
   大回合turn数,
   基地自然增长turn数,
   敌方红色,
+  中立黄色,
   覆盖层层级,
   我方蓝色,
 } from '../配置.js'
-import { 是我方或队友 } from '../游戏.js'
 
-const iframe编号 = 'gio-before-end-board-replay-frame'
 const 回放编号重试间隔毫秒 = 500
 const 回放编号最大重试次数 = 40
-const 回放画布轮询间隔毫秒 = 180
-const 回放画布最大轮询次数 = 170
+const 回放文件重试间隔毫秒 = 800
+const 回放文件最大重试次数 = 30
 let 恢复任务 = null
 let 回放编号重试定时器 = null
-let 回放画布轮询定时器 = null
+let 回放文件重试定时器 = null
 let 请求重绘 = null
 let 终局前棋盘画布 = null
 let 终局前兵力表格 = null
-let 上一帧棋盘快照 = null
-let 上一帧快照动画帧 = null
 
 export const 功能定义 = {
   id: '终局前棋盘恢复',
@@ -38,22 +41,12 @@ export const socket功能 = {
   id: 功能定义.id,
   入站预处理({ 事件名, 数据包, 参数, 请求渲染 }) {
     if (!功能已启用(功能定义.id)) return
-    if (是投降或退出事件(数据包)) {
+    if (是投降或退出事件(数据包, 参数)) {
       重置终局前棋盘恢复()
       return
     }
-    if (!是终局前棋盘恢复事件(事件名, 数据包)) return
-    if (保留官方终局前地图数据(数据包)) {
-      重置终局前棋盘恢复()
-      return
-    }
+    if (!是终局前棋盘恢复事件(事件名, 数据包, 参数)) return
     准备终局前棋盘恢复(数据包 ?? {}, 参数 ?? [], 请求渲染)
-  },
-  game_update({ 数据包 }) {
-    if (!功能已启用(功能定义.id)) return
-    if (是投降或退出事件(数据包)) return
-    if (是终局前棋盘恢复事件('game_update', 数据包)) return
-    安排记录上一帧棋盘快照(数据包)
   },
   新局重置: 重置终局前棋盘恢复,
 }
@@ -93,12 +86,7 @@ export const 覆盖层功能 = {
 function 准备终局前棋盘恢复(数据包, 参数, 请求渲染) {
   请求重绘 = 请求渲染
 
-  const 目标回合 = 状态.终局前棋盘恢复?.目标回合 ?? 取得终局前回合(数据包)
-  if (!Number.isInteger(目标回合)) return
-
-  if (!状态.终局前棋盘恢复?.图像画布) {
-    记录缓存棋盘快照(目标回合) || 记录当前棋盘快照(目标回合)
-  }
+  const 目标回合 = 状态.终局前棋盘恢复?.目标回合 ?? 取得终局前回合(数据包) ?? 0
 
   const 回放编号 = 读取回放编号(数据包, 参数) ?? 读取页面回放编号()
   const 任务 = 取得恢复任务(目标回合)
@@ -116,20 +104,14 @@ function 重置终局前棋盘恢复() {
   状态.终局前棋盘恢复 = null
   恢复任务 = null
   请求重绘 = null
-  上一帧棋盘快照 = null
-  if (上一帧快照动画帧 !== null) {
-    cancelAnimationFrame(上一帧快照动画帧)
-    上一帧快照动画帧 = null
-  }
   清理回放定时器()
-  清理回放iframe()
 }
 
-function 是终局前棋盘恢复事件(事件名, 数据包) {
+function 是终局前棋盘恢复事件(事件名, 数据包, 参数 = []) {
   if (!是游戏结束事件(事件名) && !包含死亡分数(数据包)) return false
-  if (是投降或退出事件(数据包)) return false
+  if (是投降或退出事件(数据包, 参数)) return false
   if (是投降结算弹窗()) return false
-  return 包含死亡分数(数据包) && 包含地图更新数据(数据包)
+  return 是游戏结束事件(事件名) || 包含死亡分数(数据包)
 }
 
 function 包含死亡分数(数据包) {
@@ -139,34 +121,9 @@ function 包含死亡分数(数据包) {
   })
 }
 
-function 是投降或退出事件(数据包) {
-  if (!Array.isArray(数据包?.scores)) return false
-  return 数据包.scores.some(function (分数) {
-    return 分数?.dead === true && 分数.total === 0
-  })
-}
-
-function 包含地图更新数据(数据包) {
-  return Array.isArray(数据包?.map) || Array.isArray(数据包?.map_diff)
-}
-
-function 保留官方终局前地图数据(数据包) {
-  if (!Array.isArray(状态.地图数组) || 状态.地图数组.length <= 0) return false
-
-  let 已保留 = false
-  if (Array.isArray(数据包?.map)) {
-    数据包.map = 状态.地图数组.slice()
-    已保留 = true
-  }
-  if (Array.isArray(数据包?.map_diff)) {
-    数据包.map_diff = [状态.地图数组.length]
-    已保留 = true
-  }
-  if (Array.isArray(状态.塔列表)) {
-    数据包.cities = 状态.塔列表.slice()
-    delete 数据包.cities_diff
-  }
-  return 已保留
+function 是投降或退出事件(数据包, 参数 = []) {
+  if (是投降结算弹窗()) return true
+  return 值包含投降退出文本([数据包, ...参数], 0, new Set())
 }
 
 function 取得终局前回合(数据包) {
@@ -183,80 +140,9 @@ function 取得恢复任务(目标回合) {
     目标回合,
     回放编号: null,
     回放编号尝试次数: 0,
+    回放文件尝试次数: 0,
   }
   return 恢复任务
-}
-
-function 安排记录上一帧棋盘快照(数据包) {
-  const 回合 = Number.isInteger(数据包?.turn) ? 数据包.turn : 状态.当前回合
-  记录上一帧棋盘快照(回合)
-  if (上一帧快照动画帧 !== null) return
-
-  上一帧快照动画帧 = requestAnimationFrame(function () {
-    上一帧快照动画帧 = null
-    记录上一帧棋盘快照(回合)
-  })
-}
-
-function 记录上一帧棋盘快照(回合) {
-  if (状态.终局前棋盘恢复?.图像画布) return
-
-  const 画布 = 取游戏画布()
-  const 图像画布 = 复制画布(画布)
-  if (!图像画布) return
-
-  上一帧棋盘快照 = {
-    图像画布,
-    兵力表格数据: 读取当前页面兵力表格数据() ?? 生成当前地图缓存兵力表格数据(),
-    回合: Number.isInteger(回合) ? 回合 : null,
-  }
-}
-
-function 记录缓存棋盘快照(目标回合) {
-  if (!上一帧棋盘快照?.图像画布) return false
-
-  状态.终局前棋盘恢复 = {
-    图像画布: 上一帧棋盘快照.图像画布,
-    兵力表格数据: 上一帧棋盘快照.兵力表格数据,
-    目标回合,
-    来源: '上一帧画布',
-    回放编号: null,
-  }
-  重建终局前棋盘DOM()
-  请求重绘?.()
-  return true
-}
-
-function 记录当前棋盘快照(目标回合) {
-  const 画布 = 取游戏画布()
-  if (!画布?.width || !画布?.height) return
-
-  const 图像画布 = 复制画布(画布)
-  if (!图像画布) return
-
-  状态.终局前棋盘恢复 = {
-    图像画布,
-    兵力表格数据: 读取当前页面兵力表格数据() ?? 生成当前地图缓存兵力表格数据(),
-    目标回合,
-    来源: '当前画布',
-    回放编号: null,
-  }
-  重建终局前棋盘DOM()
-  请求重绘?.()
-}
-
-function 复制画布(来源画布) {
-  if (!来源画布?.width || !来源画布?.height) return null
-
-  const 图像画布 = document.createElement('canvas')
-  图像画布.width = 来源画布.width
-  图像画布.height = 来源画布.height
-
-  const ctx = 图像画布.getContext('2d')
-  if (!ctx) return null
-
-  ctx.drawImage(来源画布, 0, 0)
-  return 图像画布
 }
 
 function 安排查找回放编号(任务) {
@@ -282,307 +168,80 @@ function 安排查找回放编号(任务) {
 
 function 加载回放棋盘(任务) {
   if (任务 !== 恢复任务 || !任务.回放编号) return
-  if (状态.终局前棋盘恢复?.来源 === '回放') return
+  if (状态.终局前棋盘恢复?.来源 === '回放文件倒数第二帧') return
 
-  清理回放定时器()
-  清理回放iframe()
+  清理回放编号定时器()
 
   任务.回放数据包 = null
+  任务.回放文件尝试次数 = 0
   加载回放数据(任务)
-
-  const iframe = document.createElement('iframe')
-  iframe.id = iframe编号
-  iframe.src = 取得回放地址(任务)
-  iframe.style.position = 'fixed'
-  iframe.style.left = '-10000px'
-  iframe.style.top = '-10000px'
-  iframe.style.width = `${取得回放iframe宽度()}px`
-  iframe.style.height = `${取得回放iframe高度()}px`
-  iframe.style.opacity = '0'
-  iframe.style.pointerEvents = 'none'
-  iframe.tabIndex = -1
-  document.body?.appendChild(iframe)
-
-  轮询回放画布(任务, iframe, 0)
-}
-
-function 轮询回放画布(任务, iframe, 尝试次数) {
-  if (任务 !== 恢复任务) return
-  if (尝试次数 >= 回放画布最大轮询次数) {
-    清理回放iframe()
-    return
-  }
-
-  const 回放结果 = 读取iframe回放结果(iframe, 任务.目标回合)
-  if (回放结果) {
-    记录回放棋盘快照(回放结果, 任务)
-    清理回放iframe()
-    return
-  }
-
-  回放画布轮询定时器 = window.setTimeout(function () {
-    回放画布轮询定时器 = null
-    轮询回放画布(任务, iframe, 尝试次数 + 1)
-  }, 回放画布轮询间隔毫秒)
-}
-
-function 读取iframe回放结果(iframe, 目标回合) {
-  const 文档 = iframe.contentDocument
-  if (!文档) return null
-
-  const 回合 = 读取回放页面回合(文档)
-  if (Number.isInteger(回合) && 回合 !== 目标回合) return null
-
-  const 画布 = 文档.querySelector('#gameMap .game-map-canvas')
-  if (!画布?.width || !画布?.height) return null
-
-  const 兵力表格数据 = 读取兵力表格数据(
-    文档.querySelector('#gameMap .game-cursor-table'),
-  )
-  const 回放文件数据包 = 恢复任务?.回放数据包 ?? null
-  const 数据包 = 回放文件数据包 ?? 读取回放数据包(文档)
-  if (!数据包 && !兵力表格数据) return null
-  if (!回放画布已着色(画布)) return null
-  return {
-    画布,
-    数据包,
-    兵力表格数据,
-  }
 }
 
 async function 加载回放数据(任务) {
   try {
     const 响应 = await fetch(取得回放文件地址(任务.回放编号))
     if (任务 !== 恢复任务) return
-    if (!响应.ok) return
+    if (!响应.ok) {
+      安排重新加载回放数据(任务)
+      return
+    }
 
     const 内容 = new Uint8Array(await 响应.arrayBuffer())
     if (任务 !== 恢复任务) return
 
     const 回放 = 解析回放文件(内容)
-    const 数据包 = 模拟回放数据包(回放, 任务.目标回合)
-    if (!数据包) return
+    const 数据包 = 模拟回放数据包(回放)
+    if (!数据包) {
+      重置终局前棋盘恢复()
+      return
+    }
 
     任务.回放数据包 = 数据包
-    补当前棋盘快照数字(任务)
+    渲染回放终局前棋盘(任务)
   } catch (错误) {
     console.warn('终局前棋盘恢复读取回放失败', 错误)
+    安排重新加载回放数据(任务)
+  }
+
+  function 安排重新加载回放数据(任务) {
+    if (任务 !== 恢复任务) return
+    if (任务.回放文件尝试次数 >= 回放文件最大重试次数) return
+    if (回放文件重试定时器 !== null) return
+
+    任务.回放文件尝试次数 += 1
+    回放文件重试定时器 = window.setTimeout(function () {
+      回放文件重试定时器 = null
+      加载回放数据(任务)
+    }, 回放文件重试间隔毫秒)
   }
 }
 
-function 记录回放棋盘快照(回放结果, 任务) {
-  const { 画布: 回放画布, 数据包, 兵力表格数据 } = 回放结果
-  const 旧快照 = 状态.终局前棋盘恢复
-  const 图像画布 = 复制画布(回放画布)
-  if (!图像画布) return
-  if (!回放画布比当前更可靠(图像画布, 旧快照?.图像画布)) return
-  const 新兵力表格数据 = 兵力表格数据 ?? 生成回放兵力表格数据(数据包)
-
-  状态.终局前棋盘恢复 = {
-    图像画布,
-    兵力表格数据: 兵力表格更完整(新兵力表格数据, 旧快照?.兵力表格数据)
-      ? 新兵力表格数据
-      : 旧快照?.兵力表格数据,
-    目标回合: 任务.目标回合,
-    来源: '回放画布',
-    回放编号: 任务.回放编号,
-  }
-  重建终局前棋盘DOM()
-  请求重绘?.()
-}
-
-function 回放画布已着色(画布) {
-  return 统计画布彩色像素(画布) >= 6
-}
-
-function 回放画布比当前更可靠(新画布, 旧画布) {
-  if (!旧画布) return true
-  return 统计画布彩色像素(新画布) > 统计画布彩色像素(旧画布)
-}
-
-function 统计画布彩色像素(画布) {
-  const ctx = 画布.getContext('2d', { willReadFrequently: true })
-  if (!ctx) return 0
-
-  const 宽 = 画布.width
-  const 高 = 画布.height
-  const 步长x = Math.max(1, Math.floor(宽 / 32))
-  const 步长y = Math.max(1, Math.floor(高 / 24))
-  const 数据 = ctx.getImageData(0, 0, 宽, 高).data
-  let 彩色数量 = 0
-  let 有效数量 = 0
-
-  for (let y = Math.floor(步长y / 2); y < 高; y += 步长y) {
-    for (let x = Math.floor(步长x / 2); x < 宽; x += 步长x) {
-      const 起点 = (y * 宽 + x) * 4
-      const r = 数据[起点]
-      const g = 数据[起点 + 1]
-      const b = 数据[起点 + 2]
-      const a = 数据[起点 + 3]
-      if (a < 8) continue
-
-      有效数量 += 1
-      if (Math.max(r, g, b) - Math.min(r, g, b) > 24) 彩色数量 += 1
-    }
-  }
-
-  return 彩色数量 >= 有效数量 * 0.015 ? 彩色数量 : 0
-}
-
-function 补当前棋盘快照数字(任务) {
+function 渲染回放终局前棋盘(任务) {
   if (任务 !== 恢复任务 || !任务.回放数据包) return
 
-  const 快照 = 状态.终局前棋盘恢复
-  if (!快照?.图像画布) return
+  const 参照画布 = 取游戏画布()
+  if (!参照画布?.width || !参照画布?.height) return
 
   const 兵力表格数据 = 生成回放兵力表格数据(任务.回放数据包)
-  let 图像画布 = 生成可靠回放棋盘画布(任务.回放数据包, 快照.图像画布)
-  if (图像画布 && !回放画布比当前更可靠(图像画布, 快照.图像画布)) {
-    图像画布 = null
-  }
+  const 图像画布 = 生成回放棋盘画布(任务.回放数据包, 参照画布)
   if (!兵力表格数据 && !图像画布) return
 
   状态.终局前棋盘恢复 = {
-    ...快照,
-    图像画布: 图像画布 ?? 快照.图像画布,
-    兵力表格数据: 兵力表格更完整(兵力表格数据, 快照.兵力表格数据)
-      ? 兵力表格数据
-      : 快照.兵力表格数据,
-    来源: 图像画布 ? '回放文件棋盘' : '回放文件数字',
+    图像画布,
+    兵力表格数据,
+    目标回合: Number.isInteger(任务.回放数据包.turn)
+      ? 任务.回放数据包.turn
+      : 任务.目标回合,
+    来源: '回放文件倒数第二帧',
     回放编号: 任务.回放编号,
   }
   重建终局前棋盘DOM()
   请求重绘?.()
-}
-
-function 兵力表格更完整(新表格, 旧表格) {
-  if (!新表格) return false
-  if (!旧表格) return true
-  return 统计兵力数字数量(新表格) > 统计兵力数字数量(旧表格)
-
-  function 统计兵力数字数量(表格) {
-    return (表格.文本列表 ?? []).filter(Boolean).length
-  }
-}
-
-function 读取回放数据包(文档) {
-  const 起点列表 = [
-    文档.getElementById('gameMap'),
-    文档.querySelector('.game-map-canvas'),
-    文档.getElementById('game-page'),
-    文档.getElementById('react-container'),
-  ]
-
-  for (const 起点 of 起点列表) {
-    const 数据包 = 读取节点回放数据包(起点)
-    if (数据包) return 数据包
-  }
-  return null
-
-  function 读取节点回放数据包(节点) {
-    const fiber = 读取ReactFiber(节点)
-    if (!fiber) return null
-
-    const 已访问 = new Set()
-    const 栈 = [fiber]
-    while (栈.length) {
-      const 当前 = 栈.pop()
-      if (!当前 || 已访问.has(当前)) continue
-      已访问.add(当前)
-
-      const 数据包 = 读取fiber回放数据包(当前)
-      if (数据包) return 数据包
-
-      if (当前.return) 栈.push(当前.return)
-      if (当前.child) 栈.push(当前.child)
-      if (当前.sibling) 栈.push(当前.sibling)
-    }
-    return null
-  }
-
-  function 读取fiber回放数据包(fiber) {
-    const props列表 = [
-      fiber.memoizedProps,
-      fiber.pendingProps,
-      fiber.stateNode?.props,
-      fiber.stateNode?.props?.props,
-    ]
-    for (const props of props列表) {
-      if (!是回放数据Props(props)) continue
-      return {
-        map: props.map,
-        cities: props.cities,
-        generals: props.generals,
-        turn: props.turn,
-      }
-    }
-    return null
-  }
-
-  function 读取ReactFiber(节点) {
-    if (!节点) return null
-    const fiber键 = Object.keys(节点).find(function (键) {
-      return (
-        键.startsWith('__reactFiber$') ||
-        键.startsWith('__reactInternalInstance$')
-      )
-    })
-    return fiber键 ? 节点[fiber键] : null
-  }
-
-  function 是回放数据Props(props) {
-    return Boolean(
-      props?.isReplay === true &&
-      props.map &&
-      Number.isInteger(props.turn) &&
-      Number.isInteger(props.map?.width) &&
-      Number.isInteger(props.map?.height) &&
-      Array.isArray(props.map?._armies),
-    )
-  }
-}
-
-function 读取当前页面兵力表格数据() {
-  return 读取兵力表格数据(document.querySelector('#gameMap .game-cursor-table'))
-}
-
-function 读取兵力表格数据(文字表格) {
-  const 行列表 = Array.from(文字表格?.rows ?? [])
-  if (!行列表.length) return null
-
-  const 高度 = 行列表.length
-  const 宽度 = Math.max(
-    ...行列表.map(function (行) {
-      return 行.cells.length
-    }),
-  )
-  if (!Number.isInteger(宽度) || 宽度 <= 0) return null
-
-  const 文本列表 = new Array(宽度 * 高度).fill('')
-  for (let 行idx = 0; 行idx < 高度; 行idx += 1) {
-    const 单元格列表 = 行列表[行idx].cells
-    for (let 列idx = 0; 列idx < 宽度; 列idx += 1) {
-      const 单元格 = 单元格列表[列idx]
-      const 文本 = (
-        单元格?.querySelector('span')?.textContent ??
-        单元格?.textContent ??
-        ''
-      ).trim()
-      if (/^\d+$/.test(文本)) 文本列表[行idx * 宽度 + 列idx] = 文本
-    }
-  }
-
-  if (!文本列表.some(Boolean)) return null
-  return { 宽度, 高度, 文本列表 }
 }
 
 function 生成回放兵力表格数据(数据包) {
   const 地图信息 = 取得回放地图信息(数据包)
   return 生成地图兵力表格数据(地图信息, 数据包?.cities)
-}
-
-function 生成当前地图缓存兵力表格数据() {
-  return 生成地图兵力表格数据(取得当前地图缓存信息(), 状态.塔列表)
 }
 
 function 生成地图兵力表格数据(地图信息, 塔列表) {
@@ -609,10 +268,9 @@ function 生成地图兵力表格数据(地图信息, 塔列表) {
   return { 宽度, 高度, 文本列表 }
 }
 
-function 生成可靠回放棋盘画布(数据包, 参照画布) {
+function 生成回放棋盘画布(数据包, 参照画布) {
   const 地图信息 = 取得回放地图信息(数据包)
   if (!地图信息 || !参照画布?.width || !参照画布?.height) return null
-  if (!地图归属足够完整(地图信息)) return null
 
   const 图像画布 = document.createElement('canvas')
   图像画布.width = 参照画布.width
@@ -622,13 +280,21 @@ function 生成可靠回放棋盘画布(数据包, 参照画布) {
   if (!ctx) return null
 
   const { 宽度, 高度, 归属列表 } = 地图信息
+  const 塔集合 = new Set(
+    (数据包?.cities ?? []).filter(function (索引) {
+      return Number.isInteger(索引)
+    }),
+  )
   const 格宽 = 图像画布.width / 宽度
   const 格高 = 图像画布.height / 高度
+
+  ctx.fillStyle = '#d8d8d8'
+  ctx.fillRect(0, 0, 图像画布.width, 图像画布.height)
 
   for (let idx = 0; idx < 归属列表.length; idx += 1) {
     const 行 = Math.floor(idx / 宽度)
     const 列 = idx % 宽度
-    ctx.fillStyle = 取得地块颜色(归属列表[idx])
+    ctx.fillStyle = 取得地块颜色(idx, 归属列表[idx])
     ctx.fillRect(列 * 格宽, 行 * 格高, 格宽, 格高)
   }
 
@@ -649,17 +315,42 @@ function 生成可靠回放棋盘画布(数据包, 参照画布) {
 
   return 图像画布
 
-  function 地图归属足够完整(地图信息) {
-    const 已占领数量 = 地图信息.归属列表.filter(function (归属) {
-      return Number.isInteger(归属) && 归属 >= 0
-    }).length
-    return 已占领数量 >= Math.max(12, 地图信息.归属列表.length * 0.08)
+  function 取得地块颜色(idx, 归属) {
+    if (归属 === -2) return '#8f8f8f'
+    if (归属 === -1 && 塔集合.has(idx)) return 中立黄色
+    if (归属 === -1) return '#d8d8d8'
+    if (!Number.isInteger(归属) || 归属 < 0) return '#d8d8d8'
+    return 是回放我方或队友(归属) ? 我方蓝色 : 敌方红色
   }
 
-  function 取得地块颜色(归属) {
-    if (归属 === -2) return '#b8b8b8'
-    if (!Number.isInteger(归属) || 归属 < 0) return '#d8d8d8'
-    return 是我方或队友(归属) ? 我方蓝色 : 敌方红色
+  function 是回放我方或队友(玩家索引) {
+    if (!Number.isInteger(玩家索引) || 玩家索引 < 0) return false
+    const 我方索引 = 取得回放我方索引()
+    if (!Number.isInteger(我方索引)) return false
+    if (玩家索引 === 我方索引) return true
+
+    const 队伍 = Array.isArray(状态.队伍) ? 状态.队伍 : null
+    if (!队伍) return false
+
+    const 我方队伍 = 队伍[我方索引]
+    const 对方队伍 = 队伍[玩家索引]
+    return 我方队伍 != null && 对方队伍 === 我方队伍
+  }
+
+  function 取得回放我方索引() {
+    if (Number.isInteger(状态.我方索引)) return 状态.我方索引
+    const 本地玩家名 = globalThis.localStorage?.GIO_CACHED_USERNAME
+    if (typeof 本地玩家名 !== 'string') return null
+    if (!Array.isArray(状态.玩家名列表)) return null
+
+    const 规范化本地玩家名 = 本地玩家名.trim().toLowerCase()
+    const 索引 = 状态.玩家名列表.findIndex(function (玩家名) {
+      return (
+        typeof 玩家名 === 'string' &&
+        玩家名.trim().toLowerCase() === 规范化本地玩家名
+      )
+    })
+    return 索引 >= 0 ? 索引 : null
   }
 }
 
@@ -916,26 +607,6 @@ function 取得回放地图信息(数据包) {
   }
 }
 
-function 取得当前地图缓存信息() {
-  const 地图 = 状态.地图数组
-  if (!Array.isArray(地图) || 地图.length < 2) return null
-
-  const 宽度 = 地图[0]
-  const 高度 = 地图[1]
-  const 格子数 = 宽度 * 高度
-  if (!Number.isFinite(宽度) || !Number.isFinite(高度) || 格子数 <= 0) {
-    return null
-  }
-  if (地图.length < 2 + 格子数 * 2) return null
-
-  return {
-    宽度,
-    高度,
-    兵力列表: 地图.slice(2, 2 + 格子数),
-    归属列表: 地图.slice(2 + 格子数, 2 + 格子数 * 2),
-  }
-}
-
 function 解析回放文件(内容) {
   const 原始列表 = JSON.parse(解压Uint8数组(内容))
   return {
@@ -964,8 +635,7 @@ function 解析回放文件(内容) {
   }
 }
 
-function 模拟回放数据包(回放, 目标回合) {
-  if (!Number.isInteger(目标回合) || 目标回合 < 0) return null
+function 模拟回放数据包(回放) {
   if (!Number.isInteger(回放?.宽度) || !Number.isInteger(回放?.高度))
     return null
 
@@ -1014,8 +684,7 @@ function 模拟回放数据包(回放, 目标回合) {
         Number.isInteger(移动.起点) &&
         Number.isInteger(移动.终点) &&
         Number.isInteger(移动.回合) &&
-        移动.回合 >= 0 &&
-        移动.回合 < 目标回合
+        移动.回合 >= 0
       )
     })
     .sort(function (左, 右) {
@@ -1023,25 +692,38 @@ function 模拟回放数据包(回放, 目标回合) {
       return 左.idx - 右.idx
     })
 
-  let 移动idx = 0
-  for (let 回合 = 0; 回合 < 目标回合; 回合 += 1) {
-    while (移动idx < 移动列表.length && 移动列表[移动idx].回合 === 回合) {
-      应用移动(移动列表[移动idx])
-      移动idx += 1
+  let 当前回合 = 0
+
+  for (const 移动 of 移动列表) {
+    while (当前回合 < 移动.回合) {
+      应用自然增长(当前回合)
+      当前回合 += 1
     }
-    应用自然增长(回合)
+
+    if (是进攻敌方基地移动(移动)) {
+      const 基地攻击前数据包 = 创建回放数据包(移动.回合)
+      if (会吃掉基地(移动)) return 基地攻击前数据包
+    }
+
+    应用移动(移动)
   }
 
-  return {
-    map: {
-      width: 回放.宽度,
-      height: 回放.高度,
-      _armies: 兵力列表,
-      _map: 归属列表,
-    },
-    cities: Array.isArray(回放.塔列表) ? 回放.塔列表.slice() : [],
-    generals: Array.isArray(回放.基地列表) ? 回放.基地列表.slice() : [],
-    turn: 目标回合,
+  return null
+
+  function 创建回放数据包(回合) {
+    return {
+      map: {
+        width: 回放.宽度,
+        height: 回放.高度,
+        _armies: 兵力列表.slice(),
+        _map: 归属列表.slice(),
+      },
+      cities: Array.isArray(回放.塔列表) ? 回放.塔列表.slice() : [],
+      generals: Array.isArray(回放.基地列表) ? 回放.基地列表.slice() : [],
+      usernames: Array.isArray(回放.玩家名列表) ? 回放.玩家名列表.slice() : [],
+      teams: Array.isArray(回放.队伍) ? 回放.队伍.slice() : [],
+      turn: 回合,
+    }
   }
 
   function 应用移动(移动) {
@@ -1070,6 +752,26 @@ function 模拟回放数据包(回放, 目标回合) {
     } else {
       兵力列表[移动.终点] = 终点兵力 - 移动兵力
     }
+  }
+
+  function 是进攻敌方基地移动(移动) {
+    if (!基地集合.has(移动.终点)) return false
+    if (回放.基地列表?.[移动.玩家索引] === 移动.终点) return false
+    return 归属列表[移动.终点] !== 移动.玩家索引
+  }
+
+  function 会吃掉基地(移动) {
+    if (!是有效索引(移动.起点) || !是有效索引(移动.终点)) return false
+    if (归属列表[移动.起点] !== 移动.玩家索引) return false
+
+    const 起点兵力 = 兵力列表[移动.起点]
+    const 终点兵力 = 兵力列表[移动.终点]
+    if (!Number.isInteger(起点兵力) || 起点兵力 <= 1) return false
+    if (!Number.isInteger(终点兵力)) return false
+
+    const 留守兵力 = 移动.是否半兵 ? Math.ceil(起点兵力 / 2) : 1
+    const 移动兵力 = Math.max(0, 起点兵力 - 留守兵力)
+    return 移动兵力 > 终点兵力
   }
 
   function 应用自然增长(回合) {
@@ -1211,33 +913,6 @@ function 解压压缩码(长度, 重置值, 读取值) {
   }
 }
 
-function 读取回放页面回合(文档) {
-  const 文本列表 = [
-    文档.getElementById('replay-turn-jump-input')?.placeholder,
-    文档.getElementById('turn-counter')?.textContent,
-  ]
-
-  for (const 文本 of 文本列表) {
-    const 回合 = 解析回合文本(文本)
-    if (Number.isInteger(回合)) return 回合
-  }
-  return null
-}
-
-function 解析回合文本(文本) {
-  const 匹配 = String(文本 ?? '').match(/(?:Turn\s*)?(\d+)/i)
-  if (!匹配) return null
-
-  const 回合 = Number.parseInt(匹配[1], 10)
-  return Number.isInteger(回合) ? 回合 : null
-}
-
-function 取得回放地址(任务) {
-  const 地址 = new URL(`/replays/${任务.回放编号}`, globalThis.location.origin)
-  地址.searchParams.set('t', String(任务.目标回合))
-  return 地址.href
-}
-
 function 取得回放文件地址(回放编号) {
   return `https://generalsio-replays-na.s3.amazonaws.com/${回放编号}.gior`
 }
@@ -1329,29 +1004,19 @@ function 读取页面回放编号() {
   }
 }
 
-function 取得回放iframe宽度() {
-  const 宽度 = 取游戏画布()?.getBoundingClientRect?.().width
-  return Math.max(900, Math.ceil((宽度 || 640) + 360))
-}
-
-function 取得回放iframe高度() {
-  const 高度 = 取游戏画布()?.getBoundingClientRect?.().height
-  return Math.max(650, Math.ceil((高度 || 480) + 140))
-}
-
 function 清理回放定时器() {
+  清理回放编号定时器()
+  if (回放文件重试定时器 !== null) {
+    window.clearTimeout(回放文件重试定时器)
+    回放文件重试定时器 = null
+  }
+}
+
+function 清理回放编号定时器() {
   if (回放编号重试定时器 !== null) {
     window.clearTimeout(回放编号重试定时器)
     回放编号重试定时器 = null
   }
-  if (回放画布轮询定时器 !== null) {
-    window.clearTimeout(回放画布轮询定时器)
-    回放画布轮询定时器 = null
-  }
-}
-
-function 清理回放iframe() {
-  document.getElementById(iframe编号)?.remove()
 }
 
 function 是投降结算弹窗() {
@@ -1369,6 +1034,38 @@ function 是投降结算弹窗() {
     if (文本.includes('投降')) return true
   }
   return false
+}
+
+function 值包含投降退出文本(值, 深度, 已访问) {
+  if (值 == null || 深度 > 4) return false
+  if (typeof 值 === 'string') return 是投降退出文本(值)
+  if (typeof 值 !== 'object') return false
+  if (已访问.has(值)) return false
+  已访问.add(值)
+
+  if (Array.isArray(值)) {
+    return 值.some(function (子值) {
+      return 值包含投降退出文本(子值, 深度 + 1, 已访问)
+    })
+  }
+
+  return Object.entries(值).some(function ([键, 子值]) {
+    return 是投降退出文本(键) || 值包含投降退出文本(子值, 深度 + 1, 已访问)
+  })
+}
+
+function 是投降退出文本(文本) {
+  const 小写文本 = String(文本 ?? '').toLowerCase()
+  return (
+    小写文本.includes('your opponent left') ||
+    小写文本.includes('opponent left') ||
+    小写文本.includes('surrender') ||
+    小写文本.includes('resign') ||
+    小写文本.includes('left game') ||
+    小写文本.includes('对手离开') ||
+    小写文本.includes('对手已离开') ||
+    小写文本.includes('投降')
+  )
 }
 
 注册功能({ 功能定义, 主程序功能, socket功能, 覆盖层功能, 功能恢复 })
